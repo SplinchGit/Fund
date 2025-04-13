@@ -1,0 +1,66 @@
+/* Import Tailwind’s base styles, components, and utilities */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Define global custom properties */
+:root {
+  --font-sans: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --line-height-base: 1.5;
+  --font-weight-base: 400;
+
+  --color-default: rgba(255, 255, 255, 0.87);
+  --bg-default: #242424;
+}
+
+/* Apply custom properties globally (if needed) */
+body {
+  font-family: var(--font-sans);
+  line-height: var(--line-height-base);
+  font-weight: var(--font-weight-base);
+  /* Tailwind’s preflight resets margin, so no need to reapply it here */
+}
+
+/* Global link styles */
+a {
+  font-weight: 500;
+  color: #646cff; /* You can also use Tailwind classes (e.g., text-blue-500) in components */
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+/* Global button styles */
+button {
+  border-radius: 0.5rem; /* 8px */
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1rem;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+/* Light mode overrides */
+@media (prefers-color-scheme: light) {
+  :root {
+    --color-default: #213547;
+    --bg-default: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
