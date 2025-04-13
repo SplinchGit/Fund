@@ -14,9 +14,10 @@ export default defineConfig({
     }
   },
   // Explicitly tell Vite where the entry HTML is
-  build: {
-    rollupOptions: {
-      input: path.resolve(__dirname, 'index.html')
+    build: {
+      rollupOptions: {
+        // Try the simplest relative path from project root
+        input: 'index.html' 
+      }
     }
-  }
-});
+  });
