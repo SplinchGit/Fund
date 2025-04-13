@@ -21,10 +21,10 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
   buttonText = "Verify with World ID",
   className = "",
 }) => {
-  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>('idle');
-  const [verifiedUser, setVerifiedUser] = useState<IVerifiedUser | null>(null);
-  const [userData, setUserData] = useState<UserData | undefined>(undefined);
-  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [verificationStatus, setVerificationStatus] = useState('idle' as VerificationStatus);
+  const [verifiedUser, setVerifiedUser] = useState(null as IVerifiedUser | null);
+  const [userData, setUserData] = useState(undefined as UserData | undefined);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Check for existing verification on mount
   useEffect(() => {

@@ -1,9 +1,22 @@
+/// <reference types="vite/client" />
+
+interface ImportMetaEnv {
+  MODE: string
+  BASE_URL: string
+  PROD: boolean
+  DEV: boolean
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
+
 // src/components/AdminPanel.tsx  <-- Note the .tsx extension
 import React from 'react';
 import { userStore, UserData } from '../services/UserStore';
 
-const AdminPanel: React.FC = () => {
-  const [users, setUsers] = React.useState<UserData[]>([]);
+const AdminPanel: React.FunctionComponent = () => {
+  const [users, setUsers] = React.useState([] as UserData[]);
   const [isOpen, setIsOpen] = React.useState(false);
 
   const refreshUsers = React.useCallback(() => {

@@ -1,4 +1,5 @@
-import { JSX, useState } from 'react';
+import * as React from 'react';
+import { useState } from 'react';
 import { Dialog } from '@headlessui/react';
 import WorldIDAuth from '../components/WorldIDAuth'; // Import WorldID component
 import { authService, IVerifiedUser } from '../services/AuthService'; // Import auth service
@@ -24,10 +25,10 @@ interface Campaign {
 export default function LandingPage({ 
   initialVerification = null, 
   onVerificationChange 
-}: LandingPageProps): JSX.Element {
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const [userVerification, setUserVerification] = useState<IVerifiedUser | null>(initialVerification);
+}: LandingPageProps): React.JSX.Element {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [userVerification, setUserVerification] = useState(initialVerification as IVerifiedUser | null);
 
   // Handle successful verification
   const handleVerificationSuccess = (verifiedUser: IVerifiedUser) => {

@@ -1,7 +1,9 @@
 'use client' // Required for Next.js (optional in Vite but harmless)
 
-import { ReactNode, useEffect } from 'react'
+import type { ReactNode } from 'react'
+import { useEffect } from 'react'
 import { MiniKit } from '@worldcoin/minikit-js'
+import React from 'react';
 
 interface MiniKitProviderProps {
   children: ReactNode;

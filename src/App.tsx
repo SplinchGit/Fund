@@ -1,12 +1,13 @@
 // src/App.tsx
 import { useEffect, useState } from 'react'
 import LandingPage from './pages/LandingPage'
-import ErudaProvider from './erudadebug/ErudaProvider'
+import ErudaProvider from './debug/ErudaProvider'
 import MiniKitProvider from './MiniKitProvider'
 import { authService, IVerifiedUser } from './services/AuthService'
+import React from 'react'
 
 export default function App() {
-  const [userVerification, setUserVerification] = useState<IVerifiedUser | null>(null);
+  const [userVerification, setUserVerification] = useState(null as IVerifiedUser | null);
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
@@ -42,9 +43,10 @@ export default function App() {
   };
 
   return (
-    <MiniKitProvider>
-      {/* Add ErudaProvider for debugging */}
-      <ErudaProvider />
+    <MiniKitProvider children={
+      <>
+        {/* Add ErudaProvider for debugging */}
+        <ErudaProvider />
       
       {isInitializing ? (
         <div style={{
@@ -76,6 +78,7 @@ export default function App() {
           onVerificationChange={handleVerificationChange} 
         />
       )}
-    </MiniKitProvider>
+      </>
+    } />
   )
 }

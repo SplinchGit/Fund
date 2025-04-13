@@ -5,16 +5,27 @@
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "allowJs": false,
     "skipLibCheck": true,
-    "esModuleInterop": false,
+    "esModuleInterop": false, // Note: Often set to true with allowSyntheticDefaultImports
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "Node", // Or "Bundler" for newer setups
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+
+    // --- Add these lines ---
+    "baseUrl": "./", // Or "./src" is common
+    "paths": {
+      "@debug/*": ["src/components/debug/*"]
+      // Add other aliases if needed, e.g.:
+      // "@components/*": ["src/components/*"],
+      // "@services/*": ["src/services/*"]
+    }
+    // --- End of added lines ---
+
   },
   "include": ["src"],
   "exclude": ["node_modules"]
