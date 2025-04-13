@@ -1,8 +1,9 @@
 import * as React from 'react';
-import { useState, useEffect } from 'react'; // Import useEffect for potential future logging if needed
+import { useState, useEffect, useCallback } from 'react'; // Added useCallback
 // Import Dialog component from Headless UI for modals
 import { Dialog } from '@headlessui/react';
 // Import custom components and services (ensure these paths are correct in your project)
+// Make sure the path to WorldIDAuth component is correct relative to this file
 import WorldIDAuth from '../components/WorldIDAuth'; // Assumed custom component for World ID integration
 import { authService, IVerifiedUser } from '../services/AuthService'; // Assumed custom service for authentication logic
 
@@ -46,14 +47,16 @@ export default function LandingPage({
   // --- Event Handlers ---
 
   // Called when World ID verification is successful
-  const handleVerificationSuccess = (verifiedUser: IVerifiedUser) => {
-    console.log("Verification successful:", verifiedUser); // Log success
+  // Wrapped in useCallback to potentially stabilize the reference passed as prop,
+  // preventing unnecessary re-runs of the useEffect in WorldIDAuth if it depends on onSuccess.
+  const handleVerificationSuccess = useCallback((verifiedUser: IVerifiedUser) => {
+    console.log("LandingPage: Verification successful callback received:", verifiedUser); // Log success
     setUserVerification(verifiedUser); // Update local state
     if (onVerificationChange) {
       onVerificationChange(verifiedUser); // Notify parent component
     }
     setIsAuthModalOpen(false); // Close the World ID modal
-  };
+  }, [onVerificationChange]); // Dependency: only recreate if onVerificationChange changes
 
   // Called when the user clicks the logout button
   const handleLogout = () => {
@@ -188,7 +191,7 @@ export default function LandingPage({
       boxShadow: '0 1px 3px rgba(0,0,0,0.1)', // Subtle shadow for depth
       position: 'sticky' as const, // Makes the header stick to the top on scroll
       top: 0,
-      zIndex: 100 // Ensures header stays above other content
+      zIndex: 100 // Header z-index is 100
     },
     headerContent: {
       display: 'flex',
@@ -449,7 +452,7 @@ export default function LandingPage({
       bottom: 0,
       left: 0,
       width: '100%',
-      zIndex: 100, // Ensure tabs are above content
+      zIndex: 100, // Tabs z-index is 100
       padding: '0.25rem 0' // Small vertical padding
     },
     tab: {
@@ -785,7 +788,8 @@ export default function LandingPage({
       {/* --- Modals (using Headless UI Dialog) --- */}
 
       {/* Standard Sign In Modal */}
-      <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} className="relative z-50">
+      {/* *** Z-INDEX FIX APPLIED *** Changed z-50 to z-[110] */}
+      <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} className="relative z-[110]">
         {/* Backdrop */}
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         {/* Modal Panel Container */}
@@ -866,15 +870,14 @@ export default function LandingPage({
       </Dialog>
 
       {/* World ID Authentication Modal */}
-      {/* Removed problematic console.log from directly within JSX */}
-      <Dialog open={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} className="relative z-50">
+      {/* *** Z-INDEX FIX APPLIED *** Changed z-50 to z-[110] */}
+      <Dialog open={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} className="relative z-[110]">
         {/* Backdrop */}
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         {/* Modal Panel Container */}
         <div className="fixed inset-0 flex items-center justify-center p-4">
           {/* Modal Panel Content - Uses Tailwind classes */}
           <Dialog.Panel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-             {/* Removed problematic console.log from directly within JSX */}
             <div className="text-center mb-4">
               <Dialog.Title className="text-xl font-bold mb-2 text-gray-900">Verify with World ID</Dialog.Title>
               <p className="text-sm text-gray-600">Verify your identity to unlock all features</p>
@@ -885,11 +888,12 @@ export default function LandingPage({
               {/* This component needs to be implemented separately */}
               {/* It likely contains the World ID QR code or button */}
               <WorldIDAuth
-                onSuccess={handleVerificationSuccess} // Pass success callback
+                onSuccess={handleVerificationSuccess} // Pass success callback (memoized with useCallback)
                 onError={(error) => {
-                    console.error('WorldID verification error:', error);
+                    console.error('LandingPage: WorldID verification error callback received:', error);
                     // Add user-facing error handling, e.g., show a message
-                    // setIsAuthModalOpen(false); // Optionally close modal on error
+                    // Optionally close modal on error, or let WorldIDAuth handle retry
+                    // setIsAuthModalOpen(false);
                 }}
               />
             </div>
