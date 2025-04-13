@@ -9,15 +9,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      // Use path.resolve for robustness
       '@': path.resolve(__dirname, './src'),
     }
-  },
-  // Explicitly tell Vite where the entry HTML is
-    build: {
-      rollupOptions: {
-        // Try the simplest relative path from project root
-        input: 'index.html' 
-      }
-    }
-  });
+  }
+});
