@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'; // Added useCallback
 import { Dialog } from '@headlessui/react';
 // Import custom components and services (ensure these paths are correct in your project)
 // Make sure the path to WorldIDAuth component is correct relative to this file
-import WorldIDAuth from '../components/WorldIDAuth'; // Assumed custom component for World ID integration
+// import WorldIDAuth from '../components/WorldIDAuth'; // Temporarily commented out for testing
 import { authService, IVerifiedUser } from '../services/AuthService'; // Assumed custom service for authentication logic
 
 // --- Interfaces ---
@@ -883,20 +883,26 @@ export default function LandingPage({
               <p className="text-sm text-gray-600">Verify your identity to unlock all features</p>
             </div>
 
-            {/* Placeholder for the WorldIDAuth component */}
+            {/* *** MODAL CONTENT SIMPLIFIED FOR TESTING *** */}
             <div className="py-4 flex justify-center">
-              {/* This component needs to be implemented separately */}
-              {/* It likely contains the World ID QR code or button */}
-              <WorldIDAuth
-                onSuccess={handleVerificationSuccess} // Pass success callback (memoized with useCallback)
-                onError={(error) => {
-                    console.error('LandingPage: WorldID verification error callback received:', error);
-                    // Add user-facing error handling, e.g., show a message
-                    // Optionally close modal on error, or let WorldIDAuth handle retry
-                    // setIsAuthModalOpen(false);
-                }}
-              />
+               {/* Original WorldIDAuth component commented out:
+               <WorldIDAuth
+                 onSuccess={handleVerificationSuccess} // Pass success callback (memoized with useCallback)
+                 onError={(error) => {
+                     console.error('LandingPage: WorldID verification error callback received:', error);
+                     // Add user-facing error handling, e.g., show a message
+                     // Optionally close modal on error, or let WorldIDAuth handle retry
+                     // setIsAuthModalOpen(false);
+                 }}
+               />
+               */}
+               {/* Simple text added for testing modal visibility */}
+               <div style={{ padding: '2rem', border: '1px dashed red', color: 'black' }}>
+                 MODAL TEST - CAN YOU SEE THIS?
+               </div>
             </div>
+            {/* *** END OF SIMPLIFIED CONTENT *** */}
+
 
             {/* Informational text about World ID benefits */}
             <div className="mt-4 text-center">
