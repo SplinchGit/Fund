@@ -10,10 +10,12 @@
   "dependencies": {
     "@worldcoin/idkit": "^2.0.2",
     "@worldcoin/minikit-js": "^1.8.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2"
   },
   "devDependencies": {
+    "@types/react": "^17.0.0",
+    "@types/react-dom": "^17.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^8.36.0",
     "postcss": "^8.4.0",
