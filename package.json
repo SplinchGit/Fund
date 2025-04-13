@@ -8,14 +8,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.1",
     "@worldcoin/idkit": "^2.0.2",
     "@worldcoin/minikit-js": "^1.8.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
     "eruda": "^3.0.1",
-    "@headlessui/react": "^2.2.1"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@types/node": "^22.14.1",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.4",
