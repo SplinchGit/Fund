@@ -1,0 +1,1 @@
+module.exports = { 'legacy-peer-deps': true };
