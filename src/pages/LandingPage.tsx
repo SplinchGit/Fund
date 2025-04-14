@@ -1,18 +1,17 @@
 import * as React from 'react';
-import { useState, useEffect, useCallback } from 'react'; // Added useCallback
+import { useState, useEffect, useCallback } from 'react';
 // Import Dialog component from Headless UI for modals
 import { Dialog } from '@headlessui/react';
-// Import custom components and services (ensure these paths are correct in your project)
-// Make sure the path to WorldIDAuth component is correct relative to this file
-import WorldIDAuth from '../components/WorldIDAuth'; // <--- ENSURE THIS IS UNCOMMENTED and path is correct
-import { authService, IVerifiedUser } from '../services/AuthService'; // Assumed custom service for authentication logic
+// Import custom components and services
+import WorldIDAuth from '../components/WorldIDAuth';
+import { authService, IVerifiedUser } from '../services/AuthService';
 
 // --- Interfaces ---
 
 // Props for the LandingPage component
 interface LandingPageProps {
-  initialVerification: IVerifiedUser | null; // Initial verification status passed from parent
-  onVerificationChange: (verification: IVerifiedUser | null) => void; // Callback function when verification status changes
+  initialVerification: IVerifiedUser | null;
+  onVerificationChange: (verification: IVerifiedUser | null) => void;
 }
 
 // Structure for campaign data
@@ -20,55 +19,74 @@ interface Campaign {
   id: number;
   title: string;
   creator: string;
-  raised: string; // Using string for currency format (e.g., "£57")
-  goal: string;   // Using string for currency format (e.g., "£300")
-  image: string;  // URL for the campaign image
+  raised: string;
+  goal: string;
+  image: string;
   description: string;
   daysLeft: number;
-  isVerified: boolean; // Indicates if the campaign creator is verified
+  isVerified: boolean;
 }
 
 // --- LandingPage Component ---
 
 export default function LandingPage({
-  initialVerification = null, // Default initial verification to null
-  onVerificationChange      // Function to notify parent of verification changes
+  initialVerification = null,
+  onVerificationChange
 }: LandingPageProps): React.JSX.Element {
 
   // --- State Variables ---
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false); // Controls visibility of the World ID auth modal
-  const [userVerification, setUserVerification] = useState(initialVerification as IVerifiedUser | null); // Holds the current user verification status
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [userVerification, setUserVerification] = useState(initialVerification as IVerifiedUser | null);
 
-  // --- DEBUG LOG ---
-  // Log the state value at the beginning of every render
-  console.log(`[Render] LandingPage rendering. isAuthModalOpen: ${isAuthModalOpen}`);
+  // --- Added Effect to Track Modal State Changes ---
+  useEffect(() => {
+    console.log("[Effect] Modal state changed:", isAuthModalOpen);
+  }, [isAuthModalOpen]);
 
-  // --- Event Handlers ---
-
-  // Called when World ID verification is successful
-  // Wrapped in useCallback to potentially stabilize the reference passed as prop
+  // --- Called when World ID verification is successful ---
   const handleVerificationSuccess = useCallback((verifiedUser: IVerifiedUser) => {
-    console.log("LandingPage: Verification successful callback received:", verifiedUser); // Log success
-    setUserVerification(verifiedUser); // Update local state
+    console.log("LandingPage: Verification successful callback received:", verifiedUser);
+    setUserVerification(verifiedUser);
     if (onVerificationChange) {
-      onVerificationChange(verifiedUser); // Notify parent component
+      onVerificationChange(verifiedUser);
     }
-    setIsAuthModalOpen(false); // Close the World ID modal
-  }, [onVerificationChange]); // Dependency: only recreate if onVerificationChange changes
+    setIsAuthModalOpen(false);
+  }, [onVerificationChange]);
 
-  // Called when the user clicks the logout button
+  // --- Called when the user clicks the logout button ---
   const handleLogout = () => {
     authService.logout().then(() => {
-      console.log("Logout successful"); // Log success
-      setUserVerification(null); // Clear local verification state
+      console.log("Logout successful");
+      setUserVerification(null);
       if (onVerificationChange) {
-        onVerificationChange(null); // Notify parent component
+        onVerificationChange(null);
       }
     }).catch(error => {
-      // Basic error handling for logout
       console.error("Error during logout:", error);
-      // You might want to show a user-facing error message here
     });
+  };
+
+  // --- Button Click Handler with Extra Debugging ---
+  const handleVerifyButtonClick = () => {
+    try {
+      console.log("[DEBUG] Button clicked directly!");
+      console.log("[DEBUG] About to set isAuthModalOpen to true");
+      // Try forcing state to change with a function to ensure we're using the latest state
+      setIsAuthModalOpen(prevState => {
+        console.log("[DEBUG] Previous modal state:", prevState);
+        return true;
+      });
+      
+      // Log after state setter has been called
+      console.log("[DEBUG] After setIsAuthModalOpen call");
+      
+      // Use setTimeout to check if state actually changed
+      setTimeout(() => {
+        console.log("[DEBUG] Delayed check - isAuthModalOpen:", isAuthModalOpen);
+      }, 100);
+    } catch (error) {
+      console.error("[DEBUG] Error in click handler:", error);
+    }
   };
 
   // --- Data ---
@@ -143,188 +161,138 @@ export default function LandingPage({
    ];
 
   // --- Utility Function ---
-  // Calculates the funding progress percentage for the progress bar
   const calculateProgressPercentage = (raised: string, goal: string): string => {
-    // Remove currency symbol and convert to numbers
     const raisedValue = parseFloat(raised.slice(1));
     const goalValue = parseFloat(goal.slice(1));
-    // Handle potential division by zero or invalid values
     if (isNaN(raisedValue) || isNaN(goalValue) || goalValue <= 0) {
       return '0%';
     }
-    // Calculate percentage, ensuring it doesn't exceed 100%
     const percentage = Math.min((raisedValue / goalValue * 100), 100);
-    return `${percentage.toFixed(0)}%`; // Return as a string (e.g., "75%")
+    return `${percentage.toFixed(0)}%`;
   };
 
   // --- Styling ---
-  // TODO: Refactor these styles using Tailwind, CSS Modules, or another method
   const styles: { [key: string]: React.CSSProperties } = {
     // Core layout styles
     page: {
-      textAlign: 'center' as const, // Ensures text alignment is centered where not overridden
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif', // Standard system font stack
-      color: '#202124', // Default text color
-      backgroundColor: '#ffffff', // Default page background
+      textAlign: 'center' as const,
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif',
+      color: '#202124',
+      backgroundColor: '#ffffff',
       margin: 0,
       padding: 0,
-      overflowX: 'hidden' as const, // Prevents horizontal scrolling
+      overflowX: 'hidden' as const,
       width: '100%',
-      maxWidth: '100vw' // Ensures content doesn't overflow viewport width
+      maxWidth: '100vw'
     },
     container: {
-      margin: '0 auto', // Centers the container
+      margin: '0 auto',
       width: '100%',
-      padding: '0 0.5rem', // Horizontal padding for content spacing
-      boxSizing: 'border-box' as const, // Includes padding and border in the element's total width and height
+      padding: '0 0.5rem',
+      boxSizing: 'border-box' as const,
       maxWidth: '100vw'
     },
 
     // Header styles
     header: {
       background: 'white',
-      padding: '0.5rem 0', // Vertical padding
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)', // Subtle shadow for depth
-      position: 'sticky' as const, // Makes the header stick to the top on scroll
+      padding: '0.5rem 0',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+      position: 'sticky' as const,
       top: 0,
-      zIndex: 100 // Header z-index is 100
+      zIndex: 100
     },
     headerContent: {
       display: 'flex',
-      justifyContent: 'space-between', // Pushes logo and buttons to opposite ends
-      alignItems: 'center' // Vertically aligns items in the header
+      justifyContent: 'space-between',
+      alignItems: 'center'
     },
     logo: {
       display: 'flex',
       alignItems: 'center',
-      color: '#1a73e8', // Primary brand color for the first part
-      fontWeight: 700, // Bold weight
-      fontSize: '1.125rem', // Slightly larger font size
-      textDecoration: 'none' // Removes underline from the link
+      color: '#1a73e8',
+      fontWeight: 700,
+      fontSize: '1.125rem',
+      textDecoration: 'none'
     },
     logoSpan: {
-      color: '#202124' // Standard text color for the second part
-    },
-    nav: { // Styles for potential navigation links (currently unused in JSX)
-      display: 'flex',
-      listStyle: 'none',
-      gap: '1rem', // Space between nav items
-      justifyContent: 'center',
-      margin: 0,
-      padding: 0
-    },
-    navLink: { // Style for individual nav links (currently unused in JSX)
-      textDecoration: 'none',
-      color: '#202124',
-      fontWeight: 500, // Medium weight
-      fontSize: '0.875rem', // Smaller font size
-      padding: '0.25rem 0.5rem'
+      color: '#202124'
     },
     authButtons: {
       display: 'flex',
-      gap: '0.5rem' // Space between authentication buttons
+      gap: '0.5rem'
     },
 
     // Button base and variant styles
     button: {
-      padding: '0.5rem 0.75rem', // Padding inside buttons
-      borderRadius: '0.25rem', // Slightly rounded corners
-      fontWeight: 500, // Medium weight
-      cursor: 'pointer', // Pointer cursor on hover
-      textDecoration: 'none', // Remove underline if used as a link
+      padding: '0.5rem 0.75rem',
+      borderRadius: '0.25rem',
+      fontWeight: 500,
+      cursor: 'pointer',
+      textDecoration: 'none',
       textAlign: 'center' as const,
-      fontSize: '0.75rem', // Smaller font size for buttons
-      transition: 'all 0.2s', // Smooth transition for hover effects
-      border: 'none', // Base style removes default border
-      // Added minimum height for better touch targets on mobile
+      fontSize: '0.75rem',
+      transition: 'all 0.2s',
+      border: 'none',
       minHeight: '36px',
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
     },
     buttonOutline: {
-      border: '1px solid #1a73e8', // Primary color border
-      color: '#1a73e8', // Primary color text
-      background: 'transparent' // Transparent background
-      // Add hover/focus states for better UX (e.g., background color change)
+      border: '1px solid #1a73e8',
+      color: '#1a73e8',
+      background: 'transparent'
     },
     buttonPrimary: {
-      backgroundColor: '#1a73e8', // Primary color background
-      color: 'white' // White text
-      // Add hover/focus states (e.g., slightly darker background)
+      backgroundColor: '#1a73e8',
+      color: 'white'
     },
-    buttonAccent: {
-      backgroundColor: '#ff6b00', // Accent color background
-      color: 'white' // White text
-      // Add hover/focus states
-    },
-
+    
     // Hero section styles
     hero: {
-      background: '#f5f7fa', // Light background color for the section
-      padding: '0.75rem 0 1rem', // Padding around the hero content
+      background: '#f5f7fa',
+      padding: '0.75rem 0 1rem',
       textAlign: 'center' as const
     },
     heroTitle: {
-      fontSize: '1.25rem', // Larger font size for the main title
+      fontSize: '1.25rem',
       marginBottom: '0.25rem',
       color: '#202124',
-      padding: 0 // Reset padding
+      padding: 0
     },
     heroSubtitle: {
-      fontSize: '0.75rem', // Smaller font size for the subtitle
-      color: '#5f6368', // Grey color for secondary text
-      margin: '0 auto 0.75rem', // Centered with bottom margin
-      padding: 0 // Reset padding
-    },
-    heroButtons: {
-      display: 'flex',
-      justifyContent: 'center', // Center buttons horizontally
-      gap: '0.5rem', // Space between hero buttons
-      marginBottom: '0.75rem'
+      fontSize: '0.75rem',
+      color: '#5f6368',
+      margin: '0 auto 0.75rem',
+      padding: 0
     },
     trustBadge: {
-      display: 'inline-flex', // Allows alignment of icon and text
+      display: 'inline-flex',
       alignItems: 'center',
-      backgroundColor: 'rgba(255,255,255,0.7)', // Semi-transparent white background
+      backgroundColor: 'rgba(255,255,255,0.7)',
       padding: '0.25rem 0.5rem',
-      borderRadius: '1rem', // Pill shape
-      fontSize: '0.7rem', // Very small font size
+      borderRadius: '1rem',
+      fontSize: '0.7rem',
       color: '#5f6368',
       marginTop: '0.5rem'
     },
 
-    // Verification banner styles (shown when user is not verified)
-    verificationBanner: {
-      backgroundColor: 'rgba(26,115,232,0.1)', // Light blue background
-      padding: '0.5rem 0.75rem',
-      borderRadius: '0.25rem',
-      marginTop: '0.5rem',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between' // Pushes text and button apart
-    },
-    verificationText: {
-      fontSize: '0.7rem',
-      color: '#1a73e8', // Primary blue color
-      textAlign: 'left' as const
-    },
-
-    // User verified badge (shown in header when logged in)
+    // User verified badge
     userVerifiedBadge: {
       display: 'inline-flex',
       alignItems: 'center',
-      backgroundColor: 'rgba(52,168,83,0.1)', // Light green background
-      color: '#34a853', // Green color for success/verified status
-      fontSize: '0.65rem', // Very small font size
+      backgroundColor: 'rgba(52,168,83,0.1)',
+      color: '#34a853',
+      fontSize: '0.65rem',
       padding: '0.1rem 0.25rem',
-      borderRadius: '0.125rem', // Slightly rounded corners
-      marginLeft: '0.2rem' // Space from potential preceding element
+      borderRadius: '0.125rem',
+      marginLeft: '0.2rem'
     },
 
     // Campaigns section styles
     campaignsSection: {
-      padding: '0.75rem 0 1rem' // Padding for the section
+      padding: '0.75rem 0 1rem'
     },
     sectionHeader: {
       textAlign: 'center' as const,
@@ -343,38 +311,36 @@ export default function LandingPage({
     },
     campaignsGrid: {
       display: 'grid',
-      // Responsive grid: 2 columns by default, 1 column on very small screens (see mobileStyles)
       gridTemplateColumns: 'repeat(2, 1fr)',
-      gap: '0.5rem', // Space between grid items
+      gap: '0.5rem',
       justifyContent: 'center',
       width: '100%'
     },
 
     // Campaign card styles
     campaignCard: {
-      width: '100%', // Take full width of the grid column
+      width: '100%',
       background: 'white',
-      borderRadius: '0.375rem', // Rounded corners
-      boxShadow: '0 1px 2px rgba(0,0,0,0.08)', // Subtle shadow
-      overflow: 'hidden', // Ensures image corners are rounded
+      borderRadius: '0.375rem',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+      overflow: 'hidden',
       textAlign: 'left' as const,
-      marginBottom: '0.25rem' // Small bottom margin (gap is primary spacing)
+      marginBottom: '0.25rem'
     },
     cardImage: {
-      height: '90px', // Fixed height for images
+      height: '90px',
       width: '100%',
-      objectFit: 'cover' as const // Ensures image covers the area without distortion
+      objectFit: 'cover' as const
     },
     cardContent: {
-      padding: '0.375rem 0.5rem' // Padding inside the card content area
+      padding: '0.375rem 0.5rem'
     },
     cardTitle: {
-      fontSize: '0.8rem', // Slightly larger font for title within card
-      fontWeight: 600, // Semi-bold
+      fontSize: '0.8rem',
+      fontWeight: 600,
       marginBottom: '0.125rem',
       color: '#202124',
       padding: 0,
-      // Prevent long titles from breaking layout
       whiteSpace: 'nowrap',
       overflow: 'hidden',
       textOverflow: 'ellipsis'
@@ -383,34 +349,33 @@ export default function LandingPage({
       fontSize: '0.7rem',
       color: '#5f6368',
       marginBottom: '0.375rem',
-      // Limit description to 2 lines with ellipsis
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       display: '-webkit-box',
-      WebkitLineClamp: 2, // Show max 2 lines
+      WebkitLineClamp: 2,
       WebkitBoxOrient: 'vertical' as const,
-      lineHeight: '1.2', // Adjust line height for readability
-      minHeight: 'calc(2 * 1.2 * 0.7rem)', // Ensure space for 2 lines
+      lineHeight: '1.2',
+      minHeight: 'calc(2 * 1.2 * 0.7rem)',
       padding: 0
     },
     progressBar: {
       width: '100%',
-      height: '0.25rem', // Thin progress bar
-      backgroundColor: '#f8f9fa', // Light background for the bar
-      borderRadius: '9999px', // Fully rounded ends
-      overflow: 'hidden', // Hide the fill overflow
+      height: '0.25rem',
+      backgroundColor: '#f8f9fa',
+      borderRadius: '9999px',
+      overflow: 'hidden',
       marginBottom: '0.2rem'
     },
     progressFill: {
       height: '100%',
-      backgroundColor: '#34a853', // Green fill for progress
+      backgroundColor: '#34a853',
       borderRadius: '9999px',
-      transition: 'width 0.3s ease-in-out' // Animate width changes
+      transition: 'width 0.3s ease-in-out'
     },
     campaignMeta: {
       display: 'flex',
-      justifyContent: 'space-between', // Pushes funded % and days left apart
-      fontSize: '0.65rem', // Very small font size
+      justifyContent: 'space-between',
+      fontSize: '0.65rem',
       color: '#5f6368',
       marginBottom: '0.15rem'
     },
@@ -420,19 +385,19 @@ export default function LandingPage({
       marginTop: '0.25rem',
       fontSize: '0.65rem'
     },
-    creatorAvatar: { // Placeholder for an avatar image
+    creatorAvatar: {
       width: '0.875rem',
       height: '0.875rem',
-      borderRadius: '50%', // Circular avatar
-      backgroundColor: '#e5e7eb', // Placeholder background color
+      borderRadius: '50%',
+      backgroundColor: '#e5e7eb',
       marginRight: '0.25rem'
     },
-    verifiedBadge: { // Badge shown next to creator name
+    verifiedBadge: {
       display: 'inline-flex',
       alignItems: 'center',
-      backgroundColor: 'rgba(52,168,83,0.1)', // Light green background
-      color: '#34a853', // Green text
-      fontSize: '0.55rem', // Extremely small font size
+      backgroundColor: 'rgba(52,168,83,0.1)',
+      color: '#34a853',
+      fontSize: '0.55rem',
       padding: '0.075rem 0.175rem',
       borderRadius: '0.125rem',
       marginLeft: '0.2rem'
@@ -441,114 +406,87 @@ export default function LandingPage({
     // Bottom navigation tabs styles
     tabs: {
       display: 'flex',
-      justifyContent: 'space-around', // Distribute tabs evenly
+      justifyContent: 'space-around',
       backgroundColor: '#fff',
-      borderTop: '1px solid #e5e7eb', // Top border for separation
-      position: 'fixed' as const, // Fix tabs to the bottom
+      borderTop: '1px solid #e5e7eb',
+      position: 'fixed' as const,
       bottom: 0,
       left: 0,
       width: '100%',
-      zIndex: 100, // Tabs z-index is 100
-      padding: '0.25rem 0' // Small vertical padding
+      zIndex: 100,
+      padding: '0.25rem 0'
     },
     tab: {
       display: 'flex',
-      flexDirection: 'column' as const, // Stack icon and text vertically
+      flexDirection: 'column' as const,
       alignItems: 'center',
-      fontSize: '0.6rem', // Very small text
-      color: '#5f6368', // Default grey color
+      fontSize: '0.6rem',
+      color: '#5f6368',
       textDecoration: 'none',
-      padding: '0.1rem 0.5rem' // Add some padding for touch targets
+      padding: '0.1rem 0.5rem'
     },
-    tabActive: { // Style for the active tab (conditionally applied)
-      color: '#1a73e8' // Primary blue color for active state
+    tabActive: {
+      color: '#1a73e8'
     },
     tabIcon: {
-      width: '1rem', // Small icon size
+      width: '1rem',
       height: '1rem',
-      marginBottom: '0.125rem' // Space between icon and text
+      marginBottom: '0.125rem'
     },
 
     // Footer/Legal notice styles
     legalNotice: {
-      fontSize: '0.65rem', // Very small font size
+      fontSize: '0.65rem',
       color: '#5f6368',
-      padding: '0.5rem', // Reduced padding
-      marginTop: '0.5rem', // Reduced top margin
-      marginBottom: '3.5rem' // Ensure space above the fixed bottom tabs
+      padding: '0.5rem',
+      marginTop: '0.5rem',
+      marginBottom: '3.5rem'
     }
   };
 
-
   // --- Global Styles & Mobile Overrides ---
-  // TODO: Refactor these global styles (e.g., move to index.css)
   const mobileStyles = `
     /* Basic CSS reset */
     html, body {
       margin: 0;
       padding: 0;
-      overflow-x: hidden; /* Prevent horizontal scroll */
+      overflow-x: hidden;
       width: 100%;
       max-width: 100vw;
       box-sizing: border-box;
-      /* Consider adding scroll-behavior: smooth; */
     }
 
-    *, *::before, *::after { /* Apply box-sizing to all elements */
+    *, *::before, *::after {
       box-sizing: border-box;
-      margin: 0; /* Reset default margins */
-      padding: 0; /* Reset default paddings */
+      margin: 0;
+      padding: 0;
     }
 
-    /* Media query for very small screens (e.g., smaller phones) */
     @media (max-width: 360px) {
       .campaigns-grid {
-        grid-template-columns: 1fr !important; /* Stack cards in a single column */
+        grid-template-columns: 1fr !important;
       }
-      /* Adjust font sizes slightly if needed */
-      /* .hero-title { font-size: 1.1rem; } */
     }
 
-    /* Optional: Scroll snapping for sections */
     .snap-container {
-      /* Uncomment for scroll snapping behavior */
-      /* scroll-snap-type: y mandatory; */
-      /* height: 100vh; */ /* Required for y-snapping */
-      /* overflow-y: scroll; */
       overflow-x: hidden;
       max-width: 100vw;
       width: 100%;
     }
 
-    .snap-section {
-      /* Uncomment for scroll snapping behavior */
-      /* scroll-snap-align: start; */
-      /* min-height: 50vh; */ /* Example minimum height */
-    }
-
-    /* Improve focus visibility (accessibility) */
     button:focus-visible, a:focus-visible {
-        outline: 2px solid #1a73e8; /* Example focus ring */
+        outline: 2px solid #1a73e8;
         outline-offset: 2px;
     }
-    /* Hide default outline when focus-visible is not supported/needed */
+    
     button:focus, a:focus {
         outline: none;
     }
-
-    /* Ensure buttons and links have minimum touch target size (accessibility) */
-    /* Already handled by min-height in inline styles, but good practice */
-    /* button, a, .nav-link { */
-      /* min-height: 44px; */ /* Recommended minimum */
-      /* min-width: 44px; */ /* Recommended minimum */
-    /* } */
   `;
 
   // --- JSX Structure ---
   return (
-    // Main container div with page styles and scroll snap class
     <div style={styles.page} className="snap-container">
-      {/* Inject global/mobile styles */}
       <style>{mobileStyles}</style>
 
       {/* --- Header --- */}
@@ -560,13 +498,12 @@ export default function LandingPage({
               World<span style={styles.logoSpan}>Fund</span>
             </a>
 
-            {/* Auth Buttons: Show different buttons based on verification status */}
+            {/* Auth Buttons */}
             <div style={styles.authButtons}>
               {userVerification ? (
                 // If user IS verified
                 <>
                   <div style={styles.userVerifiedBadge}>
-                    {/* Checkmark SVG */}
                     <svg
                       style={{ width: '12px', height: '12px', marginRight: '0.1rem' }}
                       viewBox="0 0 24 24"
@@ -577,26 +514,20 @@ export default function LandingPage({
                     Verified with World ID
                   </div>
                   <button
-                    style={{ ...styles.button, ...styles.buttonOutline }} // Combine base and outline styles
-                    onClick={handleLogout} // Call logout handler
+                    style={{ ...styles.button, ...styles.buttonOutline }}
+                    onClick={handleLogout}
                   >
                     Sign Out
                   </button>
                 </>
               ) : (
-                // If user is NOT verified - ONLY ONE BUTTON NOW
-                <>
-                  <button
-                    style={{ ...styles.button, ...styles.buttonPrimary }}
-                    onClick={() => {
-                        // --- DEBUG LOG ---
-                        console.log("[Click] Verify ID button clicked. Current isAuthModalOpen:", isAuthModalOpen);
-                        setIsAuthModalOpen(true);
-                    }}
-                  >
-                    Verify ID
-                  </button>
-                </>
+                // If user is NOT verified - Enhanced click handler
+                <button
+                  style={{ ...styles.button, ...styles.buttonPrimary }}
+                  onClick={handleVerifyButtonClick}
+                >
+                  Verify ID
+                </button>
               )}
             </div>
           </div>
@@ -605,183 +536,181 @@ export default function LandingPage({
 
       {/* --- Hero Section --- */}
       <section style={styles.hero} className="snap-section">
-          <div style={styles.container}>
-            <h1 className="hero-title" style={styles.heroTitle}>Fund Projects That Matter</h1>
-            <p style={styles.heroSubtitle}>Secure crowdfunding with World verification</p>
+        <div style={styles.container}>
+          <h1 className="hero-title" style={styles.heroTitle}>Fund Projects That Matter</h1>
+          <p style={styles.heroSubtitle}>Secure crowdfunding with World verification</p>
 
-            {/* Trust badge */}
-            <div style={styles.trustBadge}>
-              {/* World ID logo SVG */}
-              <svg
-                style={{ width: '16px', height: '16px', marginRight: '0.25rem', color: '#1a73e8' }}
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-14c2.209 0 4 1.791 4 4s-1.791 4-4 4-4-1.791-4-4 1.791-4 4-4z" />
-              </svg>
-              Verified by World
-            </div>
+          {/* Trust badge */}
+          <div style={styles.trustBadge}>
+            <svg
+              style={{ width: '16px', height: '16px', marginRight: '0.25rem', color: '#1a73e8' }}
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-14c2.209 0 4 1.791 4 4s-1.791 4-4 4-4-1.791-4-4 1.791-4 4-4z" />
+            </svg>
+            Verified by World
           </div>
-        </section>
+        </div>
+      </section>
 
       {/* --- Campaigns Section --- */}
       <section style={styles.campaignsSection} className="snap-section">
-          <div style={styles.container}>
-            <div style={styles.sectionHeader}>
-              <h2 style={styles.sectionTitle}>Featured Campaigns</h2>
-              <p style={styles.sectionSubtitle}>Projects from verified creators</p>
-            </div>
+        <div style={styles.container}>
+          <div style={styles.sectionHeader}>
+            <h2 style={styles.sectionTitle}>Featured Campaigns</h2>
+            <p style={styles.sectionSubtitle}>Projects from verified creators</p>
+          </div>
 
-            {/* Grid displaying campaign cards */}
-            <div className="campaigns-grid" style={styles.campaignsGrid}>
-              {/* Map over the campaigns data array */}
-              {campaigns.map((campaign) => (
-                <div key={campaign.id} style={styles.campaignCard}>
-                  {/* Campaign image */}
-                  <img
-                    src={campaign.image}
-                    alt={campaign.title} // Alt text for accessibility
-                    style={styles.cardImage}
-                    // Add onerror handler for broken images
-                    onError={(e) => (e.currentTarget.src = 'https://placehold.co/200x150/e5e7eb/5f6368?text=Image+Error')}
-                  />
-                  <div style={styles.cardContent}>
-                    {/* Campaign title */}
-                    <h3 style={styles.cardTitle}>
-                      {campaign.title}
-                    </h3>
-                    {/* Campaign description */}
-                    <p style={styles.cardDesc}>
-                      {campaign.description}
-                    </p>
+          {/* Grid displaying campaign cards */}
+          <div className="campaigns-grid" style={styles.campaignsGrid}>
+            {campaigns.map((campaign) => (
+              <div key={campaign.id} style={styles.campaignCard}>
+                <img
+                  src={campaign.image}
+                  alt={campaign.title}
+                  style={styles.cardImage}
+                  onError={(e) => (e.currentTarget.src = 'https://placehold.co/200x150/e5e7eb/5f6368?text=Image+Error')}
+                />
+                <div style={styles.cardContent}>
+                  <h3 style={styles.cardTitle}>
+                    {campaign.title}
+                  </h3>
+                  <p style={styles.cardDesc}>
+                    {campaign.description}
+                  </p>
 
-                    {/* Progress bar */}
-                    <div style={styles.progressBar}>
-                      <div
-                        style={{
-                          ...styles.progressFill,
-                          // Dynamically set width based on funding progress
-                          width: calculateProgressPercentage(campaign.raised, campaign.goal)
-                        }}
-                      ></div>
-                    </div>
+                  <div style={styles.progressBar}>
+                    <div
+                      style={{
+                        ...styles.progressFill,
+                        width: calculateProgressPercentage(campaign.raised, campaign.goal)
+                      }}
+                    ></div>
+                  </div>
 
-                    {/* Campaign metadata (funded %, days left) */}
-                    <div style={styles.campaignMeta}>
-                      <span>{calculateProgressPercentage(campaign.raised, campaign.goal)} funded</span>
-                      <span>{campaign.daysLeft > 0 ? `${campaign.daysLeft} days left` : 'Completed'}</span>
-                    </div>
+                  <div style={styles.campaignMeta}>
+                    <span>{calculateProgressPercentage(campaign.raised, campaign.goal)} funded</span>
+                    <span>{campaign.daysLeft > 0 ? `${campaign.daysLeft} days left` : 'Completed'}</span>
+                  </div>
 
-                    {/* Campaign creator info */}
-                    <div style={styles.campaignCreator}>
-                      <div style={styles.creatorAvatar}></div> {/* Placeholder for avatar */}
-                      <span>{campaign.creator}</span>
-                      {/* Show verified badge if creator is verified */}
-                      {campaign.isVerified && (
-                        <span style={styles.verifiedBadge}>
-                          ✓ Verified
-                        </span>
-                      )}
-                    </div>
+                  <div style={styles.campaignCreator}>
+                    <div style={styles.creatorAvatar}></div>
+                    <span>{campaign.creator}</span>
+                    {campaign.isVerified && (
+                      <span style={styles.verifiedBadge}>
+                        ✓ Verified
+                      </span>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
-        </section>
+        </div>
+      </section>
 
       {/* --- Legal Footer --- */}
       <div style={styles.legalNotice}>
         <div>All donations are at donor's discretion.</div>
         <div>WorldFund does not guarantee success of campaigns or donations.</div>
-        <div>&copy; {new Date().getFullYear()} WorldFund</div> {/* Dynamic year */}
+        <div>&copy; {new Date().getFullYear()} WorldFund</div>
       </div>
 
       {/* --- Bottom Navigation Tabs --- */}
       <div style={styles.tabs}>
-          {/* Home Tab */}
-          <a href="#" style={{ ...styles.tab, ...styles.tabActive }}> {/* Example: Home is active */}
-            <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor">
-              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-            </svg>
-            <span>Home</span>
-          </a>
-          {/* Search Tab */}
-          <a href="#" style={styles.tab}>
-            <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor">
-              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-            </svg>
-            <span>Search</span>
-          </a>
-          {/* Account/Verified Tab */}
-          <a href="#" style={{
-            ...styles.tab,
-            // Conditionally apply active style if user is verified
-            ...(userVerification ? styles.tabActive : {})
-          }}>
-            <svg
-              style={{
-                ...styles.tabIcon,
-                // Conditionally change icon color if active
-                color: userVerification ? '#1a73e8' : 'currentColor'
-              }}
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-            </svg>
-            {/* Change tab text based on verification status */}
-            <span>{userVerification ? 'Verified' : 'Account'}</span>
-          </a>
-        </div>
+        <a href="#" style={{ ...styles.tab, ...styles.tabActive }}>
+          <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+          </svg>
+          <span>Home</span>
+        </a>
+        <a href="#" style={styles.tab}>
+          <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+          </svg>
+          <span>Search</span>
+        </a>
+        <a href="#" style={{
+          ...styles.tab,
+          ...(userVerification ? styles.tabActive : {})
+        }}>
+          <svg
+            style={{
+              ...styles.tabIcon,
+              color: userVerification ? '#1a73e8' : 'currentColor'
+            }}
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+          </svg>
+          <span>{userVerification ? 'Verified' : 'Account'}</span>
+        </a>
+      </div>
+
+      {/* --- Debug Indicator --- */}
+      {/* This element helps visually check if the modal state is changing */}
+      <div style={{
+        position: 'fixed',
+        bottom: '50px',
+        right: '10px',
+        padding: '4px 8px',
+        backgroundColor: isAuthModalOpen ? 'green' : 'red',
+        color: 'white',
+        borderRadius: '4px',
+        fontSize: '10px',
+        opacity: 0.7,
+        zIndex: 1000
+      }}>
+        Modal: {isAuthModalOpen ? 'OPEN' : 'CLOSED'}
+      </div>
 
       {/* --- World ID Authentication Modal --- */}
-      <Dialog open={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} className="relative z-[110]">
+      {/* Added key prop to force re-render when open state changes */}
+      <Dialog 
+        open={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+        className="relative z-[110]"
+        key={`auth-modal-${isAuthModalOpen ? 'open' : 'closed'}`}
+      >
         {/* Backdrop */}
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        
         {/* Modal Panel Container */}
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          {/* Modal Panel Content - Uses Tailwind classes */}
+          {/* Modal Panel Content */}
           <Dialog.Panel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <div className="text-center mb-4">
               <Dialog.Title className="text-xl font-bold mb-2 text-gray-900">Verify with World ID</Dialog.Title>
               <p className="text-sm text-gray-600">Verify your identity to unlock all features</p>
             </div>
 
-            {/* --- THIS IS THE FIXED SECTION --- */}
+            {/* WorldIDAuth Component */}
             <div className="py-4 flex justify-center">
-              {/* Render the actual WorldIDAuth component */}
               <WorldIDAuth
-                onSuccess={handleVerificationSuccess} // Pass success callback (memoized with useCallback)
+                onSuccess={handleVerificationSuccess}
                 onError={(error) => {
-                    console.error('LandingPage: WorldID verification error callback received:', error);
-                    // TODO: Add user-facing error handling here if needed
-                    // Example: alert('Verification failed. Please try again.');
-                    // Optionally close modal on error, or let WorldIDAuth handle retry:
-                    // setIsAuthModalOpen(false);
+                  console.error('[DEBUG] WorldID verification error:', error);
                 }}
               />
             </div>
-            {/* --- END OF FIXED SECTION --- */}
 
             {/* Informational text about World ID benefits */}
             <div className="mt-4 text-center">
               <div className="flex flex-col gap-2 text-sm text-gray-600 mb-4">
-                {/* Benefit 1 */}
                 <div className="flex items-center gap-2 justify-center">
                   <svg style={{ width: '14px', height: '14px', color: '#34a853' }} viewBox="0 0 24 24" fill="currentColor">
                     <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                   </svg>
                   Verify you're human
                 </div>
-                {/* Benefit 2 */}
                 <div className="flex items-center gap-2 justify-center">
                   <svg style={{ width: '14px', height: '14px', color: '#34a853' }} viewBox="0 0 24 24" fill="currentColor">
                     <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                   </svg>
                   Prove your uniqueness
                 </div>
-                {/* Benefit 3 */}
                 <div className="flex items-center gap-2 justify-center">
                   <svg style={{ width: '14px', height: '14px', color: '#34a853' }} viewBox="0 0 24 24" fill="currentColor">
                     <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
@@ -793,7 +722,6 @@ export default function LandingPage({
               {/* Cancel button */}
               <button
                 type="button"
-                // Tailwind classes for cancel button
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition duration-150 ease-in-out"
                 onClick={() => setIsAuthModalOpen(false)}
               >
@@ -804,5 +732,5 @@ export default function LandingPage({
         </div>
       </Dialog>
     </div>
-    );
-  }
+  );
+}
