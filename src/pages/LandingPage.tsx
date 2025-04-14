@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'; // Added useCallback
 import { Dialog } from '@headlessui/react';
 // Import custom components and services (ensure these paths are correct in your project)
 // Make sure the path to WorldIDAuth component is correct relative to this file
-// import WorldIDAuth from '../components/WorldIDAuth'; // Temporarily commented out for testing
+import WorldIDAuth from '../components/WorldIDAuth'; // <--- ENSURE THIS IS UNCOMMENTED and path is correct
 import { authService, IVerifiedUser } from '../services/AuthService'; // Assumed custom service for authentication logic
 
 // --- Interfaces ---
@@ -32,7 +32,7 @@ interface Campaign {
 
 export default function LandingPage({
   initialVerification = null, // Default initial verification to null
-  onVerificationChange        // Function to notify parent of verification changes
+  onVerificationChange      // Function to notify parent of verification changes
 }: LandingPageProps): React.JSX.Element {
 
   // --- State Variables ---
@@ -41,14 +41,13 @@ export default function LandingPage({
   const [userVerification, setUserVerification] = useState(initialVerification as IVerifiedUser | null); // Holds the current user verification status
 
   // --- DEBUG LOG ---
-  // Log the state value at the beginning of every render (This log is correctly placed)
+  // Log the state value at the beginning of every render
   console.log(`[Render] LandingPage rendering. isAuthModalOpen: ${isAuthModalOpen}`);
 
   // --- Event Handlers ---
 
   // Called when World ID verification is successful
-  // Wrapped in useCallback to potentially stabilize the reference passed as prop,
-  // preventing unnecessary re-runs of the useEffect in WorldIDAuth if it depends on onSuccess.
+  // Wrapped in useCallback to potentially stabilize the reference passed as prop
   const handleVerificationSuccess = useCallback((verifiedUser: IVerifiedUser) => {
     console.log("LandingPage: Verification successful callback received:", verifiedUser); // Log success
     setUserVerification(verifiedUser); // Update local state
@@ -74,79 +73,77 @@ export default function LandingPage({
   };
 
   // --- Data ---
-
   // Static array of campaign data (in a real app, this would likely come from an API)
   const campaigns: Campaign[] = [
      {
-      id: 1,
-      title: "PC Monitor",
-      creator: "John Adams",
-      raised: "£57",
-      goal: "£300",
-      image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
-      description: "Help me upgrade my workstation with a new monitor for coding and design projects.",
-      daysLeft: 14,
-      isVerified: true
-    },
-    {
-      id: 2,
-      title: "Desk",
-      creator: "Rachel Scott",
-      raised: "£17",
-      goal: "£50",
-      image: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
-      description: "Looking to replace my broken desk with a sturdy new one for my home office setup.",
-      daysLeft: 21,
-      isVerified: true
-    },
-    {
-      id: 3,
-      title: "Coffee",
-      creator: "Gary Thomas",
-      raised: "£0.5",
-      goal: "£3",
-      image: "https://images.unsplash.com/photo-1461988625982-7e46a099bf4f?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
-      description: "Just need a coffee to get through this coding session. Every little helps!",
-      daysLeft: 1,
-      isVerified: true
-    },
-    {
-      id: 4,
-      title: "New Windows",
-      creator: "Jenny Smith",
-      raised: "£60",
-      goal: "£750",
-      image: "https://images.unsplash.com/photo-1581345628965-9adb6a0195b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
-      description: "Raising funds to replace the old windows in my apartment with energy-efficient ones.",
-      daysLeft: 30,
-      isVerified: true
-    },
-    {
-      id: 5,
-      title: "Phone",
-      creator: "Thomas Edison",
-      raised: "£30",
-      goal: "£450",
-      image: "https://images.unsplash.com/photo-1529675641475-78780f1fd4b9?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
-      description: "My phone finally died after 6 years. Need a new one for work and staying connected.",
-      daysLeft: 25,
-      isVerified: true
-    },
-    {
-      id: 6,
-      title: "College Laptop",
-      creator: "Noel Sweden",
-      raised: "£500",
-      goal: "£500",
-      image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
-      description: "Successfully funded! Got the laptop I needed for my computer science degree. Thank you!",
-      daysLeft: 0, // Completed campaign
-      isVerified: true
-    }
-  ];
+       id: 1,
+       title: "PC Monitor",
+       creator: "John Adams",
+       raised: "£57",
+       goal: "£300",
+       image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
+       description: "Help me upgrade my workstation with a new monitor for coding and design projects.",
+       daysLeft: 14,
+       isVerified: true
+     },
+     {
+       id: 2,
+       title: "Desk",
+       creator: "Rachel Scott",
+       raised: "£17",
+       goal: "£50",
+       image: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
+       description: "Looking to replace my broken desk with a sturdy new one for my home office setup.",
+       daysLeft: 21,
+       isVerified: true
+     },
+     {
+       id: 3,
+       title: "Coffee",
+       creator: "Gary Thomas",
+       raised: "£0.5",
+       goal: "£3",
+       image: "https://images.unsplash.com/photo-1461988625982-7e46a099bf4f?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
+       description: "Just need a coffee to get through this coding session. Every little helps!",
+       daysLeft: 1,
+       isVerified: true
+     },
+     {
+       id: 4,
+       title: "New Windows",
+       creator: "Jenny Smith",
+       raised: "£60",
+       goal: "£750",
+       image: "https://images.unsplash.com/photo-1581345628965-9adb6a0195b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
+       description: "Raising funds to replace the old windows in my apartment with energy-efficient ones.",
+       daysLeft: 30,
+       isVerified: true
+     },
+     {
+       id: 5,
+       title: "Phone",
+       creator: "Thomas Edison",
+       raised: "£30",
+       goal: "£450",
+       image: "https://images.unsplash.com/photo-1529675641475-78780f1fd4b9?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
+       description: "My phone finally died after 6 years. Need a new one for work and staying connected.",
+       daysLeft: 25,
+       isVerified: true
+     },
+     {
+       id: 6,
+       title: "College Laptop",
+       creator: "Noel Sweden",
+       raised: "£500",
+       goal: "£500",
+       image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
+       description: "Successfully funded! Got the laptop I needed for my computer science degree. Thank you!",
+       daysLeft: 0, // Completed campaign
+       isVerified: true
+     }
+   ];
 
   // --- Utility Function ---
-
   // Calculates the funding progress percentage for the progress bar
   const calculateProgressPercentage = (raised: string, goal: string): string => {
     // Remove currency symbol and convert to numbers
@@ -162,8 +159,8 @@ export default function LandingPage({
   };
 
   // --- Styling ---
-  // Inline styles object... (styles remain the same as previous version)
-  const styles = {
+  // TODO: Refactor these styles using Tailwind, CSS Modules, or another method
+  const styles: { [key: string]: React.CSSProperties } = {
     // Core layout styles
     page: {
       textAlign: 'center' as const, // Ensures text alignment is centered where not overridden
@@ -485,7 +482,7 @@ export default function LandingPage({
 
 
   // --- Global Styles & Mobile Overrides ---
-  // mobileStyles remain the same as previous version
+  // TODO: Refactor these global styles (e.g., move to index.css)
   const mobileStyles = `
     /* Basic CSS reset */
     html, body {
@@ -532,12 +529,12 @@ export default function LandingPage({
 
     /* Improve focus visibility (accessibility) */
     button:focus-visible, a:focus-visible {
-       outline: 2px solid #1a73e8; /* Example focus ring */
-       outline-offset: 2px;
+        outline: 2px solid #1a73e8; /* Example focus ring */
+        outline-offset: 2px;
     }
     /* Hide default outline when focus-visible is not supported/needed */
     button:focus, a:focus {
-       outline: none;
+        outline: none;
     }
 
     /* Ensure buttons and links have minimum touch target size (accessibility) */
@@ -605,8 +602,6 @@ export default function LandingPage({
                         // --- DEBUG LOG ---
                         console.log("[Click] Verify ID button clicked (Header). Current isAuthModalOpen:", isAuthModalOpen);
                         setIsAuthModalOpen(true);
-                        // Note: Logging isAuthModalOpen immediately after setting might show the old value
-                        // due to the asynchronous nature of setState. The log at the start of the render is more reliable.
                     }}
                   >
                     Verify ID
@@ -620,125 +615,125 @@ export default function LandingPage({
 
       {/* --- Hero Section --- */}
       <section style={styles.hero} className="snap-section">
-        <div style={styles.container}>
-          <h1 className="hero-title" style={styles.heroTitle}>Fund Projects That Matter</h1>
-          <p style={styles.heroSubtitle}>Secure crowdfunding with World verification</p>
+          <div style={styles.container}>
+            <h1 className="hero-title" style={styles.heroTitle}>Fund Projects That Matter</h1>
+            <p style={styles.heroSubtitle}>Secure crowdfunding with World verification</p>
 
-          {/* Call to action buttons */}
-          <div className="hero-buttons" style={styles.heroButtons}>
-            <button style={{ ...styles.button, ...styles.buttonAccent }}>
-              Start a Campaign
-            </button>
-            <button style={{ ...styles.button, ...styles.buttonOutline }}>
-              Explore Projects
-            </button>
-          </div>
-
-          {/* Trust badge */}
-          <div style={styles.trustBadge}>
-            {/* World ID logo SVG */}
-            <svg
-              style={{ width: '16px', height: '16px', marginRight: '0.25rem', color: '#1a73e8' }}
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-14c2.209 0 4 1.791 4 4s-1.791 4-4 4-4-1.791-4-4 1.791-4 4-4z" />
-            </svg>
-            Verified by World
-          </div>
-
-          {/* Conditional banner prompting verification */}
-          {!userVerification && (
-            <div style={styles.verificationBanner}>
-              <div style={styles.verificationText}>
-                <strong>Verify your identity with World ID</strong>
-                <div>Get priority access to create campaigns and donate.</div>
-              </div>
-              <button
-                style={{ ...styles.button, ...styles.buttonPrimary, fontSize: '0.65rem' }} // Smaller button in banner
-                onClick={() => {
-                    // --- DEBUG LOG ---
-                    console.log("[Click] Verify Now button clicked (Banner). Current isAuthModalOpen:", isAuthModalOpen);
-                    setIsAuthModalOpen(true);
-                }}
-              >
-                Verify Now
+            {/* Call to action buttons */}
+            <div className="hero-buttons" style={styles.heroButtons}>
+              <button style={{ ...styles.button, ...styles.buttonAccent }}>
+                Start a Campaign
+              </button>
+              <button style={{ ...styles.button, ...styles.buttonOutline }}>
+                Explore Projects
               </button>
             </div>
-          )}
-        </div>
-      </section>
+
+            {/* Trust badge */}
+            <div style={styles.trustBadge}>
+              {/* World ID logo SVG */}
+              <svg
+                style={{ width: '16px', height: '16px', marginRight: '0.25rem', color: '#1a73e8' }}
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-14c2.209 0 4 1.791 4 4s-1.791 4-4 4-4-1.791-4-4 1.791-4 4-4z" />
+              </svg>
+              Verified by World
+            </div>
+
+            {/* Conditional banner prompting verification */}
+            {!userVerification && (
+              <div style={styles.verificationBanner}>
+                <div style={styles.verificationText}>
+                  <strong>Verify your identity with World ID</strong>
+                  <div>Get priority access to create campaigns and donate.</div>
+                </div>
+                <button
+                  style={{ ...styles.button, ...styles.buttonPrimary, fontSize: '0.65rem' }} // Smaller button in banner
+                  onClick={() => {
+                      // --- DEBUG LOG ---
+                      console.log("[Click] Verify Now button clicked (Banner). Current isAuthModalOpen:", isAuthModalOpen);
+                      setIsAuthModalOpen(true);
+                  }}
+                >
+                  Verify Now
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
 
       {/* --- Campaigns Section --- */}
       <section style={styles.campaignsSection} className="snap-section">
-        <div style={styles.container}>
-          <div style={styles.sectionHeader}>
-            <h2 style={styles.sectionTitle}>Featured Campaigns</h2>
-            <p style={styles.sectionSubtitle}>Projects from verified creators</p>
-          </div>
+          <div style={styles.container}>
+            <div style={styles.sectionHeader}>
+              <h2 style={styles.sectionTitle}>Featured Campaigns</h2>
+              <p style={styles.sectionSubtitle}>Projects from verified creators</p>
+            </div>
 
-          {/* Grid displaying campaign cards */}
-          <div className="campaigns-grid" style={styles.campaignsGrid}>
-            {/* Map over the campaigns data array */}
-            {campaigns.map((campaign) => (
-              <div key={campaign.id} style={styles.campaignCard}>
-                {/* Campaign image */}
-                <img
-                  src={campaign.image}
-                  alt={campaign.title} // Alt text for accessibility
-                  style={styles.cardImage}
-                  // Add onerror handler for broken images
-                  onError={(e) => (e.currentTarget.src = 'https://placehold.co/200x150/e5e7eb/5f6368?text=Image+Error')}
-                />
-                <div style={styles.cardContent}>
-                  {/* Campaign title */}
-                  <h3 style={styles.cardTitle}>
-                    {campaign.title}
-                  </h3>
-                  {/* Campaign description */}
-                  <p style={styles.cardDesc}>
-                    {campaign.description}
-                  </p>
+            {/* Grid displaying campaign cards */}
+            <div className="campaigns-grid" style={styles.campaignsGrid}>
+              {/* Map over the campaigns data array */}
+              {campaigns.map((campaign) => (
+                <div key={campaign.id} style={styles.campaignCard}>
+                  {/* Campaign image */}
+                  <img
+                    src={campaign.image}
+                    alt={campaign.title} // Alt text for accessibility
+                    style={styles.cardImage}
+                    // Add onerror handler for broken images
+                    onError={(e) => (e.currentTarget.src = 'https://placehold.co/200x150/e5e7eb/5f6368?text=Image+Error')}
+                  />
+                  <div style={styles.cardContent}>
+                    {/* Campaign title */}
+                    <h3 style={styles.cardTitle}>
+                      {campaign.title}
+                    </h3>
+                    {/* Campaign description */}
+                    <p style={styles.cardDesc}>
+                      {campaign.description}
+                    </p>
 
-                  {/* Progress bar */}
-                  <div style={styles.progressBar}>
-                    <div
-                      style={{
-                        ...styles.progressFill,
-                        // Dynamically set width based on funding progress
-                        width: calculateProgressPercentage(campaign.raised, campaign.goal)
-                      }}
-                    ></div>
-                  </div>
+                    {/* Progress bar */}
+                    <div style={styles.progressBar}>
+                      <div
+                        style={{
+                          ...styles.progressFill,
+                          // Dynamically set width based on funding progress
+                          width: calculateProgressPercentage(campaign.raised, campaign.goal)
+                        }}
+                      ></div>
+                    </div>
 
-                  {/* Campaign metadata (funded %, days left) */}
-                  <div style={styles.campaignMeta}>
-                    <span>{calculateProgressPercentage(campaign.raised, campaign.goal)} funded</span>
-                    <span>{campaign.daysLeft > 0 ? `${campaign.daysLeft} days left` : 'Completed'}</span>
-                  </div>
+                    {/* Campaign metadata (funded %, days left) */}
+                    <div style={styles.campaignMeta}>
+                      <span>{calculateProgressPercentage(campaign.raised, campaign.goal)} funded</span>
+                      <span>{campaign.daysLeft > 0 ? `${campaign.daysLeft} days left` : 'Completed'}</span>
+                    </div>
 
-                  {/* Campaign creator info */}
-                  <div style={styles.campaignCreator}>
-                    <div style={styles.creatorAvatar}></div> {/* Placeholder for avatar */}
-                    <span>{campaign.creator}</span>
-                    {/* Show verified badge if creator is verified */}
-                    {campaign.isVerified && (
-                      <span style={styles.verifiedBadge}>
-                        ✓ Verified
-                      </span>
-                    )}
+                    {/* Campaign creator info */}
+                    <div style={styles.campaignCreator}>
+                      <div style={styles.creatorAvatar}></div> {/* Placeholder for avatar */}
+                      <span>{campaign.creator}</span>
+                      {/* Show verified badge if creator is verified */}
+                      {campaign.isVerified && (
+                        <span style={styles.verifiedBadge}>
+                          ✓ Verified
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          {/* Placeholder for a 'Load More' or similar button (currently commented out) */}
-          <div style={{ textAlign: 'center', marginTop: '0.75rem', marginBottom: '0.75rem' }}>
-            {/* <button style={{...styles.button, ...styles.buttonOutline }}>Load More Campaigns</button> */}
+            {/* Placeholder for a 'Load More' or similar button */}
+            <div style={{ textAlign: 'center', marginTop: '0.75rem', marginBottom: '0.75rem' }}>
+              {/* <button style={{...styles.button, ...styles.buttonOutline }}>Load More Campaigns</button> */}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
       {/* --- Legal Footer --- */}
       <div style={styles.legalNotice}>
@@ -749,46 +744,45 @@ export default function LandingPage({
 
       {/* --- Bottom Navigation Tabs --- */}
       <div style={styles.tabs}>
-        {/* Home Tab */}
-        <a href="#" style={{ ...styles.tab, ...styles.tabActive }}> {/* Example: Home is active */}
-          <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor">
-            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-          </svg>
-          <span>Home</span>
-        </a>
-        {/* Search Tab */}
-        <a href="#" style={styles.tab}>
-          <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor">
-            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-          </svg>
-          <span>Search</span>
-        </a>
-        {/* Account/Verified Tab */}
-        <a href="#" style={{
-          ...styles.tab,
-          // Conditionally apply active style if user is verified
-          ...(userVerification ? styles.tabActive : {})
-        }}>
-          <svg
-            style={{
-              ...styles.tabIcon,
-              // Conditionally change icon color if active
-              color: userVerification ? '#1a73e8' : 'currentColor'
-            }}
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-          </svg>
-          {/* Change tab text based on verification status */}
-          <span>{userVerification ? 'Verified' : 'Account'}</span>
-        </a>
-      </div>
+          {/* Home Tab */}
+          <a href="#" style={{ ...styles.tab, ...styles.tabActive }}> {/* Example: Home is active */}
+            <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor">
+              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+            </svg>
+            <span>Home</span>
+          </a>
+          {/* Search Tab */}
+          <a href="#" style={styles.tab}>
+            <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor">
+              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+            </svg>
+            <span>Search</span>
+          </a>
+          {/* Account/Verified Tab */}
+          <a href="#" style={{
+            ...styles.tab,
+            // Conditionally apply active style if user is verified
+            ...(userVerification ? styles.tabActive : {})
+          }}>
+            <svg
+              style={{
+                ...styles.tabIcon,
+                // Conditionally change icon color if active
+                color: userVerification ? '#1a73e8' : 'currentColor'
+              }}
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+            </svg>
+            {/* Change tab text based on verification status */}
+            <span>{userVerification ? 'Verified' : 'Account'}</span>
+          </a>
+        </div>
 
       {/* --- Modals (using Headless UI Dialog) --- */}
 
       {/* Standard Sign In Modal */}
-      {/* *** Z-INDEX FIX APPLIED *** Changed z-50 to z-[110] */}
       <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} className="relative z-[110]">
         {/* Backdrop */}
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
@@ -870,7 +864,6 @@ export default function LandingPage({
       </Dialog>
 
       {/* World ID Authentication Modal */}
-      {/* *** Z-INDEX FIX APPLIED *** Changed z-50 to z-[110] */}
       <Dialog open={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} className="relative z-[110]">
         {/* Backdrop */}
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
@@ -883,26 +876,21 @@ export default function LandingPage({
               <p className="text-sm text-gray-600">Verify your identity to unlock all features</p>
             </div>
 
-            {/* *** MODAL CONTENT SIMPLIFIED FOR TESTING *** */}
+            {/* --- THIS IS THE FIXED SECTION --- */}
             <div className="py-4 flex justify-center">
-               {/* Original WorldIDAuth component commented out:
-               <WorldIDAuth
-                 onSuccess={handleVerificationSuccess} // Pass success callback (memoized with useCallback)
-                 onError={(error) => {
-                     console.error('LandingPage: WorldID verification error callback received:', error);
-                     // Add user-facing error handling, e.g., show a message
-                     // Optionally close modal on error, or let WorldIDAuth handle retry
-                     // setIsAuthModalOpen(false);
-                 }}
-               />
-               */}
-               {/* Simple text added for testing modal visibility */}
-               <div style={{ padding: '2rem', border: '1px dashed red', color: 'black' }}>
-                 MODAL TEST - CAN YOU SEE THIS?
-               </div>
+              {/* Render the actual WorldIDAuth component */}
+              <WorldIDAuth
+                onSuccess={handleVerificationSuccess} // Pass success callback (memoized with useCallback)
+                onError={(error) => {
+                    console.error('LandingPage: WorldID verification error callback received:', error);
+                    // TODO: Add user-facing error handling here if needed
+                    // Example: alert('Verification failed. Please try again.');
+                    // Optionally close modal on error, or let WorldIDAuth handle retry:
+                    // setIsAuthModalOpen(false);
+                }}
+              />
             </div>
-            {/* *** END OF SIMPLIFIED CONTENT *** */}
-
+            {/* --- END OF FIXED SECTION --- */}
 
             {/* Informational text about World ID benefits */}
             <div className="mt-4 text-center">
@@ -946,3 +934,4 @@ export default function LandingPage({
     </div>
   );
 }
+
