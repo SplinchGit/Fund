@@ -36,7 +36,6 @@ export default function LandingPage({
 }: LandingPageProps): React.JSX.Element {
 
   // --- State Variables ---
-  const [isModalOpen, setIsModalOpen] = useState(false); // Controls visibility of the standard sign-in modal
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false); // Controls visibility of the World ID auth modal
   const [userVerification, setUserVerification] = useState(initialVerification as IVerifiedUser | null); // Holds the current user verification status
 
@@ -585,22 +584,13 @@ export default function LandingPage({
                   </button>
                 </>
               ) : (
-                // If user is NOT verified
+                // If user is NOT verified - ONLY ONE BUTTON NOW
                 <>
-                  <button
-                    style={{ ...styles.button, ...styles.buttonOutline }}
-                    onClick={() => {
-                        console.log("[Click] Sign In button clicked."); // Debug log
-                        setIsModalOpen(true);
-                    }}
-                  >
-                    Sign In
-                  </button>
                   <button
                     style={{ ...styles.button, ...styles.buttonPrimary }}
                     onClick={() => {
                         // --- DEBUG LOG ---
-                        console.log("[Click] Verify ID button clicked (Header). Current isAuthModalOpen:", isAuthModalOpen);
+                        console.log("[Click] Verify ID button clicked. Current isAuthModalOpen:", isAuthModalOpen);
                         setIsAuthModalOpen(true);
                     }}
                   >
@@ -619,16 +609,6 @@ export default function LandingPage({
             <h1 className="hero-title" style={styles.heroTitle}>Fund Projects That Matter</h1>
             <p style={styles.heroSubtitle}>Secure crowdfunding with World verification</p>
 
-            {/* Call to action buttons */}
-            <div className="hero-buttons" style={styles.heroButtons}>
-              <button style={{ ...styles.button, ...styles.buttonAccent }}>
-                Start a Campaign
-              </button>
-              <button style={{ ...styles.button, ...styles.buttonOutline }}>
-                Explore Projects
-              </button>
-            </div>
-
             {/* Trust badge */}
             <div style={styles.trustBadge}>
               {/* World ID logo SVG */}
@@ -641,26 +621,6 @@ export default function LandingPage({
               </svg>
               Verified by World
             </div>
-
-            {/* Conditional banner prompting verification */}
-            {!userVerification && (
-              <div style={styles.verificationBanner}>
-                <div style={styles.verificationText}>
-                  <strong>Verify your identity with World ID</strong>
-                  <div>Get priority access to create campaigns and donate.</div>
-                </div>
-                <button
-                  style={{ ...styles.button, ...styles.buttonPrimary, fontSize: '0.65rem' }} // Smaller button in banner
-                  onClick={() => {
-                      // --- DEBUG LOG ---
-                      console.log("[Click] Verify Now button clicked (Banner). Current isAuthModalOpen:", isAuthModalOpen);
-                      setIsAuthModalOpen(true);
-                  }}
-                >
-                  Verify Now
-                </button>
-              </div>
-            )}
           </div>
         </section>
 
@@ -727,11 +687,6 @@ export default function LandingPage({
                 </div>
               ))}
             </div>
-
-            {/* Placeholder for a 'Load More' or similar button */}
-            <div style={{ textAlign: 'center', marginTop: '0.75rem', marginBottom: '0.75rem' }}>
-              {/* <button style={{...styles.button, ...styles.buttonOutline }}>Load More Campaigns</button> */}
-            </div>
           </div>
         </section>
 
@@ -780,90 +735,7 @@ export default function LandingPage({
           </a>
         </div>
 
-      {/* --- Modals (using Headless UI Dialog) --- */}
-
-      {/* Standard Sign In Modal */}
-      <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} className="relative z-[110]">
-        {/* Backdrop */}
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        {/* Modal Panel Container */}
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          {/* Modal Panel Content - Uses Tailwind classes for styling */}
-          <Dialog.Panel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <Dialog.Title className="text-xl font-bold mb-4 text-center text-gray-900">Log in to WorldFund</Dialog.Title>
-            {/* Basic form structure (no actual login logic implemented here) */}
-            <form className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1 text-center text-gray-700">Email</label>
-                <input
-                  type="email"
-                  // Tailwind classes for input styling
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="you@example.com"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1 text-center text-gray-700">Password</label>
-                <input
-                  type="password"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="••••••••"
-                />
-              </div>
-              <div className="pt-2 text-center">
-                <p className="text-sm text-gray-600 mb-2">-- OR --</p>
-                {/* Button to switch to World ID verification */}
-                <button
-                  type="button"
-                  // Tailwind classes for button styling
-                  className="w-full py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg flex justify-center items-center gap-2 transition duration-150 ease-in-out"
-                  onClick={() => {
-                    console.log("[Click] Verify with World ID button clicked (Sign In Modal)."); // Debug log
-                    setIsModalOpen(false); // Close this modal
-                    setIsAuthModalOpen(true); // Open World ID modal
-                  }}
-                >
-                  {/* World ID Icon SVG */}
-                  <svg
-                    style={{ width: '16px', height: '16px' }}
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-14c2.209 0 4 1.791 4 4s-1.791 4-4 4-4-1.791-4-4 1.791-4 4-4z" />
-                  </svg>
-                  Verify with World ID
-                </button>
-              </div>
-              {/* Modal action buttons */}
-              <div className="flex justify-center gap-4 mt-4">
-                <button
-                  type="button"
-                  // Tailwind classes for cancel button
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition duration-150 ease-in-out"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit" // Should trigger form submission (needs onSubmit handler on form)
-                  // Tailwind classes for primary action button
-                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition duration-150 ease-in-out"
-                  onClick={(e) => {
-                      e.preventDefault(); // Prevent default form submission for now
-                      console.log("Standard Sign In clicked (no logic implemented)");
-                      // Add actual sign-in logic here
-                      // setIsModalOpen(false); // Close on successful sign-in
-                  }}
-                >
-                  Sign in
-                </button>
-              </div>
-            </form>
-          </Dialog.Panel>
-        </div>
-      </Dialog>
-
-      {/* World ID Authentication Modal */}
+      {/* --- World ID Authentication Modal --- */}
       <Dialog open={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} className="relative z-[110]">
         {/* Backdrop */}
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
@@ -932,6 +804,5 @@ export default function LandingPage({
         </div>
       </Dialog>
     </div>
-  );
-}
-
+    );
+  }
