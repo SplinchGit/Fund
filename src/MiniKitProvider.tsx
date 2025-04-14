@@ -12,7 +12,7 @@ interface MiniKitProviderProps {
 
 export default function MiniKitProvider({ 
   children, 
-  appId = "app_46c9cdd743f94cc48093f843aca6b5a6" // Your World ID app ID
+appId = import.meta.env.VITE_WORLD_APP_ID || "app_46c9cdd743f94cc48093f843aca6b5a6"
 }: MiniKitProviderProps) {
 
   useEffect(() => {
