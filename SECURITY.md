@@ -3,7 +3,7 @@ Supported Versions
 For security updates, we support only the following versions. Please upgrade if you are on an unsupported version.
 
 Version	Supported
-5.1.0	:white_check_mark:
+5.1.0
 
 Reporting a Vulnerability
 If you discover a vulnerability, please report it privately.
