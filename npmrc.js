@@ -1,1 +1,4 @@
-module.exports = { 'legacy-peer-deps': true };
+module.exports = { 
+	'legacy-peer-deps': true,
+	'strict-peer-dependencies': false
+};

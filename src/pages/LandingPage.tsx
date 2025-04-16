@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, JSX, } from 'react';
 import { Dialog } from '@headlessui/react';
 import WorldIDAuth from '../components/WorldIDAuth';
 import { authService, IVerifiedUser } from '../services/AuthService';
@@ -32,7 +32,7 @@ interface Campaign {
 export default function LandingPage({
   initialVerification = null,
   onVerificationChange
-}: LandingPageProps): React.JSX.Element {
+}: LandingPageProps): JSX.Element {
 
   // -----------------------------
   // STATE MANAGEMENT
