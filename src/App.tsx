@@ -1,85 +1,79 @@
-// src/App.tsx
-import React from 'react'
-import { useEffect, useState } from 'react'
-import LandingPage from './pages/LandingPage'
-import ErudaProvider from './debug/ErudaProvider'
-import MiniKitProvider from './MiniKitProvider'
-import { authService, IVerifiedUser } from './services/AuthService'
+import React, { useState, useEffect } from 'react';
+import Login from './pages/Login';
+import eruda from 'eruda';
 
-export default function App() {
-  const [userVerification, setUserVerification] = useState(null as IVerifiedUser | null);
-  const [isInitializing, setIsInitializing] = useState(true);
+// Initialize mobile debugging if in development
+if (import.meta.env.DEV) {
+  eruda.init();
+  console.log('Environment variables:', {
+    hasAppId: !!import.meta.env.VITE_WORLD_APP_ID,
+    hasActionId: !!import.meta.env.VITE_WORLD_ACTION_ID
+  });
+}
 
-  useEffect(() => {
-    // Log to verify the component is mounting
-    console.log('App component mounted');
-    
-    // Check for existing verification on app mount DEBUG: Check this is needed, does anywhere
-    // else use the verification level?
-    const checkVerification = async () => {
-      try {
-        console.log("Checking for existing user verification on app mount");
-        const verifiedUser = await authService.getCurrentUser();
-        console.log("Retrieved user verification:", verifiedUser ? "Found" : "Not found");
-        if (verifiedUser) {
-          console.log("User verified with level:", verifiedUser.details?.verificationLevel);
-        }
-        setUserVerification(verifiedUser);
-      } catch (error) {
-        console.error("Error checking user verification:", error);
-      } finally {
-        setIsInitializing(false);
-      }
-    };
-    
-    // DEBUG: DO WE NEED A DELAY? IF SO, WHY?
-    setTimeout(() => {
-      checkVerification();
-    }, 500);
-  }, []);
-
-  const handleVerificationChange = (newVerification: IVerifiedUser | null) => {
-    console.log("Verification changed:", newVerification ? "Verified" : "Not verified");
-    setUserVerification(newVerification);
+// Simple Dashboard component - replace with your actual app content
+const Dashboard = () => {
+  const handleLogout = () => {
+    localStorage.removeItem('worldcoinAuth');
+    window.location.reload();
   };
 
   return (
-    <MiniKitProvider children={
-      <>
-        {/* Add ErudaProvider for debugging */}
-        <ErudaProvider />
-      
-      {isInitializing ? (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100vh',
-          gap: '1rem'
-        }}>
-          <div style={{
-            width: '2rem',
-            height: '2rem',
-            border: '3px solid rgba(0, 0, 0, 0.1)',
-            borderTopColor: '#1a73e8',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }} />
-          <p>Loading WorldFund...</p>
-          <style>{`
-            @keyframes spin {
-              to { transform: rotate(360deg) }
-            }
-          `}</style>
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-8 shadow-md dark:border-gray-700 dark:bg-gray-800">
+        <h1 className="mb-6 text-center text-2xl font-bold">WorldFund Dashboard</h1>
+        <p className="mb-4 text-center">You've successfully authenticated with World ID!</p>
+        <div className="flex justify-center">
+          <button 
+            onClick={handleLogout}
+            className="rounded-lg bg-red-600 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-300 dark:bg-red-700 dark:hover:bg-red-800 dark:focus:ring-red-800"
+          >
+            Logout
+          </button>
         </div>
-      ) : (
-        <LandingPage 
-          initialVerification={userVerification} 
-          onVerificationChange={handleVerificationChange} 
-        />
-      )}
-      </>
-    } />
-  )
-}
+      </div>
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  
+  useEffect(() => {
+    // Check if user is authenticated
+    const authData = localStorage.getItem('worldcoinAuth');
+    if (authData) {
+      try {
+        const parsed = JSON.parse(authData);
+        // Verify the authentication is valid and not expired
+        const isValid = parsed.verified && 
+          parsed.timestamp && 
+          (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000); // 24 hour expiry
+        
+        setIsAuthenticated(isValid);
+      } catch (e) {
+        // Invalid JSON, remove the item
+        localStorage.removeItem('worldcoinAuth');
+        setIsAuthenticated(false);
+      }
+    }
+    setIsLoading(false);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Render Login or Dashboard based on authentication state
+  return isAuthenticated ? <Dashboard /> : <Login />;
+};
+
+export default App;

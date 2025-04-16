@@ -4,6 +4,76 @@ import { authService } from '../services/AuthService';
 import type { IVerifiedUser } from '../services/AuthService';
 import type { UserData } from '../services/UserStore';
 
+
+useEffect(() => {
+  if (!import.meta.env.VITE_WORLD_APP_ID || !import.meta.env.VITE_WORLD_ID_ACTION) {
+    console.error('Missing required environment variables.');
+    setErrorMessage('Configuration error: Missing VITE_WORLD_APP_ID or VITE_WORLD_ID_ACTION.');
+    setVerificationStatus('error');
+  }
+}, []);
+  
+  
+    // Handle successful verification from IDKitWidget
+    const handleSuccess = useCallback(async (result: ISuccessResult) => {
+      try {
+        console.log("WorldIDAuth: IDKit verification success callback triggered, processing result:", result);
+        setVerificationStatus('loading');
+        setErrorMessage('');
+  
+        // IMPORTANT: This action MUST match the 'action' prop passed to IDKitWidget below
+        // AND must match the action string defined in your Worldcoin Developer Portal
+        const action = import.meta.env.VITE_WORLD_ID_ACTION;
+  
+        // Optional signal data - use undefined or empty string if not needed
+        const signal = undefined;
+  
+        console.log(`WorldIDAuth: Calling authService.verifyWithWorldID with action: '${action}', signal: '${signal}'`);
+        const verification = await authService.verifyWithWorldID(result, action, signal);
+  
+        if (verification.isVerified) {
+          console.log("WorldIDAuth: Backend/Service verification successful:", verification);
+          setVerifiedUser(verification);
+          setUserData(verification.userData);
+          setVerificationStatus('success');
+  
+          // Notify parent component of successful verification
+          onSuccess?.(verification);
+        } else {
+          console.error("WorldIDAuth: authService.verifyWithWorldID indicated verification failed.", verification);
+          throw new Error(verification.details?.toString() || "Verification failed after processing result.");
+        }
+      } catch (error) {
+        console.error("WorldIDAuth: Error during verification processing:", error);
+        const errorMessageText = error instanceof Error ? error.message : 'Verification processing failed';
+        setErrorMessage(errorMessageText);
+        setVerificationStatus('error');
+        error?.(error);
+      }
+    }, [onSuccess, onerror]);
+  
+    // Handle errors from IDKitWidget
+    const handleError = useCallback((error: IErrorState) => {
+      console.error("WorldIDAuth: IDKit widget reported an error:", error);
+      setErrorMessage(`IDKit Error: ${error.code || 'Verification failed'}`);
+      setVerificationStatus('error');
+    }, [onerror]);
+  
+    // Render the IDKitWidget with the button to trigger the modal
+    
+<IDKitWidget
+  app_id={import.meta.env.VITE_WORLD_APP_ID}
+  action={import.meta.env.VITE_WORLD_ID_ACTION}
+  verification_level={VerificationLevel.Device}
+  onSuccess={handleSuccess}
+  onError={handleError}
+>
+  {({ open }) => (
+    <button onClick={() => open()}>Sign in with World ID</button>
+  )}
+</IDKitWidget>
+
+
 // Define possible verification states
 type VerificationStatus = 'idle' | 'loading' | 'success' | 'error';
 
@@ -389,3 +459,24 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
 };
 
 export default WorldIDAuth;
+
+function setErrorMessage(arg0: string) {
+  throw new Error('Function not implemented.');
+}
+
+function setVerificationStatus(arg0: string) {
+  throw new Error('Function not implemented.');
+}
+
+function setVerifiedUser(verification: IVerifiedUser) {
+  throw new Error('Function not implemented.');
+}
+
+function setUserData(userData: UserData | undefined) {
+  throw new Error('Function not implemented.');
+}
+
+function onSuccess(verification: IVerifiedUser) {
+  throw new Error('Function not implemented.');
+}
+

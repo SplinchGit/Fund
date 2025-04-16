@@ -2,7 +2,7 @@
 
 import type { ISuccessResult, VerificationLevel } from '@worldcoin/idkit';
 // Assuming UserStore handles user data persistence based on nullifierHash
-import { userStore, UserData } from './UserStore';
+import { userStore, UserData } from './UserStore'; // MAKE SURE UserStore has the necessary methods (e.g., saveUser, getUser)
 
 // Interface for the data expected by your backend verification endpoint
 interface BackendVerifyRequest {
@@ -50,7 +50,7 @@ export interface IVerifiedUser {
 class AuthService {
   private static instance: AuthService;
   // Key for storing verification details in localStorage
-  private readonly STORAGE_KEY = "worldfund_user_verification_v2"; // Consider versioning keys
+  private readonly STORAGE_KEY = "worldfund_user_verification_v2"; // Consider versioning keys, Yeah I have questions.
 
   private constructor() {
     // Private constructor for Singleton pattern
@@ -131,16 +131,19 @@ class AuthService {
           timestamp: Date.now() // Timestamp of successful verification
         };
 
-        // Create a UserData object that matches the UserData interface in UserStore.ts
-        const userDataPayload: UserData = {
-            id: verificationDetails.nullifierHash,
+        // *** FIX for Line 131 Error ***
+        // DEBUG: NEEDS LOOKING AT. PATCHED NOW?
+        // Assuming 'saveUser' expects a single object containing user data, including the hash.
+        // !!! YOU MUST VERIFY THIS AGAINST YOUR UserStore.ts IMPLEMENTATION !!!
+        // Adjust the structure of this object if 'saveUser' expects something different.
+        const userDataPayload = {
+            id: verificationDetails.nullifierHash, // Use nullifierHash as ID
             verifiedAt: verificationDetails.timestamp,
             verificationLevel: verificationDetails.verificationLevel,
         };
-        
-        const userData = userStore.saveUser(userDataPayload);
+        const userData = userStore.saveUser(userDataPayload); // Pass the single object
 
-        console.log("AuthService: User data saved/updated in store:", userData?.id?.substring(0, 8));
+        console.log("AuthService: User data saved/updated in store:", userData?.id?.substring(0, 8)); // Assuming userData has an 'id'
 
         const verifiedUser: IVerifiedUser = {
           isVerified: true,
@@ -158,23 +161,29 @@ class AuthService {
         // Backend verification failed
         console.error("AuthService Error: Backend verification failed.", backendResponse);
         // Provide specific feedback based on backendResponse.code / backendResponse.detail
+        // Example: throw new Error(`Verification Failed: ${backendResponse.detail}`);
         return { isVerified: false, details: undefined, userData: undefined };
       }
 
     } catch (error: any) {
       console.error("AuthService Error: Error during backend verification call.", error);
       // Handle network errors or other exceptions during the fetch/API call
+      // Example: if (error.message === 'Network Error') ...
       return { isVerified: false, details: undefined, userData: undefined };
     }
   }
 
   /**
-   * Makes an API call to your backend verification endpoint.
+   * Placeholder for the actual API call to your backend verification endpoint.
+   * Replace this with your actual fetch/axios call.
    *
    * @param requestData - Data to send to the backend.
    * @returns Promise<BackendVerifyResponse | BackendVerifyErrorResponse>
    */
   private async callBackendVerifyAPI(requestData: BackendVerifyRequest): Promise<BackendVerifyResponse | BackendVerifyErrorResponse> {
+      // --- ## IMPLEMENT THIS ## ---
+      // This function needs to make a POST request to your backend endpoint (e.g., '/api/verify-worldid.ts')
+      // Your backend endpoint MUST securely verify the proof with Worldcoin's /verify API.
       console.log("AuthService: Sending data to backend /api/verify:", requestData);
 
       // Example using fetch:
@@ -193,6 +202,8 @@ class AuthService {
               console.error("AuthService: Backend API returned an error status:", response.status, responseData);
               // Assuming error response matches BackendVerifyErrorResponse structure
               return responseData as BackendVerifyErrorResponse;
+              // Or construct a generic error if structure doesn't match
+              // return { success: false, code: 'backend_error', detail: responseData.message || `HTTP error! status: ${response.status}` };
           }
 
           console.log("AuthService: Received successful response from backend:", responseData);
@@ -211,7 +222,7 @@ class AuthService {
    */
   public async getCurrentUser(): Promise<IVerifiedUser | null> {
     console.log("AuthService: Checking current user verification status...");
-    const verificationStatus = this.getVerificationStatusFromStorage(); 
+    const verificationStatus = this.getVerificationStatusFromStorage(); // Renamed for clarity
 
     if (!verificationStatus.isVerified || !verificationStatus.details) {
       console.log("AuthService: No valid verification found in storage.");
@@ -230,10 +241,9 @@ class AuthService {
 
     // Verification is valid and not expired, try to fetch associated user data
     try {
-      console.log("AuthService: Verification valid, fetching user data for nullifier:", 
-        verificationStatus.details.nullifierHash.substring(0, 8));
-      
-      const userData = userStore.getUser(verificationStatus.details.nullifierHash); 
+      console.log("AuthService: Verification valid, fetching user data for nullifier:", verificationStatus.details.nullifierHash.substring(0, 8));
+      // *** Verify UserStore has a 'getUser' method that accepts nullifierHash ***
+      const userData = userStore.getUser(verificationStatus.details.nullifierHash); // Assuming sync or async
 
       if (userData) {
         console.log("AuthService: Found associated user data.");
@@ -243,14 +253,15 @@ class AuthService {
           userData: userData
         };
       } else {
-        console.warn("AuthService: Valid verification found, but no associated user data in UserStore for nullifier:", 
-          verificationStatus.details.nullifierHash.substring(0, 8));
+        console.warn("AuthService: Valid verification found, but no associated user data in UserStore for nullifier:", verificationStatus.details.nullifierHash.substring(0, 8));
         // Still return as verified, but without specific app user data
         return verificationStatus;
       }
     } catch (error) {
         console.error("AuthService: Error fetching user data from UserStore.", error);
-        // Returning verified status without user data is safer
+        // Decide how to handle this - return verified without data, or null?
+        // Returning verified status without user data might be safer.
+        // DEBUG: Check.
         return verificationStatus;
     }
   }
@@ -268,6 +279,7 @@ class AuthService {
 
     const stored = localStorage.getItem(this.STORAGE_KEY);
     if (!stored) {
+      // console.log("AuthService: No stored verification found in localStorage."); // Less verbose
       return { isVerified: false };
     }
 
@@ -275,6 +287,7 @@ class AuthService {
       const verification: IVerifiedUser = JSON.parse(stored);
       // Basic check for essential details property
       if (verification.isVerified && verification.details?.nullifierHash && verification.details?.timestamp) {
+         // console.log("AuthService: Found stored verification in localStorage."); // Less verbose
          return verification;
       } else {
          console.warn("AuthService: Stored verification data is incomplete or invalid. Clearing.");
@@ -288,8 +301,10 @@ class AuthService {
     }
   }
 
+
   /**
    * Saves verification status to localStorage.
+   * DEBUG: Where and how? Important.
    */
   private saveVerification(verification: IVerifiedUser): void {
     if (typeof localStorage !== 'undefined') {
@@ -297,6 +312,7 @@ class AuthService {
         // Ensure we only store necessary details if needed, avoid storing raw proof unless required
         const dataToStore = JSON.stringify(verification);
         localStorage.setItem(this.STORAGE_KEY, dataToStore);
+        // console.log("AuthService: Verification saved to localStorage."); // Less verbose
       } catch (error) {
         console.error("AuthService: Error saving verification to localStorage.", error);
         // Handle potential storage quota errors
@@ -317,9 +333,9 @@ class AuthService {
     }
 
     try {
-        console.log("AuthService: Updating user profile for nullifier:", 
-          verification.details.nullifierHash.substring(0, 8));
-        
+        console.log("AuthService: Updating user profile for nullifier:", verification.details.nullifierHash.substring(0, 8));
+        // *** Verify UserStore has an 'updateUser' method ***
+        // Assuming userStore.updateUser handles finding the user by nullifier and updating
         const updatedUser = userStore.updateUser(verification.details.nullifierHash, data);
         // Optionally update local storage if userData is stored there too
         if(updatedUser) {
