@@ -149,11 +149,11 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
       {/* Idle State: Show Verification Button */}
       {verificationStatus === 'idle' && (
         <IDKitWidget
-          app_id={import.meta.env.VITE_WORLD_APP_ID}
-          action={import.meta.env.VITE_WORLD_ID_ACTION}
-          verification_level={VerificationLevel.Device}
-          onSuccess={handleSuccess}
-          onError={handleError}
+        app_id={import.meta.env.VITE_WORLD_APP_ID as `app_${string}`}
+        action={import.meta.env.VITE_WORLD_ID_ACTION}
+        verification_level={VerificationLevel.Device}
+        onSuccess={handleSuccess}
+        onError={handleError}
         >
           {({ open }) => (
             <button

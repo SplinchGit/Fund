@@ -3,6 +3,10 @@ export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
+    {
+      "include": ["src", "env.d.ts"]
+    }
+    
   ],
   theme: {
     extend: {
