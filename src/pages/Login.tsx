@@ -1,21 +1,23 @@
+// src/pages/Login.tsx
 import React, { useState } from 'react';
 import { IDKitWidget } from '@worldcoin/idkit';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
   const [status, setStatus] = useState('idle');
   const [errorMsg, setErrorMsg] = useState('');
-  
-  // Safely get environment variables with fallbacks
+  const navigate = useNavigate();
+
+  // Safely load environment variables
   const APP_ID = import.meta.env.VITE_WORLD_APP_ID || '';
   const ACTION_ID = import.meta.env.VITE_WORLD_ACTION_ID || '';
-  
+
   console.log('Environment vars loaded:', { 
     hasAppId: !!APP_ID, 
     hasActionId: !!ACTION_ID 
   });
   
   const handleVerify = async (proof) => {
-    // Defensive check for proof
     if (!proof) {
       console.error('Proof is undefined');
       setStatus('error');
@@ -26,7 +28,8 @@ const Login = () => {
     setStatus('verifying');
     
     try {
-      const response = await fetch('/api/verify-worldid', {
+      // Adjust the endpoint if necessary:
+      const response = await fetch('/api/verify', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -43,13 +46,17 @@ const Login = () => {
       
       if (data.verified) {
         setStatus('success');
-        localStorage.setItem('worldcoinAuth', JSON.stringify({
-          verified: true,
-          nullifierHash: data.nullifierHash || '',
-          timestamp: Date.now()
+        // Save verification status (use the same key as your AuthService if needed)
+        localStorage.setItem('worldfund_user_verification_v2', JSON.stringify({
+          isVerified: true,
+          details: {
+            nullifierHash: data.nullifierHash || '',
+            timestamp: Date.now(),
+          }
         }));
-        
-        window.location.reload();
+
+        // Navigate to LandingPage after success
+        navigate('/');
       } else {
         setStatus('error');
         setErrorMsg(data.error || data.detail || 'Verification failed');
@@ -85,7 +92,7 @@ const Login = () => {
         padding: '20px',
         boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
       }}>
-        <h1 style={{ textAlign: 'center', marginBottom: '20px' }}>WorldFund</h1>
+        <h1 style={{ textAlign: 'center', marginBottom: '20px' }}>WorldFund Login</h1>
         
         {status === 'success' && (
           <div style={{ 
@@ -111,39 +118,37 @@ const Login = () => {
           </div>
         )}
         
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          {APP_ID && ACTION_ID ? (
-            <IDKitWidget
-              app_id={APP_ID}
-              action={ACTION_ID}
-              onSuccess={handleVerify}
-              onError={handleError}
-            >
-              {({ open }) => (
-                <button 
-                  onClick={open}
-                  disabled={status === 'verifying'}
-                  style={{
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '5px',
-                    padding: '10px 20px',
-                    cursor: status === 'verifying' ? 'not-allowed' : 'pointer',
-                    opacity: status === 'verifying' ? 0.7 : 1,
-                    fontWeight: 'medium'
-                  }}
-                >
-                  {status === 'verifying' ? 'Verifying...' : 'Verify with World ID'}
-                </button>
-              )}
-            </IDKitWidget>
-          ) : (
-            <div style={{ color: 'red' }}>
-              Missing environment variables. Please check your configuration.
-            </div>
-          )}
-        </div>
+        {APP_ID && ACTION_ID ? (
+          <IDKitWidget
+            app_id={APP_ID}
+            action={ACTION_ID}
+            onSuccess={handleVerify}
+            onError={handleError}
+          >
+            {({ open }) => (
+              <button 
+                onClick={open}
+                disabled={status === 'verifying'}
+                style={{
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '5px',
+                  padding: '10px 20px',
+                  cursor: status === 'verifying' ? 'not-allowed' : 'pointer',
+                  opacity: status === 'verifying' ? 0.7 : 1,
+                  fontWeight: 'medium'
+                }}
+              >
+                {status === 'verifying' ? 'Verifying...' : 'Verify with World ID'}
+              </button>
+            )}
+          </IDKitWidget>
+        ) : (
+          <div style={{ color: 'red' }}>
+            Missing environment variables. Please check your configuration.
+          </div>
+        )}
       </div>
     </div>
   );
