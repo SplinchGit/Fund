@@ -1,5 +1,66 @@
 {
-  "projectId": "your-vercel-project-id",
-  "orgId": "your-vercel-org-id",
-  "settings": {}
+  "version": 2,
+  "name": "worldfund",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dist" }
+    },
+    {
+      "src": "api/verify-worldid.ts",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "api/verify-worldid.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/"
+    }
+  ],
+  "env": {
+    "VITE_WORLD_APP_ID": "@world_app_id",
+    "VITE_WORLD_ID_ACTION": "@world_id_action",
+    "WORLD_APP_ID": "@world_app_id",
+    "WORLD_ACTION_ID": "@world_id_action"
+  },
+  "build": {
+    "env": {
+      "VITE_WORLD_APP_ID": "@world_app_id",
+      "VITE_WORLD_ID_ACTION": "@world_id_action"
+    }
+  },
+  "rewrites": [
+    { 
+      "source": "/api/(.*)", 
+      "destination": "/api/verify-worldid.ts" 
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        }
+      ]
+    }
+  ]
 }
