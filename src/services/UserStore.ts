@@ -1,7 +1,5 @@
 // src/services/UserStore.ts
-import { type IWorldIDVerification } from './AuthService';
-
-// DEBUG: Module '"./AuthService"' has no exported member 'IWorldIDVerification'. Did you mean to use 'import IWorldIDVerification from "./AuthService"' instead?
+import { IWorldIDVerificationDetails } from './AuthService';
 
 // Define user data structure
 export interface UserData {
@@ -22,30 +20,32 @@ export class UserStore {
   }
   
   /**
-   * Create or update a user from World ID verification
+   * Create or update a user from World ID verification data
+   * Note: This now takes a UserData object directly, not the full verification details
    */
-  saveUser(verification: IWorldIDVerification): UserData {
-    if (!verification.nullifierHash) {
-      throw new Error("Missing nullifier hash");
+  saveUser(userData: UserData): UserData {
+    if (!userData.id) {
+      throw new Error("Missing user ID (nullifier hash)");
     }
     
     // Check if user already exists
-    const existingUser = this.getUser(verification.nullifierHash);
+    const existingUser = this.getUser(userData.id);
     
-    const userData: UserData = {
+    // Merge existing user data with new data if it exists
+    const mergedUserData: UserData = {
       ...(existingUser || {}),
-      id: verification.nullifierHash,
-      verificationLevel: verification.verificationLevel,
-      verifiedAt: Date.now()
+      ...userData,
+      // Always use the latest timestamp
+      verifiedAt: userData.verifiedAt || Date.now()
     };
     
     // Store in memory
-    this.users[userData.id] = userData;
+    this.users[mergedUserData.id] = mergedUserData;
     
     // Persist to localStorage
     this.persistUsers();
     
-    return userData;
+    return mergedUserData;
   }
   
   /**
@@ -86,15 +86,15 @@ export class UserStore {
   
   /**
    * Get all users (for admin purposes)
-   * DEBUG: Check this, that it's under my control only, not passed to users.
-   * Safest way to handle this, is it user data? We will need to be GDPR compliant.
+   * NOTE: Ensure this is under admin control only, not exposed to regular users.
+   * For GDPR compliance, consider adding anonymization or data minimization.
    */
   getAllUsers(): UserData[] {
     return Object.values(this.users);
   }
   
   /**
-   * Save to localStorage DEBUG: HOW?
+   * Save to localStorage
    */
   private persistUsers(): void {
     if (typeof window !== 'undefined' && window.localStorage) {

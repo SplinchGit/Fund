@@ -1,20 +1,18 @@
 import * as React from 'react';
 import { useState, useEffect, useCallback } from 'react';
-// Import Dialog component from Headless UI for modals
 import { Dialog } from '@headlessui/react';
-// Import custom components and services
 import WorldIDAuth from '../components/WorldIDAuth';
 import { authService, IVerifiedUser } from '../services/AuthService';
 
-// --- Interfaces ---
+// -----------------------------
+// INTERFACES
+// -----------------------------
 
-// Props for the LandingPage component
 interface LandingPageProps {
   initialVerification: IVerifiedUser | null;
   onVerificationChange: (verification: IVerifiedUser | null) => void;
 }
 
-// Structure for campaign data
 interface Campaign {
   id: number;
   title: string;
@@ -27,23 +25,32 @@ interface Campaign {
   isVerified: boolean;
 }
 
-// --- LandingPage Component ---
+// -----------------------------
+// MAIN COMPONENT
+// -----------------------------
 
 export default function LandingPage({
   initialVerification = null,
   onVerificationChange
 }: LandingPageProps): React.JSX.Element {
 
-  // --- State Variables ---
+  // -----------------------------
+  // STATE MANAGEMENT
+  // -----------------------------
+  
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [userVerification, setUserVerification] = useState(initialVerification as IVerifiedUser | null);
 
-  // --- Added Effect to Track Modal State Changes ---
+  // Monitor modal state for debugging
   useEffect(() => {
     console.log("[Effect] Modal state changed:", isAuthModalOpen);
   }, [isAuthModalOpen]);
 
-  // --- Called when World ID verification is successful ---
+  // -----------------------------
+  // EVENT HANDLERS
+  // -----------------------------
+  
+  // Handle successful verification
   const handleVerificationSuccess = useCallback((verifiedUser: IVerifiedUser) => {
     console.log("LandingPage: Verification successful callback received:", verifiedUser);
     setUserVerification(verifiedUser);
@@ -53,7 +60,7 @@ export default function LandingPage({
     setIsAuthModalOpen(false);
   }, [onVerificationChange]);
 
-  // --- Called when the user clicks the logout button ---
+  // Handle logout
   const handleLogout = () => {
     authService.logout().then(() => {
       console.log("Logout successful");
@@ -66,77 +73,65 @@ export default function LandingPage({
     });
   };
 
-// --- Button Click Handler (Cleaned Up) ---
-const handleVerifyButtonClick = () => {
-  try {
-    console.log("[DEBUG] Button clicked directly!");
-    console.log("[DEBUG] About to set isAuthModalOpen to true");
-    // DEBUG: Implemented? Use functional update for safety 
-    setIsAuthModalOpen(prevState => {
-      console.log("[DEBUG] Previous modal state:", prevState);
-      return true;
-    });
-    console.log("[DEBUG] After setIsAuthModalOpen call (update is async)");
-    
-    // Use setTimeout to check if state actually changed
-    setTimeout(() => {
-      console.log("[DEBUG] Delayed check - isAuthModalOpen:", isAuthModalOpen);
-    }, 100);
-  } catch (error) {
-    console.error("[DEBUG] Error in click handler:", error);
-  }
-};
+  // Handle verify button click - Fixed implementation
+  const handleVerifyButtonClick = useCallback(() => {
+    // Simpler implementation without try/catch and extra logging
+    setIsAuthModalOpen(true);
+  }, []);
 
-  // --- Data ---
-  // Static array of campaign data (in a real app, this would likely come from an API)
+  // -----------------------------
+  // DATA & UTILITIES
+  // -----------------------------
+  
+  // Sample campaign data
   const campaigns: Campaign[] = [
-     {
-       id: 1,
-       title: "PC Monitor",
-       creator: "John Adams",
-       raised: "£57",
-       goal: "£300",
-       image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
-       description: "Help me upgrade my workstation with a new monitor for coding and design projects.",
-       daysLeft: 14,
-       isVerified: true
-     },
-     {
-       id: 2,
-       title: "Desk",
-       creator: "Rachel Scott",
-       raised: "£17",
-       goal: "£50",
-       image: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
-       description: "Looking to replace my broken desk with a sturdy new one for my home office setup.",
-       daysLeft: 21,
-       isVerified: true
-     },
-     {
-       id: 3,
-       title: "Coffee",
-       creator: "Gary Thomas",
-       raised: "£0.5",
-       goal: "£3",
-       image: "https://images.unsplash.com/photo-1461988625982-7e46a099bf4f?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
-       description: "Just need a coffee to get through this coding session. Every little helps!",
-       daysLeft: 1,
-       isVerified: true
-     },
-     {
-       id: 4,
-       title: "New Windows",
-       creator: "Jenny Smith",
-       raised: "£60",
-       goal: "£750",
-       image: "https://images.unsplash.com/photo-1581345628965-9adb6a0195b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
-       description: "Raising funds to replace the old windows in my apartment with energy-efficient ones.",
-       daysLeft: 30,
-       isVerified: true
-     },
-   ];
+    {
+      id: 1,
+      title: "PC Monitor",
+      creator: "John Adams",
+      raised: "£57",
+      goal: "£300",
+      image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
+      description: "Help me upgrade my workstation with a new monitor for coding and design projects.",
+      daysLeft: 14,
+      isVerified: true
+    },
+    {
+      id: 2,
+      title: "Desk",
+      creator: "Rachel Scott",
+      raised: "£17",
+      goal: "£50",
+      image: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
+      description: "Looking to replace my broken desk with a sturdy new one for my home office setup.",
+      daysLeft: 21,
+      isVerified: true
+    },
+    {
+      id: 3,
+      title: "Coffee",
+      creator: "Gary Thomas",
+      raised: "£0.5",
+      goal: "£3",
+      image: "https://images.unsplash.com/photo-1461988625982-7e46a099bf4f?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
+      description: "Just need a coffee to get through this coding session. Every little helps!",
+      daysLeft: 1,
+      isVerified: true
+    },
+    {
+      id: 4,
+      title: "New Windows",
+      creator: "Jenny Smith",
+      raised: "£60",
+      goal: "£750",
+      image: "https://images.unsplash.com/photo-1581345628965-9adb6a0195b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
+      description: "Raising funds to replace the old windows in my apartment with energy-efficient ones.",
+      daysLeft: 30,
+      isVerified: true
+    },
+  ];
 
-  // --- Utility Function ---
+  // Calculate progress percentage for campaign cards
   const calculateProgressPercentage = (raised: string, goal: string): string => {
     const raisedValue = parseFloat(raised.slice(1));
     const goalValue = parseFloat(goal.slice(1));
@@ -147,7 +142,10 @@ const handleVerifyButtonClick = () => {
     return `${percentage.toFixed(0)}%`;
   };
 
-  // --- Styling ---
+  // -----------------------------
+  // STYLING
+  // -----------------------------
+  
   const styles: { [key: string]: React.CSSProperties } = {
     // Core layout styles
     page: {
@@ -420,7 +418,7 @@ const handleVerifyButtonClick = () => {
     }
   };
 
-  // --- Global Styles & Mobile Overrides ---
+  // Global styles and mobile overrides
   const mobileStyles = `
     /* Basic CSS reset */
     html, body {
@@ -460,7 +458,10 @@ const handleVerifyButtonClick = () => {
     }
   `;
 
-  // --- JSX Structure ---
+  // -----------------------------
+  // RENDER JSX
+  // -----------------------------
+  
   return (
     <div style={styles.page} className="snap-container">
       <style>{mobileStyles}</style>
@@ -497,7 +498,7 @@ const handleVerifyButtonClick = () => {
                   </button>
                 </>
               ) : (
-                // If user is NOT verified - Enhanced click handler
+                // If user is NOT verified
                 <button
                   style={{ ...styles.button, ...styles.buttonPrimary }}
                   onClick={handleVerifyButtonClick}
@@ -626,7 +627,6 @@ const handleVerifyButtonClick = () => {
       </div>
 
       {/* --- Debug Indicator --- */}
-      {/* This element helps visually check if the modal state is changing */}
       <div style={{
         position: 'fixed',
         bottom: '50px',
@@ -643,14 +643,11 @@ const handleVerifyButtonClick = () => {
       </div>
 
       {/* --- World ID Authentication Modal --- */}
-      {/* Added key prop to force re-render when open state changes */}
-      {/* // DEBUG: Deprecated code ahead, check for latest implementations?*/}
-      
+      {/* FIXED: Removed unnecessary key prop and simplified Dialog implementation */}
       <Dialog 
         open={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)} 
         className="relative z-[110]"
-        key={`auth-modal-${isAuthModalOpen ? 'open' : 'closed'}`}
       >
         {/* Backdrop */}
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
@@ -669,7 +666,7 @@ const handleVerifyButtonClick = () => {
               <WorldIDAuth
                 onSuccess={handleVerificationSuccess}
                 onError={(error) => {
-                  console.error('[DEBUG] WorldID verification error:', error);
+                  console.error('WorldID verification error:', error);
                 }}
               />
             </div>
@@ -697,7 +694,7 @@ const handleVerifyButtonClick = () => {
                 </div>
               </div>
 
-              {/* Cancel button DEBUG: Panel is strikethroughed, issue? */}
+              {/* Cancel button */}
               <button
                 type="button"
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition duration-150 ease-in-out"
