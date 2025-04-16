@@ -50,7 +50,7 @@ export interface IVerifiedUser {
 class AuthService {
   private static instance: AuthService;
   // Key for storing verification details in localStorage
-  private readonly STORAGE_KEY = "worldfund_user_verification_v2"; // Consider versioning keys
+  private readonly STORAGE_KEY = "worldfund_user_verification_v2"; // Consider versioning keys, Yeah I have questions.
 
   private constructor() {
     // Private constructor for Singleton pattern
@@ -65,6 +65,15 @@ class AuthService {
 
   /**
    * Verifies the World ID proof by sending it to the backend verification endpoint.
+   * (verify-worldid.ts)
+   * * This function handles the verification process by:
+   * 1. Validating the proof and action.
+   * 2. Sending the proof to the backend for verification.
+   * 3. Handling the backend response.
+   * 4. Saving the verification status to local storage.
+   * 5. Updating the user store with the verification details.
+   * 6. Returning the verification status.
+   * 
    * If successful, updates user store and saves verification status locally.
    *
    * @param result - The success result from the IDKitWidget.
@@ -94,7 +103,7 @@ class AuthService {
     }
 
     // --- Backend Verification Call ---
-    // This is the CRITICAL step. You need a backend endpoint (e.g., /api/verify)
+    // This is the CRITICAL step. You need a backend endpoint (e.g., /api/verify-worldid.ts)
     // that takes the proof details and verifies them server-side with Worldcoin's API.
     try {
       console.log("AuthService: Calling backend verification endpoint...");
@@ -123,6 +132,7 @@ class AuthService {
         };
 
         // *** FIX for Line 131 Error ***
+        // DEBUG: NEEDS LOOKING AT. PATCHED NOW?
         // Assuming 'saveUser' expects a single object containing user data, including the hash.
         // !!! YOU MUST VERIFY THIS AGAINST YOUR UserStore.ts IMPLEMENTATION !!!
         // Adjust the structure of this object if 'saveUser' expects something different.
@@ -133,7 +143,6 @@ class AuthService {
             // Add any other default user data properties expected by UserData/saveUser
         };
         const userData = userStore.saveUser(userDataPayload); // Pass the single object
-        // *********************************
 
         console.log("AuthService: User data saved/updated in store:", userData?.id?.substring(0, 8)); // Assuming userData has an 'id'
 
@@ -173,8 +182,8 @@ class AuthService {
    * @returns Promise<BackendVerifyResponse | BackendVerifyErrorResponse>
    */
   private async callBackendVerifyAPI(requestData: BackendVerifyRequest): Promise<BackendVerifyResponse | BackendVerifyErrorResponse> {
-      // --- IMPLEMENT THIS ---
-      // This function needs to make a POST request to your backend endpoint (e.g., '/api/verify')
+      // --- ## IMPLEMENT THIS ## ---
+      // This function needs to make a POST request to your backend endpoint (e.g., '/api/verify-worldid.ts')
       // Your backend endpoint MUST securely verify the proof with Worldcoin's /verify API.
       console.log("AuthService: Sending data to backend /api/verify:", requestData);
 
@@ -206,23 +215,7 @@ class AuthService {
           console.error("AuthService: Network error or exception calling backend API.", error);
           return { success: false, code: 'network_error', detail: error.message || 'Failed to connect to verification server.' };
       }
-
-      // --- END OF IMPLEMENTATION ---
-
-      // --- MOCK IMPLEMENTATION (REMOVE THIS IN PRODUCTION) ---
-      // await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-      // console.warn("AuthService: Using MOCK backend response! Implement callBackendVerifyAPI.");
-      // // Simulate success:
-      // return {
-      //   success: true,
-      //   nullifier_hash: requestData.nullifier_hash,
-      //   verification_level: requestData.verification_level
-      // };
-      // // Simulate failure:
-      // // return { success: false, code: 'mock_failure', detail: 'This is a mock failure.' };
-      // --- END OF MOCK IMPLEMENTATION ---
   }
-
 
   /**
    * Gets the current user's verification status from local storage, checking expiry.
@@ -269,6 +262,7 @@ class AuthService {
         console.error("AuthService: Error fetching user data from UserStore.", error);
         // Decide how to handle this - return verified without data, or null?
         // Returning verified status without user data might be safer.
+        // DEBUG: Check.
         return verificationStatus;
     }
   }
@@ -311,6 +305,7 @@ class AuthService {
 
   /**
    * Saves verification status to localStorage.
+   * DEBUG: Where and how? Important.
    */
   private saveVerification(verification: IVerifiedUser): void {
     if (typeof localStorage !== 'undefined') {

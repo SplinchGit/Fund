@@ -1,4 +1,4 @@
-'use client' // Required for Next.js (optional in Vite but harmless)
+'use client' // Required for Next.js
 
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
@@ -12,15 +12,16 @@ interface MiniKitProviderProps {
 
 export default function MiniKitProvider({ 
   children, 
-appId = import.meta.env.VITE_WORLD_APP_ID || "app_46c9cdd743f94cc48093f843aca6b5a6"
+  appId = import.meta.env.VITE_WORLD_APP_ID
 }: MiniKitProviderProps) {
+  // DEBUG: Expression expected. No longer hardcoded. Imports from vercel, check implementation.
 
   useEffect(() => {
     const initializeMiniKit = async () => {
       try {
         if (!MiniKit.isInstalled || !MiniKit.isInstalled()) {
-          // Install MiniKit with your app ID
           await MiniKit.install(appId);
+          // DEBUG: Is this correct?
           console.log('MiniKit Installed successfully');
         } else {
           console.log('MiniKit was already installed');

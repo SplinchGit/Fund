@@ -1,15 +1,15 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { IDKitWidget, VerificationLevel, ISuccessResult, IErrorState } from '@worldcoin/idkit';
-// Assuming authService is correctly imported from your project structure
+// Assuming authService is correctly imported from your project structure, check.
 import { authService } from '../services/AuthService';
-// Assuming IVerifiedUser and UserData types are correctly imported
+// Assuming IVerifiedUser and UserData types are correctly imported. Check.
 import type { IVerifiedUser } from '../services/AuthService';
 import type { UserData } from '../services/UserStore';
 
-// Define possible verification states using a union type for clarity
+// Define possible verification states using a union type for clarity. Well I mean here, it would be device and orb, yes and x or no.
 type VerificationStatus = 'idle' | 'loading' | 'success' | 'error';
 
-// Define the props accepted by the WorldIDAuth component
+// Define the props accepted by the WorldIDAuth component - whole section sus
 interface WorldIDAuthProps {
   // Callback function triggered upon successful verification and processing
   onSuccess?: (verification: IVerifiedUser) => void;
@@ -31,7 +31,7 @@ interface WorldIDAuthProps {
 const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
   onSuccess,
   onError,
-  buttonText = "Verify with World ID", // Default button text if not provided
+  buttonText = "Verify World ID", // Default button text if not provided
   className = "", // Default empty class name if not provided
 }) => {
   // --- State Variables ---
@@ -67,7 +67,8 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
           // to close a modal or navigate away immediately upon finding an existing session.
           // The parent's onSuccess should typically only be called after a *new*
           // verification initiated via the IDKitWidget button click.
-          // onSuccess?.(savedVerification); // <-- This line is intentionally commented out
+          // onSuccess?.(savedVerification); // <-- This line is intentionally commented out.
+          // SUS, need to know what this means. Debug
 
         } else {
           console.log("WorldIDAuth: No existing valid verification found.");
@@ -75,9 +76,8 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
         }
       } catch (error) {
         console.error("WorldIDAuth: Error checking existing verification:", error);
-        // Optionally, you could set an error state here if checking fails critically
-        // setErrorMessage("Failed to check verification status.");
-        // setVerificationStatus('error');
+        setErrorMessage("Failed to check verification status.");
+        setVerificationStatus('error');
       }
     };
 
@@ -101,6 +101,7 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
       // Define the action string. This MUST match the 'action' prop passed to IDKitWidget.
       // It's crucial for security (replay protection).
       const action = "login"; // <<<--- CONFIRM this matches your <IDKitWidget action="..."> prop below
+      // DEBUG: LATEST action is verify-user, change needed here?
 
       // Define the signal. This is optional data from your system (e.g., user ID, session ID)
       // cryptographically linked to the proof. Pass `undefined` or `''` if not used.
@@ -140,6 +141,7 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
       onError?.(error);
     }
   }, [onSuccess, onError]); // Dependencies: ensure callbacks from props are stable or included
+  // DEBUG, review this, is this in the proper expected order of functions, should we establish wether the function has suceeded or not?
 
   // useCallback hook to handle errors reported directly by the IDKitWidget itself
   const handleError = useCallback((error: IErrorState) => {
@@ -164,6 +166,7 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
       setErrorMessage('');
       // Note: If the parent component needs to know about the logout,
       // you might need to add an `onLogout` prop callback here.
+      // DEBUG: James agrees, this is a good idea. Add it.
       console.log("WorldIDAuth: Logout successful, state reset.");
     } catch (error) {
       console.error("WorldIDAuth: Error during logout:", error);
@@ -171,7 +174,7 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
       // setErrorMessage("Logout failed. Please try again.");
       // setVerificationStatus('error'); // Or revert to success state if logout fails? Decide UX.
     }
-  }, []); // No external dependencies needed for logout logic
+  }, []); // No external dependencies needed for logout logic. DEBUG: No, but parent component may need to know.
 
   // useCallback hook to handle the user clicking the retry button after an error
   const handleRetry = useCallback(() => {
@@ -195,7 +198,7 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
       case 'device':
         return 'Device Verified';
       default:
-        // Return the original level string if it's not recognized
+        // Return the original level string if it's not recognized. DEBUG: else reurn function or ok?
         return level;
     }
   };
@@ -210,17 +213,17 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
       {/* Show the IDKitWidget button only when status is 'idle' */}
       {verificationStatus === 'idle' && (
         <IDKitWidget
-          // IMPORTANT: Replace with your actual App ID from the Worldcoin Developer Portal
-          app_id="app_46c9cdd743f94cc48093f843aca6b5a6"
-          // IMPORTANT: This MUST match the 'action' const defined in handleSuccess
-          action="login"
+          // IMPORTANT DEBUG: Updated, elsewhere in code, check.
+          app_id="app_0da912869c4818fc1a1ec64306551b69" 
+          // IMPORTANT DEBUG: Updated, elsewhere in code, check.
+          action="verify-user"
           // Specify the minimum required verification level (Orb or Device)
-          verification_level={VerificationLevel.Orb}
+          verification_level={VerificationLevel.Device}
           // Callback for successful proof generation by the widget
           onSuccess={handleSuccess}
           // Callback for errors originating from the widget itself
           onError={handleError}
-          // Optional: Handle backend verification within the widget flow (advanced)
+          // DEBUG TO BE RENDERED IN: Handle backend verification within the widget flow (advanced)
           // handleVerify={(verification_level) => {
           //   console.log("WorldIDAuth: IDKit handleVerify triggered for level:", verification_level);
           //   // If your backend performs verification, you might initiate it here.
@@ -228,7 +231,7 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
           //   return Promise.resolve();
           // }}
         >
-          {/* Render prop function to customize the trigger button */}
+          {/* IMPORTANT: Render prop function to customize the trigger button */}
           {({ open }) => (
             <button
               onClick={() => {

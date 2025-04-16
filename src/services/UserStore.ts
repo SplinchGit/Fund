@@ -1,5 +1,7 @@
 // src/services/UserStore.ts
-import { IWorldIDVerification } from './AuthService';
+import { type IWorldIDVerification } from './AuthService';
+
+// DEBUG: Module '"./AuthService"' has no exported member 'IWorldIDVerification'. Did you mean to use 'import IWorldIDVerification from "./AuthService"' instead?
 
 // Define user data structure
 export interface UserData {
@@ -84,13 +86,15 @@ export class UserStore {
   
   /**
    * Get all users (for admin purposes)
+   * DEBUG: Check this, that it's under my control only, not passed to users.
+   * Safest way to handle this, is it user data? We will need to be GDPR compliant.
    */
   getAllUsers(): UserData[] {
     return Object.values(this.users);
   }
   
   /**
-   * Save to localStorage
+   * Save to localStorage DEBUG: HOW?
    */
   private persistUsers(): void {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -103,7 +107,7 @@ export class UserStore {
   }
   
   /**
-   * Load from localStorage
+   * Load from localStorage 
    */
   private loadUsers(): void {
     if (typeof window !== 'undefined' && window.localStorage) {

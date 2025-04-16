@@ -1,10 +1,10 @@
 // src/App.tsx
+import React from 'react'
 import { useEffect, useState } from 'react'
 import LandingPage from './pages/LandingPage'
 import ErudaProvider from './debug/ErudaProvider'
 import MiniKitProvider from './MiniKitProvider'
 import { authService, IVerifiedUser } from './services/AuthService'
-import React from 'react'
 
 export default function App() {
   const [userVerification, setUserVerification] = useState(null as IVerifiedUser | null);
@@ -14,7 +14,8 @@ export default function App() {
     // Log to verify the component is mounting
     console.log('App component mounted');
     
-    // Check for existing verification on app mount
+    // Check for existing verification on app mount DEBUG: Check this is needed, does anywhere
+    // else use the verification level?
     const checkVerification = async () => {
       try {
         console.log("Checking for existing user verification on app mount");
@@ -31,7 +32,7 @@ export default function App() {
       }
     };
     
-    // Add a small delay to ensure everything is initialized
+    // DEBUG: DO WE NEED A DELAY? IF SO, WHY?
     setTimeout(() => {
       checkVerification();
     }, 500);

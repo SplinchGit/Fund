@@ -66,28 +66,26 @@ export default function LandingPage({
     });
   };
 
-  // --- Button Click Handler with Extra Debugging ---
-  const handleVerifyButtonClick = () => {
-    try {
-      console.log("[DEBUG] Button clicked directly!");
-      console.log("[DEBUG] About to set isAuthModalOpen to true");
-      // Try forcing state to change with a function to ensure we're using the latest state
-      setIsAuthModalOpen(prevState => {
-        console.log("[DEBUG] Previous modal state:", prevState);
-        return true;
-      });
-      
-      // Log after state setter has been called
-      console.log("[DEBUG] After setIsAuthModalOpen call");
-      
-      // Use setTimeout to check if state actually changed
-      setTimeout(() => {
-        console.log("[DEBUG] Delayed check - isAuthModalOpen:", isAuthModalOpen);
-      }, 100);
-    } catch (error) {
-      console.error("[DEBUG] Error in click handler:", error);
-    }
-  };
+// --- Button Click Handler (Cleaned Up) ---
+const handleVerifyButtonClick = () => {
+  try {
+    console.log("[DEBUG] Button clicked directly!");
+    console.log("[DEBUG] About to set isAuthModalOpen to true");
+    // DEBUG: Implemented? Use functional update for safety 
+    setIsAuthModalOpen(prevState => {
+      console.log("[DEBUG] Previous modal state:", prevState);
+      return true;
+    });
+    console.log("[DEBUG] After setIsAuthModalOpen call (update is async)");
+    
+    // Use setTimeout to check if state actually changed
+    setTimeout(() => {
+      console.log("[DEBUG] Delayed check - isAuthModalOpen:", isAuthModalOpen);
+    }, 100);
+  } catch (error) {
+    console.error("[DEBUG] Error in click handler:", error);
+  }
+};
 
   // --- Data ---
   // Static array of campaign data (in a real app, this would likely come from an API)
@@ -136,28 +134,6 @@ export default function LandingPage({
        daysLeft: 30,
        isVerified: true
      },
-     {
-       id: 5,
-       title: "Phone",
-       creator: "Thomas Edison",
-       raised: "£30",
-       goal: "£450",
-       image: "https://images.unsplash.com/photo-1529675641475-78780f1fd4b9?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
-       description: "My phone finally died after 6 years. Need a new one for work and staying connected.",
-       daysLeft: 25,
-       isVerified: true
-     },
-     {
-       id: 6,
-       title: "College Laptop",
-       creator: "Noel Sweden",
-       raised: "£500",
-       goal: "£500",
-       image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
-       description: "Successfully funded! Got the laptop I needed for my computer science degree. Thank you!",
-       daysLeft: 0, // Completed campaign
-       isVerified: true
-     }
    ];
 
   // --- Utility Function ---
@@ -668,6 +644,8 @@ export default function LandingPage({
 
       {/* --- World ID Authentication Modal --- */}
       {/* Added key prop to force re-render when open state changes */}
+      {/* // DEBUG: Deprecated code ahead, check for latest implementations?*/}
+      
       <Dialog 
         open={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)} 
@@ -719,7 +697,7 @@ export default function LandingPage({
                 </div>
               </div>
 
-              {/* Cancel button */}
+              {/* Cancel button DEBUG: Panel is strikethroughed, issue? */}
               <button
                 type="button"
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition duration-150 ease-in-out"
@@ -728,7 +706,7 @@ export default function LandingPage({
                 Cancel
               </button>
             </div>
-          </Dialog.Panel>
+          </Dialog.Panel> 
         </div>
       </Dialog>
     </div>

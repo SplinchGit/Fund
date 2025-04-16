@@ -1,3 +1,5 @@
+// src/components/AdminPanel.tsx
+
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
@@ -10,8 +12,6 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
-
-// src/components/AdminPanel.tsx  <-- Note the .tsx extension
 import React from 'react';
 import { userStore, UserData } from '../services/UserStore';
 
