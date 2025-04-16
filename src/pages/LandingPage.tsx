@@ -1,3 +1,7 @@
+// -----------------------------
+// WORLDFund - Landing Page Component
+// -----------------------------
+
 import * as React from 'react';
 import { useState, useEffect, useCallback, JSX, } from 'react';
 import { Dialog } from '@headlessui/react';
