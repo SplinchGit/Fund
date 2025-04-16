@@ -1,37 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import Login from './pages/Login';
-import eruda from 'eruda';
 
-// Initialize mobile debugging if in development
-if (import.meta.env.DEV) {
-  eruda.init();
-  console.log('Environment variables:', {
-    hasAppId: !!import.meta.env.VITE_WORLD_APP_ID,
-    hasActionId: !!import.meta.env.VITE_WORLD_ACTION_ID
-  });
-}
+// Debug function to log to console
+const debug = (message: string, data?: any) => {
+  console.log(`[Debug] ${message}`, data || '');
+  // Also try to log to document for mobile debugging
+  try {
+    const debugEl = document.getElementById('debug-output');
+    if (debugEl) {
+      debugEl.innerHTML += `<div>${message}: ${data ? JSON.stringify(data) : ''}</div>`;
+    }
+  } catch (e) {
+    // Ignore errors during debug
+  }
+};
 
 // Simple Dashboard component - replace with your actual app content
 const Dashboard = () => {
+  debug('Dashboard rendered');
+  
   const handleLogout = () => {
     localStorage.removeItem('worldcoinAuth');
     window.location.reload();
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-8 shadow-md dark:border-gray-700 dark:bg-gray-800">
-        <h1 className="mb-6 text-center text-2xl font-bold">WorldFund Dashboard</h1>
-        <p className="mb-4 text-center">You've successfully authenticated with World ID!</p>
-        <div className="flex justify-center">
-          <button 
-            onClick={handleLogout}
-            className="rounded-lg bg-red-600 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-300 dark:bg-red-700 dark:hover:bg-red-800 dark:focus:ring-red-800"
-          >
-            Logout
-          </button>
-        </div>
-      </div>
+    <div style={{ padding: '20px', maxWidth: '500px', margin: '0 auto', textAlign: 'center' }}>
+      <h1 style={{ marginBottom: '20px' }}>WorldFund Dashboard</h1>
+      <p style={{ marginBottom: '20px' }}>You've successfully authenticated with World ID!</p>
+      <button 
+        onClick={handleLogout}
+        style={{ 
+          padding: '10px 20px', 
+          backgroundColor: '#e53e3e', 
+          color: 'white', 
+          border: 'none', 
+          borderRadius: '5px',
+          cursor: 'pointer'
+        }}
+      >
+        Logout
+      </button>
     </div>
   );
 };
@@ -40,40 +49,84 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   
+  // First render debug
+  debug('App component mounted');
+  
   useEffect(() => {
+    debug('App useEffect running');
+    
     // Check if user is authenticated
     const authData = localStorage.getItem('worldcoinAuth');
+    debug('Auth data from localStorage', authData);
+    
     if (authData) {
       try {
         const parsed = JSON.parse(authData);
+        debug('Parsed auth data', parsed);
+        
         // Verify the authentication is valid and not expired
         const isValid = parsed.verified && 
           parsed.timestamp && 
           (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000); // 24 hour expiry
         
+        debug('Auth is valid?', isValid);
         setIsAuthenticated(isValid);
       } catch (e) {
+        debug('Error parsing auth data', e);
         // Invalid JSON, remove the item
         localStorage.removeItem('worldcoinAuth');
         setIsAuthenticated(false);
       }
+    } else {
+      debug('No auth data found');
+      setIsAuthenticated(false);
     }
+    
     setIsLoading(false);
   }, []);
 
+  // Add a visible debug area to the page
+  const debugOutput = (
+    <div id="debug-output" style={{
+      position: 'fixed',
+      bottom: '0',
+      left: '0',
+      right: '0',
+      maxHeight: '200px',
+      overflowY: 'auto',
+      backgroundColor: 'rgba(0,0,0,0.8)',
+      color: 'white',
+      padding: '10px',
+      fontSize: '12px',
+      zIndex: 9999,
+      display: 'none' // Set to 'block' to show debug output
+    }}></div>
+  );
+
+  debug('Rendering main content', { isLoading, isAuthenticated });
+
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-          <p>Loading...</p>
-        </div>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        flexDirection: 'column'
+      }}>
+        <div>Loading...</div>
+        {debugOutput}
       </div>
     );
   }
 
   // Render Login or Dashboard based on authentication state
-  return isAuthenticated ? <Dashboard /> : <Login />;
+  return (
+    <>
+      {isAuthenticated ? <Dashboard /> : <Login />}
+      {debugOutput}
+    </>
+  );
 };
 
 export default App;

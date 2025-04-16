@@ -1,37 +1,21 @@
 import React, { useState } from 'react';
-import { IDKitWidget } from '@worldcoin/idkit';
-
-// Define the verification types and interfaces
-interface VerificationProof {
-  merkle_root: string;
-  nullifier_hash: string;
-  proof: string;
-  verification_level?: string;
-  signal?: string;
-}
-
-interface VerificationResponse {
-  verified: boolean;
-  nullifierHash?: string;
-  error?: string;
-  detail?: string;
-}
+import { IDKitWidget, IErrorState } from '@worldcoin/idkit';
 
 const Login: React.FC = () => {
-  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>('idle');
+  const [errorMsg, setErrorMsg] = useState<string>('');
   
-  // Handler for successful verification
-  const handleVerify = async (proof: VerificationProof) => {
+  console.log("Login component rendered");
+  
+  // Very simple implementation to avoid any potential issues
+  const handleVerify = async (proof: any) => {
+    console.log("Verification initiated with proof:", proof);
+    setStatus('verifying');
+    
     try {
-      setVerificationStatus('verifying');
-      console.log("Verification started with proof:", proof);
-      
       const response = await fetch('/api/verify-worldid', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           merkle_root: proof.merkle_root,
           nullifier_hash: proof.nullifier_hash,
@@ -41,74 +25,109 @@ const Login: React.FC = () => {
           signal: proof.signal || '',
         }),
       });
-
-      const data = await response.json() as VerificationResponse;
-      console.log("Verification response:", data);
+      
+      const data = await response.json();
+      console.log("API response:", data);
       
       if (data.verified) {
-        setVerificationStatus('success');
+        console.log("Verification successful");
+        setStatus('success');
         localStorage.setItem('worldcoinAuth', JSON.stringify({
           verified: true,
           nullifierHash: data.nullifierHash,
           timestamp: Date.now()
         }));
         
-        // Redirect or update UI - App.tsx will handle this
-        console.log('Authentication successful');
+        // Force reload to update the app state
+        window.location.reload();
       } else {
-        setVerificationStatus('error');
-        setErrorMessage(data.detail || data.error || 'Verification failed');
+        console.log("Verification failed:", data.error || data.detail);
+        setStatus('error');
+        setErrorMsg(data.error || data.detail || 'Verification failed');
       }
     } catch (error) {
-      console.error('Verification error:', error);
-      setVerificationStatus('error');
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to connect to verification service');
+      console.error("Error during verification:", error);
+      setStatus('error');
+      setErrorMsg(error instanceof Error ? error.message : 'Unknown error');
     }
   };
-
-  // Properly type the error
-  const handleError = (error: { code: string; message?: string }) => {
+  
+  // Updated to use the correct type for the error state
+  const handleError = (error: IErrorState) => {
     console.error("IDKit error:", error);
-    setVerificationStatus('error');
-    setErrorMessage(error.message || 'Unknown error');
+    setStatus('error');
+    // Access the error message depending on the error structure
+    const errorMessage = typeof error === 'string' 
+      ? error 
+      : error.message || error.code || 'Unknown error';
+    setErrorMsg(errorMessage);
   };
 
-  // Cast the app_id as any to avoid TypeScript errors
-  // This is not ideal but works around the typing issue
-  const appId = import.meta.env.VITE_WORLD_APP_ID as string;
-  const actionId = import.meta.env.VITE_WORLD_ACTION_ID as string;
-
+  // Basic styles in-line to avoid any CSS issues
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-8 shadow-md dark:border-gray-700 dark:bg-gray-800">
-        <h1 className="mb-6 text-center text-2xl font-bold">WorldFund</h1>
+    <div style={{ 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      minHeight: '100vh', 
+      padding: '20px' 
+    }}>
+      <div style={{ 
+        maxWidth: '400px', 
+        width: '100%', 
+        backgroundColor: 'white', 
+        borderRadius: '8px', 
+        padding: '20px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.1)' 
+      }}>
+        <h1 style={{ textAlign: 'center', marginBottom: '20px' }}>WorldFund</h1>
         
-        {verificationStatus === 'success' && (
-          <div className="mb-4 rounded bg-green-100 p-3 text-green-700 dark:bg-green-900 dark:text-green-300">
+        {status === 'success' && (
+          <div style={{ 
+            padding: '10px', 
+            backgroundColor: '#d1fae5', 
+            color: '#065f46', 
+            borderRadius: '5px', 
+            marginBottom: '20px' 
+          }}>
             Verification successful!
           </div>
         )}
         
-        {verificationStatus === 'error' && (
-          <div className="mb-4 rounded bg-red-100 p-3 text-red-700 dark:bg-red-900 dark:text-red-300">
-            {errorMessage || 'Verification failed'}
+        {status === 'error' && (
+          <div style={{ 
+            padding: '10px', 
+            backgroundColor: '#fee2e2', 
+            color: '#b91c1c', 
+            borderRadius: '5px', 
+            marginBottom: '20px' 
+          }}>
+            {errorMsg || 'Verification failed'}
           </div>
         )}
         
-        <div className="flex justify-center">
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
           <IDKitWidget
-            app_id={appId as any}
-            action={actionId}
+            app_id={import.meta.env.VITE_WORLD_APP_ID as any}
+            action={import.meta.env.VITE_WORLD_ACTION_ID as string}
             onSuccess={handleVerify}
             onError={handleError}
           >
             {({ open }) => (
               <button 
                 onClick={open}
-                disabled={verificationStatus === 'verifying'}
-                className="focus:ring-primary-500 rounded-lg bg-blue-600 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 disabled:opacity-50"
+                disabled={status === 'verifying'}
+                style={{
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '5px',
+                  padding: '10px 20px',
+                  cursor: status === 'verifying' ? 'not-allowed' : 'pointer',
+                  opacity: status === 'verifying' ? 0.7 : 1
+                }}
               >
-                {verificationStatus === 'verifying' ? 'Verifying...' : 'Verify with World ID'}
+                {status === 'verifying' ? 'Verifying...' : 'Verify with World ID'}
               </button>
             )}
           </IDKitWidget>
