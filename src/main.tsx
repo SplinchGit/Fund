@@ -1,5 +1,7 @@
+// main.tsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom'; // <== Added import
 import App from './App';
 import './index.css';
 
@@ -60,7 +62,6 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
         </div>
       );
     }
-
     return this.props.children;
   }
 }
@@ -72,7 +73,7 @@ try {
   if (typeof window !== 'undefined') {
     console.log("Initializing on platform:", navigator.userAgent);
     
-    // Just log env variables existence (not values for security)
+    // Log availability of environment variables (but not their actual values for security)
     console.log("Environment variables available:", {
       HAS_VITE_WORLD_APP_ID: !!import.meta.env.VITE_WORLD_APP_ID,
       HAS_VITE_WORLD_ACTION_ID: !!import.meta.env.VITE_WORLD_ACTION_ID
@@ -86,15 +87,17 @@ try {
 
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <ErrorBoundary>
-        <App />
-      </ErrorBoundary>
+      <BrowserRouter> {/* <== Added BrowserRouter wrapper */}
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
+      </BrowserRouter>
     </React.StrictMode>
   );
 } catch (e) {
   console.error("Error during initialization:", e);
   
-  // Try to render an error message to the DOM
+  // Render an error message to the DOM if initialization fails
   const rootElement = document.getElementById('root');
   if (rootElement) {
     rootElement.innerHTML = `
