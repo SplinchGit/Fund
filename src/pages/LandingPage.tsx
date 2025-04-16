@@ -15,6 +15,7 @@ import { authService, IVerifiedUser } from '../services/AuthService';
 interface LandingPageProps {
   initialVerification: IVerifiedUser | null;
   onVerificationChange: (verification: IVerifiedUser | null) => void;
+  onNavigate?: (page: string) => void; // Add this new prop
 }
 
 interface Campaign {
@@ -35,7 +36,8 @@ interface Campaign {
 
 export default function LandingPage({
   initialVerification = null,
-  onVerificationChange
+  onVerificationChange,
+  onNavigate // Add this
 }: LandingPageProps): JSX.Element {
 
   // -----------------------------
