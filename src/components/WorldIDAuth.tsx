@@ -1,90 +1,20 @@
+// src/components/WorldIDAuth.tsx
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { IDKitWidget, VerificationLevel, ISuccessResult, IErrorState } from '@worldcoin/idkit';
 import { authService } from '../services/AuthService';
 import type { IVerifiedUser } from '../services/AuthService';
 import type { UserData } from '../services/UserStore';
 
-
-useEffect(() => {
-  if (!import.meta.env.VITE_WORLD_APP_ID || !import.meta.env.VITE_WORLD_ID_ACTION) {
-    console.error('Missing required environment variables.');
-    setErrorMessage('Configuration error: Missing VITE_WORLD_APP_ID or VITE_WORLD_ID_ACTION.');
-    setVerificationStatus('error');
-  }
-}, []);
-  
-  
-    // Handle successful verification from IDKitWidget
-    const handleSuccess = useCallback(async (result: ISuccessResult) => {
-      try {
-        console.log("WorldIDAuth: IDKit verification success callback triggered, processing result:", result);
-        setVerificationStatus('loading');
-        setErrorMessage('');
-  
-        // IMPORTANT: This action MUST match the 'action' prop passed to IDKitWidget below
-        // AND must match the action string defined in your Worldcoin Developer Portal
-        const action = import.meta.env.VITE_WORLD_ID_ACTION;
-  
-        // Optional signal data - use undefined or empty string if not needed
-        const signal = undefined;
-  
-        console.log(`WorldIDAuth: Calling authService.verifyWithWorldID with action: '${action}', signal: '${signal}'`);
-        const verification = await authService.verifyWithWorldID(result, action, signal);
-  
-        if (verification.isVerified) {
-          console.log("WorldIDAuth: Backend/Service verification successful:", verification);
-          setVerifiedUser(verification);
-          setUserData(verification.userData);
-          setVerificationStatus('success');
-  
-          // Notify parent component of successful verification
-          onSuccess?.(verification);
-        } else {
-          console.error("WorldIDAuth: authService.verifyWithWorldID indicated verification failed.", verification);
-          throw new Error(verification.details?.toString() || "Verification failed after processing result.");
-        }
-      } catch (error) {
-        console.error("WorldIDAuth: Error during verification processing:", error);
-        const errorMessageText = error instanceof Error ? error.message : 'Verification processing failed';
-        setErrorMessage(errorMessageText);
-        setVerificationStatus('error');
-        error?.(error);
-      }
-    }, [onSuccess, onerror]);
-  
-    // Handle errors from IDKitWidget
-    const handleError = useCallback((error: IErrorState) => {
-      console.error("WorldIDAuth: IDKit widget reported an error:", error);
-      setErrorMessage(`IDKit Error: ${error.code || 'Verification failed'}`);
-      setVerificationStatus('error');
-    }, [onerror]);
-  
-    // Render the IDKitWidget with the button to trigger the modal
-    
-<IDKitWidget
-  app_id={import.meta.env.VITE_WORLD_APP_ID}
-  action={import.meta.env.VITE_WORLD_ID_ACTION}
-  verification_level={VerificationLevel.Device}
-  onSuccess={handleSuccess}
-  onError={handleError}
->
-  {({ open }) => (
-    <button onClick={() => open()}>Sign in with World ID</button>
-  )}
-</IDKitWidget>
-
-
-// Define possible verification states
-type VerificationStatus = 'idle' | 'loading' | 'success' | 'error';
-
 interface WorldIDAuthProps {
   onSuccess?: (verification: IVerifiedUser) => void;
   onError?: (error: unknown) => void;
   buttonText?: string;
   className?: string;
-  // Added logout callback prop
   onLogout?: () => void;
 }
+
+type VerificationStatus = 'idle' | 'loading' | 'success' | 'error';
 
 const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
   onSuccess,
@@ -98,6 +28,15 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
   const [verifiedUser, setVerifiedUser] = useState<IVerifiedUser | null>(null);
   const [userData, setUserData] = useState<UserData | undefined>(undefined);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Check environment variables on mount
+  useEffect(() => {
+    if (!import.meta.env.VITE_WORLD_APP_ID || !import.meta.env.VITE_WORLD_ID_ACTION) {
+      console.error('Missing required environment variables.');
+      setErrorMessage('Configuration error: Missing VITE_WORLD_APP_ID or VITE_WORLD_ID_ACTION.');
+      setVerificationStatus('error');
+    }
+  }, []);
 
   // Check for existing verification on component mount
   useEffect(() => {
@@ -132,11 +71,9 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
       setVerificationStatus('loading');
       setErrorMessage('');
 
-      // IMPORTANT: This action MUST match the 'action' prop passed to IDKitWidget below
-      // AND must match the action string defined in your Worldcoin Developer Portal
+      // Retrieve action from env variable (should match portal configuration)
       const action = import.meta.env.VITE_WORLD_ID_ACTION;
-
-      // Optional signal data - use undefined or empty string if not needed
+      // Optional signal data (set to undefined if not needed)
       const signal = undefined;
 
       console.log(`WorldIDAuth: Calling authService.verifyWithWorldID with action: '${action}', signal: '${signal}'`);
@@ -147,8 +84,6 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
         setVerifiedUser(verification);
         setUserData(verification.userData);
         setVerificationStatus('success');
-
-        // Notify parent component of successful verification
         onSuccess?.(verification);
       } else {
         console.error("WorldIDAuth: authService.verifyWithWorldID indicated verification failed.", verification);
@@ -180,10 +115,7 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
       setUserData(undefined);
       setVerificationStatus('idle');
       setErrorMessage('');
-      
-      // Notify parent component about logout
       onLogout?.();
-      
       console.log("WorldIDAuth: Logout successful, state reset.");
     } catch (error) {
       console.error("WorldIDAuth: Error during logout:", error);
@@ -197,7 +129,7 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
     setErrorMessage('');
   }, []);
 
-  // Helper to format verification level
+  // Helper to format verification level display
   const getVerificationLevelDisplay = (level?: string): string => {
     if (!level) return 'Unknown Level';
     switch (level.toLowerCase()) {
@@ -210,7 +142,6 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
     }
   };
 
-  // Component is in loading state
   const isLoading = verificationStatus === 'loading';
 
   return (
@@ -255,23 +186,19 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
             <svg viewBox="0 0 24 24" fill="currentColor" className="verified-icon" aria-hidden="true">
               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
             </svg>
-            <span>
-              {getVerificationLevelDisplay(verifiedUser.details?.verificationLevel)}
-            </span>
+            <span>{getVerificationLevelDisplay(verifiedUser.details?.verificationLevel)}</span>
           </div>
 
           {userData && (
             <div className="user-info">
-              <div className="user-id" title={userData.id}>ID: {userData.id.substring(0, 8)}...</div>
+              <div className="user-id" title={userData.id}>
+                ID: {userData.id.substring(0, 8)}...
+              </div>
               {userData.displayName && <div className="display-name">{userData.displayName}</div>}
             </div>
           )}
 
-          <button
-            onClick={handleLogout}
-            className="logout-button"
-            type="button"
-          >
+          <button onClick={handleLogout} className="logout-button" type="button">
             Log Out
           </button>
         </div>
@@ -281,11 +208,7 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
       {verificationStatus === 'error' && (
         <div className="worldid-error">
           <p>{errorMessage || 'Verification failed. Please try again.'}</p>
-          <button
-            onClick={handleRetry}
-            className="retry-button"
-            type="button"
-          >
+          <button onClick={handleRetry} className="retry-button" type="button">
             Retry
           </button>
         </div>
@@ -303,7 +226,6 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
           width: 100%;
           box-sizing: border-box;
         }
-
         .worldid-button {
           background-color: #1a73e8;
           color: white;
@@ -330,7 +252,6 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
           color: #666666;
           cursor: not-allowed;
         }
-
         .worldid-loading {
           display: flex;
           flex-direction: column;
@@ -339,7 +260,6 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
           color: #5f6368;
           padding: 1rem 0;
         }
-
         .loading-spinner {
           width: 1.75rem;
           height: 1.75rem;
@@ -351,7 +271,6 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
-
         .worldid-success {
           display: flex;
           flex-direction: column;
@@ -364,7 +283,6 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
           width: auto;
           max-width: 90%;
         }
-
         .success-badge {
           display: inline-flex;
           align-items: center;
@@ -381,7 +299,6 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
           height: 1.1em;
           fill: currentColor;
         }
-
         .user-info {
           display: flex;
           flex-direction: column;
@@ -402,7 +319,6 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
           margin-top: 0.1rem;
           color: #202124;
         }
-
         .logout-button {
           background-color: transparent;
           color: #1a73e8;
@@ -418,7 +334,6 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
           background-color: rgba(26, 115, 232, 0.05);
           border-color: #1a73e8;
         }
-
         .worldid-error {
           display: flex;
           flex-direction: column;
@@ -435,10 +350,9 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
           max-width: 90%;
         }
         .worldid-error p {
-            word-break: break-word;
-            margin: 0 0 0.5rem 0;
+          word-break: break-word;
+          margin: 0 0 0.5rem 0;
         }
-
         .retry-button {
           background-color: #d93025;
           color: white;
@@ -459,24 +373,3 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
 };
 
 export default WorldIDAuth;
-
-function setErrorMessage(arg0: string) {
-  throw new Error('Function not implemented.');
-}
-
-function setVerificationStatus(arg0: string) {
-  throw new Error('Function not implemented.');
-}
-
-function setVerifiedUser(verification: IVerifiedUser) {
-  throw new Error('Function not implemented.');
-}
-
-function setUserData(userData: UserData | undefined) {
-  throw new Error('Function not implemented.');
-}
-
-function onSuccess(verification: IVerifiedUser) {
-  throw new Error('Function not implemented.');
-}
-
