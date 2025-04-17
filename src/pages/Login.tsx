@@ -117,6 +117,10 @@ const Login = () => {
     setErrorMsg('Failed to initialize World ID');
   };
 
+  const handleNavigateToRegister = () => {
+    navigate('/register');
+  };
+
   return (
     <div style={{
       display: 'flex',
@@ -177,9 +181,9 @@ const Login = () => {
 
           <div style={{ marginTop: '15px', textAlign: 'center' }}>
             <span style={{ fontSize: '14px', color: '#4B5563' }}>
-              Don’t have an account?{' '}
+              Don't have an account?{' '}
               <button
-                onClick={() => navigate('/register')}
+                onClick={handleNavigateToRegister}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -240,7 +244,8 @@ const Login = () => {
                   padding: '10px 20px',
                   cursor: status === 'verifying' ? 'not-allowed' : 'pointer',
                   opacity: status === 'verifying' ? 0.7 : 1,
-                  fontWeight: 500
+                  fontWeight: 500,
+                  width: '100%'
                 }}
               >
                 {status === 'verifying' ? 'Verifying...' : 'Verify with World ID'}
