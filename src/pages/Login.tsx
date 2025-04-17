@@ -54,8 +54,21 @@ const Login = () => {
         body: JSON.stringify({ username, password })
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Login failed');
+      let data: any;
+      const contentType = res.headers.get('content-type') || '';
+      
+      try {
+        data = contentType.includes('application/json')
+          ? await res.json()
+          : { error: await res.text() }; // fallback to text
+      } catch {
+        data = { error: 'Invalid JSON response from server' };
+      }
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+      
 
       setLoginStatus('success');
       navigate('/');
