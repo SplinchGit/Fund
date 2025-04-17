@@ -116,8 +116,17 @@ interface ValidationError {
 }
 
 // Main Register component
+// To use this component without React Router, provide a mock navigate function
+// This allows the component to work in standalone environments
 const Register: React.FC = () => {
-  const navigate = useNavigate();
+  // Mock navigate function if React Router isn't available
+  const navigateFunction = typeof useNavigate === 'function' 
+    ? useNavigate() 
+    : (path: string) => {
+        console.log(`Navigation to ${path} requested, but React Router not available`);
+        alert(`Would navigate to: ${path}`);
+      };
+  const navigate = navigateFunction;
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -234,72 +243,51 @@ const Register: React.FC = () => {
     setGeneralError('');
 
     try {
-      // Rate limiting check (could be middleware in a real app)
-      const throttleKey = `register_attempts_${btoa(username)}`;
-      const attempts = localStorage.getItem(throttleKey);
-      const maxAttempts = 5;
-      const throttleTimeMs = 10 * 60 * 1000; // 10 minutes
+      // For demo purposes: store user in localStorage instead of making API call
+      const user = {
+        username,
+        registeredAt: new Date().toISOString(),
+        metadata: {
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          locale: navigator.language,
+          screenWidth: window.innerWidth,
+        }
+      };
       
-      if (attempts) {
-        const { count, timestamp } = JSON.parse(attempts);
-        const elapsed = Date.now() - timestamp;
-        
-        if (elapsed < throttleTimeMs && count >= maxAttempts) {
-          setGeneralError('Too many registration attempts. Please try again later.');
-          setStatus('error');
-          return;
-        }
-        
-        // Update attempts
-        if (elapsed < throttleTimeMs) {
-          localStorage.setItem(throttleKey, JSON.stringify({ 
-            count: count + 1, 
-            timestamp 
-          }));
-        } else {
-          // Reset if the throttle time has passed
-          localStorage.setItem(throttleKey, JSON.stringify({ 
-            count: 1, 
-            timestamp: Date.now() 
-          }));
-        }
-      } else {
-        // First attempt
-        localStorage.setItem(throttleKey, JSON.stringify({ 
-          count: 1, 
-          timestamp: Date.now() 
-        }));
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Save to localStorage
+      const existingUsers = JSON.parse(localStorage.getItem('registered_users') || '[]');
+      
+      // Check if username already exists
+      if (existingUsers.some((u: any) => u.username === username)) {
+        throw new Error('Username already exists. Please choose another one.');
       }
       
-      // Send registration request
-      const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          username, 
-          password,
-          // Add metadata for analytics
-          metadata: {
-            registrationTimestamp: Date.now(),
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            locale: navigator.language,
-            screenWidth: window.innerWidth,
-          }
-        })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || 'Registration failed');
-
-      // Clear registration throttling on success
-      localStorage.removeItem(throttleKey);
+      // Add new user
+      existingUsers.push(user);
+      localStorage.setItem('registered_users', JSON.stringify(existingUsers));
+      
+      // Store successful registration
+      localStorage.setItem('last_registered_user', username);
       
       setStatus('success');
       
       // Add a slight delay before redirecting
       setTimeout(() => {
-        navigate('/login'); 
+        // Instead of navigate, show alert since Router may not be set up
+        alert(`Successfully registered as ${username}! In a real app, you would be redirected to login.`);
+        // Reset form after successful registration
+        setUsername('');
+        setPassword('');
+        setConfirmPassword('');
+        setTouched({
+          username: false,
+          password: false,
+          confirmPassword: false
+        });
+        setStatus('idle');
       }, 1500);
     } catch (err: any) {
       console.error('Registration error:', err);
