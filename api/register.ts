@@ -1,6 +1,6 @@
 // api/register.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import prisma from '../lib/prisma';
+const prisma = require('../lib/prisma');
 import argon2 from 'argon2';
 import { randomUUID } from 'crypto';
 

@@ -1,6 +1,6 @@
 // api/login.ts
 
-const { default: prisma } = require('../lib/prisma');
+const prisma = require('../lib/prisma');
 const argon2 = require('argon2');
 
 module.exports = async function handler(req, res) {
