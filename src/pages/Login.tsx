@@ -6,10 +6,6 @@ import React, { useState } from 'react';
 import { IDKitWidget } from '@worldcoin/idkit';
 import { useNavigate } from 'react-router-dom';
 
-// --------------------------------------
-// Interfaces
-// --------------------------------------
-
 interface WorldIDProof {
   merkle_root: string;
   nullifier_hash: string;
@@ -22,20 +18,12 @@ interface IDKitWidgetProps {
   open: () => void;
 }
 
-// --------------------------------------
-// Main Component
-// --------------------------------------
-
 const Login = () => {
   const navigate = useNavigate();
-
-  // Login form state
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginStatus, setLoginStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [loginError, setLoginError] = useState('');
-
-  // World ID state
   const [status, setStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -56,19 +44,15 @@ const Login = () => {
 
       let data: any;
       const contentType = res.headers.get('content-type') || '';
-      
       try {
         data = contentType.includes('application/json')
           ? await res.json()
-          : { error: await res.text() }; // fallback to text
+          : { error: await res.text() };
       } catch {
         data = { error: 'Invalid JSON response from server' };
       }
-      
-      if (!res.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
-      
+
+      if (!res.ok) throw new Error(data.error || 'Login failed');
 
       setLoginStatus('success');
       navigate('/');
@@ -190,6 +174,26 @@ const Login = () => {
           {loginStatus === 'error' && (
             <div style={{ color: 'red', marginTop: '10px' }}>{loginError}</div>
           )}
+
+          <div style={{ marginTop: '15px', textAlign: 'center' }}>
+            <span style={{ fontSize: '14px', color: '#4B5563' }}>
+              Don’t have an account?{' '}
+              <button
+                onClick={() => navigate('/register')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#3b82f6',
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  padding: 0,
+                  fontSize: '14px'
+                }}
+              >
+                Register here
+              </button>
+            </span>
+          </div>
         </form>
 
         {/* World ID Verification */}
