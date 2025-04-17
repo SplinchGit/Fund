@@ -1,6 +1,5 @@
-// api/register.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { prisma } from '../lib/prisma';  // ✅ use this
+import prisma from '../lib/prisma.js';
 import argon2 from 'argon2';
 import { randomUUID } from 'crypto';
 
@@ -9,8 +8,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // parse body (Vercel may give you a string)
-  let body: any;
+  let body;
   try {
     body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
   } catch {
@@ -23,14 +21,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // placeholder WorldID fields
     const worldAppId = '';
     const worldNullifierHash = randomUUID();
-
-    // hash the password
     const passwordHash = await argon2.hash(password);
 
-    // create the user
     const user = await prisma.user.create({
       data: {
         name: username,
@@ -40,7 +34,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
     });
 
-    // respond with public user data
     return res.status(201).json({
       user: {
         id: user.id,
@@ -50,7 +43,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (err: any) {
     console.error(err);
-    // Prisma unique constraint on username or hash?
     if (err.code === 'P2002') {
       return res.status(400).json({ error: 'User already exists' });
     }

@@ -1,9 +1,8 @@
-// api/login.ts
-
-import { prisma } from '../lib/prisma.js'; // <-- ✅ must match the named export AND include .js
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import prisma from '../lib/prisma.js';
 import argon2 from 'argon2';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('[Login] Received request');
 
   if (req.method !== 'POST') {
@@ -43,8 +42,8 @@ module.exports = async function handler(req, res) {
         isVerified: user.isVerified,
       },
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error('[Login] Server error:', err);
     return res.status(500).json({ error: err.message || 'Server error' });
   }
-};
+}
