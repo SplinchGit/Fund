@@ -1,11 +1,12 @@
 // App.tsx
 
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import LandingPage from './pages/LandingPage';
 import { authService, IVerifiedUser } from './services/AuthService';
+import TipJar from './pages/TipJar';
 
 // Debug function to log to console
 const debug = (message: string, data?: any) => {
@@ -21,13 +22,50 @@ const debug = (message: string, data?: any) => {
   }
 };
 
-// Simple Dashboard component - replace with your actual app content
+// Protected Route Component
+const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const user = await authService.getCurrentUser();
+        setIsAuthenticated(!!user?.isVerified);
+      } catch (error) {
+        console.error('Authentication check failed:', error);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh'
+      }}>
+        Loading...
+      </div>
+    );
+  }
+
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+// Simple Dashboard component
 const Dashboard = () => {
   debug('Dashboard rendered');
   const navigate = useNavigate();
   
-  const handleLogout = () => {
-    localStorage.removeItem('worldcoinAuth');
+  const handleLogout = async () => {
+    await authService.logout();
     navigate('/login');
   };
 
@@ -53,61 +91,10 @@ const Dashboard = () => {
 };
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [verification, setVerification] = useState<IVerifiedUser | null>(null);
   
   // First render debug
   debug('App component mounted');
-  
-  useEffect(() => {
-    debug('App useEffect running');
-    
-    // Check if user is authenticated
-    const checkAuthentication = async () => {
-      try {
-        const authData = localStorage.getItem('worldcoinAuth');
-        debug('Auth data from localStorage', authData);
-        
-        // First try to get auth from localStorage
-        if (authData) {
-          try {
-            const parsed = JSON.parse(authData);
-            debug('Parsed auth data', parsed);
-            
-            // Verify the authentication is valid and not expired
-            const isValid = parsed.verified && 
-              parsed.timestamp && 
-              (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000); // 24 hour expiry
-            
-            debug('Auth is valid?', isValid);
-            setIsAuthenticated(isValid);
-          } catch (e) {
-            debug('Error parsing auth data', e);
-            // Invalid JSON, remove the item
-            localStorage.removeItem('worldcoinAuth');
-            setIsAuthenticated(false);
-          }
-        } else {
-          // Try to check with authService as backup
-          const user = await authService.getCurrentUser();
-          if (user && user.isVerified) {
-            setVerification(user);
-            setIsAuthenticated(true);
-          } else {
-            setIsAuthenticated(false);
-          }
-        }
-      } catch (error) {
-        debug('Error checking authentication', error);
-        setIsAuthenticated(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    checkAuthentication();
-  }, []);
 
   // Add a visible debug area to the page
   const debugOutput = (
@@ -127,30 +114,47 @@ const App: React.FC = () => {
     }}></div>
   );
 
-  debug('Rendering main content', { isLoading, isAuthenticated });
-
-  if (isLoading) {
-    return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        flexDirection: 'column'
-      }}>
-        <div>Loading...</div>
-        {debugOutput}
-      </div>
-    );
-  }
-
-  // Render routes with proper auth protection
   return (
     <>
       <Routes>
-        <Route path="/" element={isAuthenticated ? <Dashboard /> : <LandingPage initialVerification={verification} onVerificationChange={setVerification} />} />
+        {/* Default route redirects to login */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        
+        {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        
+        {/* Protected Routes */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/tip-jar" 
+          element={
+            <ProtectedRoute>
+              <TipJar />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* Landing page - can be accessed without authentication */}
+        <Route 
+          path="/landing" 
+          element={
+            <LandingPage 
+              initialVerification={verification} 
+              onVerificationChange={setVerification} 
+            />
+          } 
+        />
+        
+        {/* Catch-all route redirects to login */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
       {debugOutput}
     </>

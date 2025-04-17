@@ -1,7 +1,7 @@
-// main.tsx
+// main.tsx - Ensuring BrowserRouter is properly set up
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom'; // <== Added import
+import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
 
@@ -85,9 +85,10 @@ try {
     throw new Error("Failed to find the root element");
   }
 
+  // Ensure BrowserRouter wraps our application
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <BrowserRouter> {/* <== Added BrowserRouter wrapper */}
+      <BrowserRouter>
         <ErrorBoundary>
           <App />
         </ErrorBoundary>

@@ -1,11 +1,9 @@
-// --------------------------------------
-// WorldFund - Login Page with World ID + Username
-// --------------------------------------
+// Updated Login.tsx file
+// The fix focuses on the "Register here" link implementation
 
 import React, { useState } from 'react';
 import { IDKitWidget } from '@worldcoin/idkit';
-import { useNavigate } from 'react-router-dom';
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';  // Make sure Link is imported
 
 
 interface WorldIDProof {
@@ -119,10 +117,6 @@ const Login = () => {
     setErrorMsg('Failed to initialize World ID');
   };
 
-  const handleNavigateToRegister = () => {
-    navigate('/register');
-  };
-
   return (
     <div style={{
       display: 'flex',
@@ -182,16 +176,13 @@ const Login = () => {
           )}
         </form>
         
-        {/* Registration Link - MOVED OUTSIDE FORM */}
+        {/* Registration Link - FIXED IMPLEMENTATION */}
         <div style={{ marginTop: '15px', marginBottom: '20px', textAlign: 'center' }}>
           <span style={{ fontSize: '14px', color: '#4B5563' }}>
             Don't have an account?{' '}
-            <a
-              href="/register"
-              onClick={(e) => {
-                e.preventDefault();
-                navigate('/register');
-              }}
+            {/* Use Link component from react-router-dom instead of <a> tag */}
+            <Link
+              to="/register"
               style={{
                 color: '#3b82f6',
                 textDecoration: 'underline',
@@ -200,7 +191,7 @@ const Login = () => {
               }}
             >
               Register here
-            </a>
+            </Link>
           </span>
         </div>
 
