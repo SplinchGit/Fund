@@ -142,7 +142,7 @@ const Login = () => {
         <h1 style={{ textAlign: 'center', marginBottom: '20px' }}>WorldFund Login</h1>
 
         {/* Username/Password Form */}
-        <form onSubmit={handlePasswordLogin} style={{ marginBottom: '20px' }}>
+        <form onSubmit={handlePasswordLogin} style={{ marginBottom: '10px' }}>
           <h2 style={{ marginBottom: '10px' }}>Login with Username</h2>
           <input
             type="text"
@@ -178,27 +178,29 @@ const Login = () => {
           {loginStatus === 'error' && (
             <div style={{ color: 'red', marginTop: '10px' }}>{loginError}</div>
           )}
-
-          <div style={{ marginTop: '15px', textAlign: 'center' }}>
-            <span style={{ fontSize: '14px', color: '#4B5563' }}>
-              Don't have an account?{' '}
-              <button
-                onClick={handleNavigateToRegister}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#3b82f6',
-                  textDecoration: 'underline',
-                  cursor: 'pointer',
-                  padding: 0,
-                  fontSize: '14px'
-                }}
-              >
-                Register here
-              </button>
-            </span>
-          </div>
         </form>
+        
+        {/* Registration Link - MOVED OUTSIDE FORM */}
+        <div style={{ marginTop: '15px', marginBottom: '20px', textAlign: 'center' }}>
+          <span style={{ fontSize: '14px', color: '#4B5563' }}>
+            Don't have an account?{' '}
+            <a
+              href="/register"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/register');
+              }}
+              style={{
+                color: '#3b82f6',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              Register here
+            </a>
+          </span>
+        </div>
 
         {/* World ID Verification */}
         {status === 'success' && (
