@@ -1,6 +1,6 @@
 // /api/verify.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-const prisma = require('../lib/prisma');
+import { prisma } from '../lib/prisma.js'; // <-- ✅ must match the named export AND include .js
 
 interface VerifyRequestPayload {
   merkle_root: string;

@@ -1,7 +1,7 @@
 // api/login.ts
 
-const prisma = require('../lib/prisma');
-const argon2 = require('argon2');
+import { prisma } from '../lib/prisma.js'; // <-- ✅ must match the named export AND include .js
+import argon2 from 'argon2';
 
 module.exports = async function handler(req, res) {
   console.log('[Login] Received request');
