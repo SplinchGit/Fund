@@ -5,28 +5,28 @@
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "allowJs": false,
     "skipLibCheck": true,
-    "esModuleInterop": false, // Note: Often set to true with allowSyntheticDefaultImports
+    "esModuleInterop": false,
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
-    "moduleResolution": "Node", // Or "Bundler" for newer setups
+    "moduleResolution": "Node",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
 
-    // --- Add these lines ---
-    "baseUrl": "./", // Or "./src" is common
+    // your path aliases (optional)
+    "baseUrl": "./",
     "paths": {
       "@debug/*": ["src/components/debug/*"]
-      // Add other aliases if needed, e.g.:
-      // "@components/*": ["src/components/*"],
-      // "@services/*": ["src/services/*"]
     }
-    // --- End of added lines ---
-
   },
-  "include": ["src"],
-  "exclude": ["node_modules"]
+  "include": [
+    "src",      // your source files
+    "src/env.d.ts"   // <-- pick up the Vite env declarations
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

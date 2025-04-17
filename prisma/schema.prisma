@@ -1,0 +1,27 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")  // Make sure this matches the key in your .env file
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  worldNullifierHash String    @unique
+  worldAppId         String
+  name               String?
+  createdAt          DateTime  @default(now())
+
+  campaigns          Campaign[]  // Correctly adding the reverse relation here
+}
+
+model Campaign {
+  id        String   @id @default(cuid())
+  owner     User     @relation(fields: [ownerId], references: [id])
+  ownerId   String
+  title     String
+  goal      Float
+  createdAt DateTime @default(now())
+}
