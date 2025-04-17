@@ -1,7 +1,11 @@
 // App.tsx
 
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import Login from './pages/Login';
+import Register from './pages/Register';
+import LandingPage from './pages/LandingPage';
+import { authService, IVerifiedUser } from './services/AuthService';
 
 // Debug function to log to console
 const debug = (message: string, data?: any) => {
@@ -20,10 +24,11 @@ const debug = (message: string, data?: any) => {
 // Simple Dashboard component - replace with your actual app content
 const Dashboard = () => {
   debug('Dashboard rendered');
+  const navigate = useNavigate();
   
   const handleLogout = () => {
     localStorage.removeItem('worldcoinAuth');
-    window.location.reload();
+    navigate('/login');
   };
 
   return (
@@ -50,6 +55,7 @@ const Dashboard = () => {
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [verification, setVerification] = useState<IVerifiedUser | null>(null);
   
   // First render debug
   debug('App component mounted');
@@ -58,33 +64,49 @@ const App: React.FC = () => {
     debug('App useEffect running');
     
     // Check if user is authenticated
-    const authData = localStorage.getItem('worldcoinAuth');
-    debug('Auth data from localStorage', authData);
-    
-    if (authData) {
+    const checkAuthentication = async () => {
       try {
-        const parsed = JSON.parse(authData);
-        debug('Parsed auth data', parsed);
+        const authData = localStorage.getItem('worldcoinAuth');
+        debug('Auth data from localStorage', authData);
         
-        // Verify the authentication is valid and not expired
-        const isValid = parsed.verified && 
-          parsed.timestamp && 
-          (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000); // 24 hour expiry
-        
-        debug('Auth is valid?', isValid);
-        setIsAuthenticated(isValid);
-      } catch (e) {
-        debug('Error parsing auth data', e);
-        // Invalid JSON, remove the item
-        localStorage.removeItem('worldcoinAuth');
+        // First try to get auth from localStorage
+        if (authData) {
+          try {
+            const parsed = JSON.parse(authData);
+            debug('Parsed auth data', parsed);
+            
+            // Verify the authentication is valid and not expired
+            const isValid = parsed.verified && 
+              parsed.timestamp && 
+              (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000); // 24 hour expiry
+            
+            debug('Auth is valid?', isValid);
+            setIsAuthenticated(isValid);
+          } catch (e) {
+            debug('Error parsing auth data', e);
+            // Invalid JSON, remove the item
+            localStorage.removeItem('worldcoinAuth');
+            setIsAuthenticated(false);
+          }
+        } else {
+          // Try to check with authService as backup
+          const user = await authService.getCurrentUser();
+          if (user && user.isVerified) {
+            setVerification(user);
+            setIsAuthenticated(true);
+          } else {
+            setIsAuthenticated(false);
+          }
+        }
+      } catch (error) {
+        debug('Error checking authentication', error);
         setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
       }
-    } else {
-      debug('No auth data found');
-      setIsAuthenticated(false);
-    }
+    };
     
-    setIsLoading(false);
+    checkAuthentication();
   }, []);
 
   // Add a visible debug area to the page
@@ -122,10 +144,14 @@ const App: React.FC = () => {
     );
   }
 
-  // Render Login or Dashboard based on authentication state
+  // Render routes with proper auth protection
   return (
     <>
-      {isAuthenticated ? <Dashboard /> : <Login />}
+      <Routes>
+        <Route path="/" element={isAuthenticated ? <Dashboard /> : <LandingPage initialVerification={verification} onVerificationChange={setVerification} />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+      </Routes>
       {debugOutput}
     </>
   );
