@@ -1,4 +1,20 @@
 // App.tsx
+/**
+ * WorldFund Application Entry Point
+ * 
+ * This is the core routing and authentication management component for the WorldFund application.
+ * 
+ * Key Features:
+ * - Secure routing with authentication protection
+ * - Debug logging for development
+ * - Centralized authentication management
+ * - Flexible route handling
+ * 
+ * The application uses React Router for navigation and a custom authentication service
+ * to manage user sessions and access control.
+ */
+
+// Import all necessary page components
 
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
@@ -8,25 +24,44 @@ import LandingPage from './pages/LandingPage';
 import { authService, IVerifiedUser } from './services/AuthService';
 import TipJar from './pages/TipJar';
 
-// Debug function to log to console
+/**
+ * Debug Utility Function
+ * 
+ * Provides flexible logging mechanism for both console and on-screen debugging
+ * Helps in tracking application flow, especially useful for mobile development
+ * 
+ * @param {string} message - Primary log message
+ * @param {any} [data] - Optional additional data to log
+ */
 const debug = (message: string, data?: any) => {
   console.log(`[Debug] ${message}`, data || '');
-  // Also try to log to document for mobile debugging
+  // Attempt to log to on-screen debug element for mobile debugging
   try {
     const debugEl = document.getElementById('debug-output');
     if (debugEl) {
       debugEl.innerHTML += `<div>${message}: ${data ? JSON.stringify(data) : ''}</div>`;
     }
   } catch (e) {
-    // Ignore errors during debug
+    // Silently handle any logging errors
   }
 };
 
-// Protected Route Component
+/**
+ * ProtectedRoute Component
+ * 
+ * A higher-order component that wraps routes requiring authentication
+ * Checks user's authentication status before rendering child components
+ * Redirects to login page if user is not authenticated
+ * 
+ * @param {Object} props - Component props
+ * @param {React.ReactElement} props.children - Child components to render if authenticated
+ */
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  // State to track authentication and loading status
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Check authentication status on component mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -43,6 +78,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }
     checkAuth();
   }, []);
 
+  // Show loading state while checking authentication
   if (isLoading) {
     return (
       <div style={{ 
@@ -56,14 +92,21 @@ const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }
     );
   }
 
+  // Render children if authenticated, otherwise redirect to login
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
-// Simple Dashboard component
+/**
+ * Dashboard Component
+ * 
+ * Provides a simple dashboard view for authenticated users
+ * Includes logout functionality
+ */
 const Dashboard = () => {
   debug('Dashboard rendered');
   const navigate = useNavigate();
   
+  // Handle user logout process
   const handleLogout = async () => {
     await authService.logout();
     navigate('/login');
@@ -90,13 +133,25 @@ const Dashboard = () => {
   );
 };
 
+/**
+ * Main App Component
+ * 
+ * Manages the entire application's routing and top-level state
+ * Provides a centralized point for authentication and navigation
+ */
 const App: React.FC = () => {
+  // State to track user verification across the application
   const [verification, setVerification] = useState<IVerifiedUser | null>(null);
   
-  // First render debug
+  // Log app initialization
   debug('App component mounted');
 
-  // Add a visible debug area to the page
+  /**
+   * Debug Output Element
+   * 
+   * Creates a fixed-position debug log area
+   * Can be toggled by changing the display style
+   */
   const debugOutput = (
     <div id="debug-output" style={{
       position: 'fixed',
@@ -116,15 +171,16 @@ const App: React.FC = () => {
 
   return (
     <>
+      {/* Application Routing Configuration */}
       <Routes>
-        {/* Default route redirects to login */}
+        {/* Default route redirects to login page */}
         <Route path="/" element={<Navigate to="/login" replace />} />
         
-        {/* Public Routes */}
+        {/* Public Authentication Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         
-        {/* Protected Routes */}
+        {/* Protected Application Routes */}
         <Route 
           path="/dashboard" 
           element={
@@ -142,7 +198,7 @@ const App: React.FC = () => {
           } 
         />
         
-        {/* Landing page - can be accessed without authentication */}
+        {/* Public Landing Page */}
         <Route 
           path="/landing" 
           element={
@@ -153,9 +209,11 @@ const App: React.FC = () => {
           } 
         />
         
-        {/* Catch-all route redirects to login */}
+        {/* Catch-all route redirects to login for any undefined routes */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+
+      {/* Debug output element */}
       {debugOutput}
     </>
   );
