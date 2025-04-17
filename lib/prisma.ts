@@ -1,8 +1,17 @@
-// /src/lib/prisma.ts
+// lib/prisma.ts
 import { PrismaClient } from '@prisma/client';
 
-// Creates a Prisma Client instance (this allows interaction with your DB)
-const prisma = new PrismaClient();
+declare global {
+  // This prevents creating multiple instances in dev
+  // @ts-ignore
+  var prisma: PrismaClient | undefined;
+}
 
-// Export it to use it in your app
+const prisma = global.prisma || new PrismaClient();
+
+if (process.env.NODE_ENV !== 'production') {
+  // @ts-ignore
+  global.prisma = prisma;
+}
+
 export default prisma;

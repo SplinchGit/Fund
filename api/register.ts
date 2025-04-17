@@ -1,15 +1,15 @@
-// api/login.ts
-
+// api/register.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import prisma from '../lib/prisma';
 import argon2 from 'argon2';
+import { randomUUID } from 'crypto';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Parse body (Vercel may give you a string)
+  // parse body (Vercel may give you a string)
   let body: any;
   try {
     body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
@@ -23,33 +23,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const user = await prisma.user.findFirst({
-      where: { name: username }, // ✅ this works with non-unique fields
+    // placeholder WorldID fields
+    const worldAppId = '';
+    const worldNullifierHash = randomUUID();
+
+    // hash the password
+    const passwordHash = await argon2.hash(password);
+
+    // create the user
+    const user = await prisma.user.create({
+      data: {
+        name: username,
+        passwordHash,
+        worldAppId,
+        worldNullifierHash,
+      },
     });
-    
 
-    if (!user || !user.passwordHash) {
-      // user not found or no password set
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    // Verify the submitted password against the hash
-    const valid = await argon2.verify(user.passwordHash, password);
-    if (!valid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    // Success — return public user data (omit the hash)
-    return res.status(200).json({
+    // respond with public user data
+    return res.status(201).json({
       user: {
         id: user.id,
         name: user.name,
         createdAt: user.createdAt,
-        isVerified: user.isVerified,
       },
     });
   } catch (err: any) {
     console.error(err);
+    // Prisma unique constraint on username or hash?
+    if (err.code === 'P2002') {
+      return res.status(400).json({ error: 'User already exists' });
+    }
     return res.status(500).json({ error: err.message || 'Server error' });
   }
 }

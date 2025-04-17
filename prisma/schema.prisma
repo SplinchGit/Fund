@@ -8,14 +8,17 @@ datasource db {
 }
 
 model User {
-  id                 String    @id @default(cuid())
-  worldNullifierHash String    @unique
+  id                 String   @id @default(cuid())
+  worldNullifierHash String   @unique
   worldAppId         String
-  name               String?
-  createdAt          DateTime  @default(now())
-
-  campaigns          Campaign[]  // Correctly adding the reverse relation here
+  name               String?  @unique // ← make it unique if you want
+  passwordHash       String?
+  isVerified         Boolean  @default(false)
+  campaigns          Campaign[]
+  createdAt          DateTime @default(now())
 }
+
+
 
 model Campaign {
   id        String   @id @default(cuid())
