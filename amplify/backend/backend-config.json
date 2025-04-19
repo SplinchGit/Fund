@@ -1,0 +1,55 @@
+{
+  "api": {
+    "apie126c918": {
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "0worldfunddebug5815ef8d"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "API Gateway"
+    }
+  },
+  "function": {
+    "0worldfunddebug5815ef8d": {
+      "build": true,
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "0worldfunddebug7fbdeba6": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    }
+  },
+  "parameters": {
+    "AMPLIFY_function_0worldfunddebug5815ef8d_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug5815ef8d"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebug5815ef8d_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug5815ef8d"
+        }
+      ]
+    }
+  },
+  "storage": {
+    "Splinch": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB"
+    }
+  }
+}

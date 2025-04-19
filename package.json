@@ -1,6 +1,7 @@
 {
   "type": "module",
   "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.787.0",
     "@headlessui/react": "^2.2.1",
     "@types/express": "^5.0.1",
     "@worldcoin/idkit": "^2.0.2",
@@ -12,7 +13,8 @@
     "pg": "^8.14.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.5.0"
+    "react-router-dom": "^7.5.0",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@prisma/client": "^6.6.0",
@@ -20,7 +22,7 @@
     "@types/node": "^22.14.1",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
-    "@vercel/node": "^3.0.1",
+    "@vercel/node": "^4.0.0",
     "@vitejs/plugin-react": "^4.4.0",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.24.0",
@@ -38,5 +40,23 @@
   "overrides": {
     "esbuild": ">=0.25.0",
     "undici": "5.28.4"
-  }
+  },
+  "name": "0worldfunddebug",
+  "version": "1.0.0",
+  "description": "This is a simplified React project built with Vite, TypeScript, Tailwind CSS, and ESLint. Configuration files are organized under `configs/` to keep the root clean.",
+  "main": "npmrc.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SplinchGit/WorldFund.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SplinchGit/WorldFund/issues"
+  },
+  "homepage": "https://github.com/SplinchGit/WorldFund#readme"
 }

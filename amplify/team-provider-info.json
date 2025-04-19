@@ -1,0 +1,30 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-0worldfunddebug-dev-7f503-authRole",
+      "UnauthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-dev-7f503-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-dev-7f503-authRole",
+      "Region": "eu-west-2",
+      "DeploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
+      "UnauthRoleName": "amplify-0worldfunddebug-dev-7f503-unauthRole",
+      "StackName": "amplify-0worldfunddebug-dev-7f503",
+      "StackId": "arn:aws:cloudformation:eu-west-2:152034782674:stack/amplify-0worldfunddebug-dev-7f503/8c4b21f0-1c9e-11f0-b26b-06072f3ae149",
+      "AmplifyAppId": "d2fvyjulmwt6nl"
+    },
+    "categories": {
+      "function": {
+        "0worldfunddebug5815ef8d": {
+          "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
+          "s3Key": "amplify-builds/0worldfunddebug5815ef8d-735a4b31316373434d59-build.zip"
+        },
+        "0worldfunddebug7fbdeba6": {}
+      },
+      "storage": {
+        "Splinch": {}
+      },
+      "api": {
+        "apie126c918": {}
+      }
+    }
+  }
+}

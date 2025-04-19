@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "paths": {
+    "/createCampaign": {
+      "name": "/createCampaign",
+      "lambdaFunction": "0worldfunddebug5815ef8d",
+      "permissions": {
+        "setting": "open"
+      }
+    }
+  }
+}
