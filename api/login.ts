@@ -1,49 +1,45 @@
+// api/login.ts
+
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import prisma from '../lib/prisma.js';
-import argon2 from 'argon2';
+import { z } from 'zod';
+
+const API_BASE = process.env.AMPLIFY_API_ENDPOINT;
+if (!API_BASE) {
+  throw new Error('Missing env var: AMPLIFY_API_ENDPOINT');
+}
+
+const LoginSchema = z.object({
+  username: z.string().min(1, 'username is required'),
+  password: z.string().min(1, 'password is required'),
+});
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log('[Login] Received request');
-
+  // 1) Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  let body;
-  try {
-    body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  } catch (err) {
-    console.error('[Login] JSON parse error:', err);
-    return res.status(400).json({ error: 'Invalid JSON' });
+  // 2) Validate & parse body
+  const parse = LoginSchema.safeParse(req.body);
+  if (!parse.success) {
+    return res
+      .status(400)
+      .json({ error: 'Invalid payload', issues: parse.error.issues });
   }
 
-  const { username, password } = body;
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password required' });
-  }
-
+  // 3) Proxy to Amplify Lambda
   try {
-    const user = await prisma.user.findFirst({ where: { name: username } });
-
-    if (!user || !user.passwordHash) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    const valid = await argon2.verify(user.passwordHash, password);
-    if (!valid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    return res.status(200).json({
-      user: {
-        id: user.id,
-        name: user.name,
-        createdAt: user.createdAt,
-        isVerified: user.isVerified,
-      },
+    const upstream = await fetch(`${API_BASE}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(parse.data),
     });
+
+    const text = await upstream.text();
+    // Preserve status and body from upstream
+    return res.status(upstream.status).send(text);
   } catch (err: any) {
-    console.error('[Login] Server error:', err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    console.error('[Login Proxy] Error calling Amplify:', err);
+    return res.status(502).json({ error: 'Bad gateway' });
   }
 }

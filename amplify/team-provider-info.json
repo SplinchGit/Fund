@@ -23,7 +23,7 @@
         },
         "0worldfunddebug2dc72c12": {
           "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
-          "s3Key": "amplify-builds/0worldfunddebug2dc72c12-384f4c47306664375279-build.zip",
+          "s3Key": "amplify-builds/0worldfunddebug2dc72c12-42666a5a4c6d6f66576c-build.zip",
           "splinchName": "Splinch"
         }
       },
