@@ -55,7 +55,11 @@
     "react-use": {
       "peerDependencies": {
         "react": "^18.0.0",
-        "react-dom": "^18.0.0"
+        "react-dom": "^18.0.0",
+        "undici": "^7.9.0",
+        "@vercel/node": {
+          "undici": "^7.9.0"
+        }
       }
     }
   },
