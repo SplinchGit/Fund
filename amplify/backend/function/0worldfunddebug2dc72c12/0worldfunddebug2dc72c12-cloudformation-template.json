@@ -15,6 +15,9 @@
     },
     "s3Key": {
       "Type": "String"
+    },
+    "splinchName": {
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -47,12 +50,12 @@
         "FunctionName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "0worldfunddebug7fbdeba6",
+            "0worldfunddebug2dc72c12",
             {
               "Fn::Join": [
                 "",
                 [
-                  "0worldfunddebug7fbdeba6",
+                  "0worldfunddebug2dc72c12",
                   "-",
                   {
                     "Ref": "env"
@@ -69,6 +72,9 @@
             },
             "REGION": {
               "Ref": "AWS::Region"
+            },
+            "SPLINCH_NAME": {
+              "Ref": "splinchName"
             }
           }
         },
@@ -89,12 +95,12 @@
         "RoleName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "0worldfunddebugLambdaRole8b9d11ba",
+            "0worldfunddebugLambdaRole90bdc177",
             {
               "Fn::Join": [
                 "",
                 [
-                  "0worldfunddebugLambdaRole8b9d11ba",
+                  "0worldfunddebugLambdaRole90bdc177",
                   "-",
                   {
                     "Ref": "env"

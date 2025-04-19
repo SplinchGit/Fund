@@ -15,9 +15,17 @@
       "function": {
         "0worldfunddebug5815ef8d": {
           "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
-          "s3Key": "amplify-builds/0worldfunddebug5815ef8d-735a4b31316373434d59-build.zip"
+          "s3Key": "amplify-builds/0worldfunddebug5815ef8d-432b69726876692b4875-build.zip"
         },
-        "0worldfunddebug7fbdeba6": {}
+        "0worldfunddebug7fbdeba6": {
+          "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
+          "s3Key": "amplify-builds/0worldfunddebug7fbdeba6-71747a69754f4f553170-build.zip"
+        },
+        "0worldfunddebug2dc72c12": {
+          "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
+          "s3Key": "amplify-builds/0worldfunddebug2dc72c12-384f4c47306664375279-build.zip",
+          "splinchName": "Splinch"
+        }
       },
       "storage": {
         "Splinch": {}

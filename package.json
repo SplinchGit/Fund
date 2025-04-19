@@ -1,6 +1,7 @@
 {
   "type": "module",
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.788.0",
     "@aws-sdk/client-secrets-manager": "^3.787.0",
     "@headlessui/react": "^2.2.1",
     "@types/express": "^5.0.1",

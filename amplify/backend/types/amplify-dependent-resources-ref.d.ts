@@ -7,7 +7,21 @@ export type AmplifyDependentResourcesAttributes = {
     }
   },
   "function": {
+    "0worldfunddebug2dc72c12": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
     "0worldfunddebug5815ef8d": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
+    },
+    "0worldfunddebug7fbdeba6": {
       "Arn": "string",
       "LambdaExecutionRole": "string",
       "LambdaExecutionRoleArn": "string",

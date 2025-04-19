@@ -7,6 +7,27 @@
       "permissions": {
         "setting": "open"
       }
+    },
+    "/login": {
+      "name": "/login",
+      "lambdaFunction": "0worldfunddebug2dc72c12",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/register": {
+      "name": "/register",
+      "lambdaFunction": "0worldfunddebug7fbdeba6",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/verify": {
+      "name": "/verify",
+      "lambdaFunction": "0worldfunddebug5815ef8d",
+      "permissions": {
+        "setting": "open"
+      }
     }
   }
 }
