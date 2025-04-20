@@ -1,15 +1,13 @@
 // src/services/AuthService.ts
-
 import { z } from 'zod';
 import { VerificationLevel } from '@worldcoin/idkit';
 import { userStore, UserData } from './UserStore';
 
+// Configuration constants
 const API_BASE = import.meta.env.VITE_AMPLIFY_API;
-if (!API_BASE) {
-  throw new Error('Missing env var: VITE_AMPLIFY_API');
-}
+const CONFIG_ENDPOINT = `${API_BASE}/config`;
 
-// Zod schema for your verify endpoint
+// Zod schema for verify endpoint
 const VerifySchema = z.object({
   merkle_root: z.string().min(1),
   nullifier_hash: z.string().min(1),
@@ -25,11 +23,13 @@ type VerifySuccess = {
   nullifier_hash: string;
   verification_level: VerificationLevel;
 };
+
 type VerifyError = {
   success: false;
   code: string;
   detail: string;
 };
+
 export type IVerifiedUser = {
   isVerified: boolean;
   details?: {
@@ -53,10 +53,32 @@ class AuthService {
   public static getInstance() {
     return this.instance ?? (this.instance = new AuthService());
   }
+  
+  private async getServerConfig(): Promise<any> {
+    try {
+      const response = await fetch(CONFIG_ENDPOINT);
+      if (!response.ok) {
+        throw new Error(`Config endpoint returned status ${response.status}`);
+      }
+      const config = await response.json();
+      return config;
+    } catch (error) {
+      console.error('Failed to fetch server config:', error);
+      return null;
+    }
+  }
 
   public async verifyWithWorldID(
     result: z.infer<typeof VerifySchema>
   ): Promise<IVerifiedUser> {
+    // Try to get config from server first
+    let serverConfig = null;
+    try {
+      serverConfig = await this.getServerConfig();
+    } catch (error) {
+      console.warn('Using client-side config fallback');
+    }
+    
     // Validate
     const parse = VerifySchema.safeParse(result);
     if (!parse.success) {
@@ -67,7 +89,9 @@ class AuthService {
     // Call backend
     let resp: Response;
     try {
-      resp = await fetch(`${API_BASE}/verify`, {
+      // If server provided a different API endpoint, use it
+      const apiEndpoint = serverConfig?.api?.endpoint || API_BASE;
+      resp = await fetch(`${apiEndpoint}/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parse.data),

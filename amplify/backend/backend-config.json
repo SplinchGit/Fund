@@ -25,6 +25,14 @@
           ],
           "category": "function",
           "resourceName": "0worldfunddebug7fbdeba6"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "getSecrets"
         }
       ],
       "providerPlugin": "awscloudformation",
@@ -45,6 +53,11 @@
       "service": "Lambda"
     },
     "0worldfunddebug7fbdeba6": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "getSecrets": {
       "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
@@ -104,6 +117,22 @@
         {
           "category": "function",
           "resourceName": "0worldfunddebug7fbdeba6"
+        }
+      ]
+    },
+    "AMPLIFY_function_getSecrets_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getSecrets"
+        }
+      ]
+    },
+    "AMPLIFY_function_getSecrets_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getSecrets"
         }
       ]
     }

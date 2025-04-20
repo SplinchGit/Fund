@@ -25,6 +25,10 @@
           "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
           "s3Key": "amplify-builds/0worldfunddebug2dc72c12-42666a5a4c6d6f66576c-build.zip",
           "splinchName": "Splinch"
+        },
+        "getSecrets": {
+          "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
+          "s3Key": "amplify-builds/getSecrets-6556455a6e4879685155-build.zip"
         }
       },
       "storage": {

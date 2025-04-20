@@ -28,6 +28,13 @@
       "permissions": {
         "setting": "open"
       }
+    },
+    "/config": {
+      "name": "/config",
+      "lambdaFunction": "getSecrets",
+      "permissions": {
+        "setting": "open"
+      }
     }
   }
 }
