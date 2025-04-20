@@ -6,30 +6,10 @@
     
     <title>WorldFund</title>
 
-    <!-- Client-side redirect script -->
-    <script type="module">
-      const redirectIfNotMobile = () => {
-        // Use modern userAgentData if available
-        if (navigator.userAgentData) {
-          if (!navigator.userAgentData.mobile) {
-            window.location.assign("https://world.app");
-          }
-        } else {
-          // Fallback to a regex check for older browsers
-          const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-          if (!isMobile) {
-            window.location.assign("https://worldfund.co.uk");
-          }
-        }
-      };
-
-      redirectIfNotMobile();
-    </script>
-  </head>
+    </head>
 
   <body>
     <div id="root"></div>
-    <!-- Your main script that initializes the app: -->
     <script type="module" src="./src/main.tsx"></script>
   </body>
 </html>

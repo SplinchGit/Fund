@@ -4,7 +4,10 @@ import { VerificationLevel } from '@worldcoin/idkit';
 import { userStore, UserData } from './UserStore';
 
 // Configuration constants
-const API_BASE = import.meta.env.VITE_AMPLIFY_API;
+// --- Debugging log added here ---
+console.log("AuthService: Reading VITE_AMPLIFY_API:", import.meta.env.VITE_AMPLIFY_API);
+// --- End of debugging log ---
+const API_BASE = import.meta.env.VITE_AMPLIFY_API; // <<< Log is ABOVE this line
 const CONFIG_ENDPOINT = `${API_BASE}/config`;
 
 // Zod schema for verify endpoint
@@ -55,6 +58,11 @@ class AuthService {
   }
   
   private async getServerConfig(): Promise<any> {
+    // Added check for API_BASE before fetching config
+    if (!API_BASE) {
+      console.error('API_BASE is not defined, cannot fetch server config.');
+      return null; 
+    }
     try {
       const response = await fetch(CONFIG_ENDPOINT);
       if (!response.ok) {
@@ -91,6 +99,13 @@ class AuthService {
     try {
       // If server provided a different API endpoint, use it
       const apiEndpoint = serverConfig?.api?.endpoint || API_BASE;
+
+      // Added check before fetch
+      if (!apiEndpoint) {
+         console.error("API Endpoint is undefined, cannot make verify call.");
+         return { isVerified: false };
+      }
+
       resp = await fetch(`${apiEndpoint}/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -99,6 +114,12 @@ class AuthService {
     } catch (e: any) {
       console.error('Network error verifying WorldID:', e);
       return { isVerified: false };
+    }
+
+    // Added check for response before calling .json()
+    if (!resp) {
+       console.error("No response received from fetch.");
+       return { isVerified: false };
     }
 
     const data = await resp.json();

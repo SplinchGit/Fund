@@ -10,7 +10,7 @@
     },
     "/login": {
       "name": "/login",
-      "lambdaFunction": "0worldfunddebug2dc72c12",
+      "lambdaFunction": "0worldfunddebug5815ef8d",
       "permissions": {
         "setting": "open"
       }
@@ -24,7 +24,7 @@
     },
     "/verify": {
       "name": "/verify",
-      "lambdaFunction": "0worldfunddebug5815ef8d",
+      "lambdaFunction": "0worldfunddebug2dc72c12",
       "permissions": {
         "setting": "open"
       }
