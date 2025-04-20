@@ -1,14 +1,14 @@
 {
   "type": "module",
   "name": "0worldfunddebug",
-  "version": "1.0.0",
+  "version": "1.4.1",
   "description": "This is a simplified React project built with Vite, TypeScript, Tailwind CSS, and ESLint. Configuration files are organized under `configs/` to keep the root clean.",
   "main": "npmrc.js",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
-    "build": "chmod +x ./node_modules/.bin/vite && vite build",
+    "build": "vite build",
     "dev": "vite dev"
   },
   "dependencies": {
