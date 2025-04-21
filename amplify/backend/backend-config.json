@@ -16,7 +16,7 @@
             "Arn"
           ],
           "category": "function",
-          "resourceName": "0worldfunddebug7fbdeba6"
+          "resourceName": "userRegister"
         },
         {
           "attributes": [
@@ -58,6 +58,11 @@
       "service": "Lambda"
     },
     "getSecrets": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "userRegister": {
       "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
@@ -133,6 +138,22 @@
         {
           "category": "function",
           "resourceName": "getSecrets"
+        }
+      ]
+    },
+    "AMPLIFY_function_userRegister_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "userRegister"
+        }
+      ]
+    },
+    "AMPLIFY_function_userRegister_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "userRegister"
         }
       ]
     }
