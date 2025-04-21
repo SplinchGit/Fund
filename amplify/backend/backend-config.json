@@ -1,211 +1,32 @@
 {
-  "api": {
-    "apie126c918": {
-      "dependsOn": [
-        {
-          "attributes": [
-            "Name",
-            "Arn"
-          ],
-          "category": "function",
-          "resourceName": "0worldfunddebug5815ef8d"
-        },
-        {
-          "attributes": [
-            "Name",
-            "Arn"
-          ],
-          "category": "function",
-          "resourceName": "userRegister"
-        },
-        {
-          "attributes": [
-            "Name",
-            "Arn"
-          ],
-          "category": "function",
-          "resourceName": "0worldfunddebug2dc72c12"
-        },
-        {
-          "attributes": [
-            "Name",
-            "Arn"
-          ],
-          "category": "function",
-          "resourceName": "getSecrets"
-        }
-      ],
-      "providerPlugin": "awscloudformation",
-      "service": "API Gateway"
-    }
-  },
-  "function": {
-    "0worldfunddebug2dc72c12": {
-      "build": true,
+  "api": {},
+  "auth": {
+    "0worldfunddebugd1266f95": {
+      "customAuth": false,
       "dependsOn": [],
+      "frontendAuthConfig": {
+        "mfaConfiguration": "OFF",
+        "mfaTypes": [
+          "SMS"
+        ],
+        "passwordProtectionSettings": {
+          "passwordPolicyCharacters": [],
+          "passwordPolicyMinLength": 8
+        },
+        "signupAttributes": [
+          "EMAIL"
+        ],
+        "socialProviders": [],
+        "usernameAttributes": [],
+        "verificationMechanisms": [
+          "EMAIL"
+        ]
+      },
       "providerPlugin": "awscloudformation",
-      "service": "Lambda"
-    },
-    "0worldfunddebug5815ef8d": {
-      "build": true,
-      "dependsOn": [],
-      "providerPlugin": "awscloudformation",
-      "service": "Lambda"
-    },
-    "0worldfunddebug7fbdeba6": {
-      "build": true,
-      "providerPlugin": "awscloudformation",
-      "service": "Lambda"
-    },
-    "getSecrets": {
-      "build": true,
-      "providerPlugin": "awscloudformation",
-      "service": "Lambda"
-    },
-    "userRegister": {
-      "build": true,
-      "providerPlugin": "awscloudformation",
-      "service": "Lambda"
+      "service": "Cognito"
     }
   },
-  "parameters": {
-    "AMPLIFY_function_0worldfunddebug2dc72c12_campaignTableName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug2dc72c12"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug2dc72c12_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug2dc72c12"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug2dc72c12_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug2dc72c12"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug2dc72c12_secretApiKeyName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug2dc72c12"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug2dc72c12_splinchName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug2dc72c12"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug5815ef8d_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug5815ef8d"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug5815ef8d_jwtSecret": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug5815ef8d"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug5815ef8d_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug5815ef8d"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug5815ef8d_tokenExpiry": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug5815ef8d"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug5815ef8d_userTableName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug5815ef8d"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug7fbdeba6_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug7fbdeba6"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug7fbdeba6_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug7fbdeba6"
-        }
-      ]
-    },
-    "AMPLIFY_function_getSecrets_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "getSecrets"
-        }
-      ]
-    },
-    "AMPLIFY_function_getSecrets_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "getSecrets"
-        }
-      ]
-    },
-    "AMPLIFY_function_userRegister_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "userRegister"
-        }
-      ]
-    },
-    "AMPLIFY_function_userRegister_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "userRegister"
-        }
-      ]
-    },
-    "AMPLIFY_function_userRegister_userTableName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "userRegister"
-        }
-      ]
-    }
-  },
+  "function": {},
   "storage": {
     "Splinch": {
       "providerPlugin": "awscloudformation",
