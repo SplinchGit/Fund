@@ -1,3 +1,4 @@
+// TODO: Transfer to production url before submitting to World for review.
 // Inside the createCampaign function:
 const backendApiEndpoint = import.meta.env.VITE_AMPLIFY_API;
 
@@ -16,9 +17,6 @@ export interface CampaignPayload {
     id: string;
     createdAt: string;
   }
-
-  // REMOVE THIS LINE - Cannot access secret API URL directly from frontend
-  // const API_BASE = import.meta.env.VITE_API_URL as string;
 
   export async function createCampaign(
     payload: CampaignPayload
