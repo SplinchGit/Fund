@@ -15,6 +15,9 @@
     },
     "s3Key": {
       "Type": "String"
+    },
+    "userTableName": {
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -69,6 +72,9 @@
             },
             "REGION": {
               "Ref": "AWS::Region"
+            },
+            "USER_TABLE_NAME": {
+              "Ref": "userTableName"
             }
           }
         },

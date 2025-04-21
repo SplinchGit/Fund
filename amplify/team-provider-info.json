@@ -32,7 +32,8 @@
         },
         "userRegister": {
           "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
-          "s3Key": "amplify-builds/userRegister-664c3579576a644a6877-build.zip"
+          "s3Key": "amplify-builds/userRegister-4c6147324b3259707378-build.zip",
+          "userTableName": "Users-dev"
         }
       },
       "storage": {

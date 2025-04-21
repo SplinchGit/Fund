@@ -156,6 +156,14 @@
           "resourceName": "userRegister"
         }
       ]
+    },
+    "AMPLIFY_function_userRegister_userTableName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "userRegister"
+        }
+      ]
     }
   },
   "storage": {
