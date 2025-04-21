@@ -1,4 +1,26 @@
 {
   "lambdaLayers": [],
-  "permissions": {}
+  "environmentVariableList": [
+    {
+      "cloudFormationParameterName": "userTableName",
+      "environmentVariableName": "USER_TABLE_NAME"
+    },
+    {
+      "cloudFormationParameterName": "jwtSecret",
+      "environmentVariableName": "JWT_SECRET"
+    },
+    {
+      "cloudFormationParameterName": "tokenExpiry",
+      "environmentVariableName": "TOKEN_EXPIRY"
+    }
+  ],
+  "permissions": {
+    "storage": {
+      "Users": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  }
 }

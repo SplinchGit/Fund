@@ -1,10 +1,17 @@
 {
-  "name": "0worldfunddebug2dc72c12",
-  "version": "1.0.0",
-  "main": "src/index.js",
+  "name": "campaign-management-lambda",
+  "version": "2.0.0",
+  "description": "Campaign Management Lambda for WorldFund",
+  "main": "index.js",
+  "license": "Apache-2.0",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.788.0",
-    "argon2": "^0.31.2",
+    "@aws-sdk/client-secrets-manager": "^3.788.0",
+    "@aws-sdk/util-dynamodb": "^3.788.0",
+    "jsonwebtoken": "^9.0.2",
     "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.92"
   }
 }

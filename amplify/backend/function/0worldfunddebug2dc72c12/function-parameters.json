@@ -2,9 +2,31 @@
   "lambdaLayers": [],
   "environmentVariableList": [
     {
-      "cloudFormationParameterName": "splinchName",
-      "environmentVariableName": "SPLINCH_NAME"
+      "cloudFormationParameterName": "campaignTableName",
+      "environmentVariableName": "CAMPAIGN_TABLE_NAME"
+    },
+    {
+      "cloudFormationParameterName": "secretApiKeyName",
+      "environmentVariableName": "SECRET_API_KEY_NAME"
+    },
+    {
+      "cloudFormationParameterName": "jwtSecret",
+      "environmentVariableName": "JWT_SECRET"
     }
   ],
-  "permissions": {}
+  "permissions": {
+    "storage": {
+      "Campaigns": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    },
+    "secretsmanager": {
+      "APP_API": [
+        "read"
+      ]
+    }
+  }
 }
