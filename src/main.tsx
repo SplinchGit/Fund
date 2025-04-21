@@ -75,12 +75,14 @@ try {
   if (typeof window !== 'undefined') {
     console.log("Initializing on platform:", navigator.userAgent);
     
-    // Log availability of environment variables (but not their actual values for security)
-    console.log("Environment variables available:", {
-      HAS_VITE_WORLD_APP_ID: !!import.meta.env.VITE_WORLD_APP_ID,
-      HAS_VITE_WORLD_ACTION_ID: !!import.meta.env.VITE_WORLD_ACTION_ID
-    });
-  }
+ // --- Add these logs to check actual values ---
+ console.log("--- Checking Env Vars in main.tsx ---");
+ console.log("Value for VITE_WORLD_APP_ID:", import.meta.env.VITE_WORLD_APP_ID);
+ console.log("Value for VITE_WORLD_ACTION_ID:", import.meta.env.VITE_WORLD_ACTION_ID);
+ // Let's also log the one we know works, for comparison
+ console.log("Value for VITE_AMPLIFY_API:", import.meta.env.VITE_AMPLIFY_API);
+ console.log("--------------------------------------");
+ // --- End of added logs ---
 
   const rootElement = document.getElementById('root');
   if (!rootElement) {
@@ -97,7 +99,7 @@ try {
       </BrowserRouter>
     </React.StrictMode>
   );
-} catch (e) {
+}} catch (e) {
   console.error("Error during initialization:", e);
   
   // Render an error message to the DOM if initialization fails
