@@ -117,7 +117,31 @@
         }
       ]
     },
+    "AMPLIFY_function_0worldfunddebug5815ef8d_jwtSecret": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug5815ef8d"
+        }
+      ]
+    },
     "AMPLIFY_function_0worldfunddebug5815ef8d_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug5815ef8d"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebug5815ef8d_tokenExpiry": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug5815ef8d"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebug5815ef8d_userTableName": {
       "usedBy": [
         {
           "category": "function",

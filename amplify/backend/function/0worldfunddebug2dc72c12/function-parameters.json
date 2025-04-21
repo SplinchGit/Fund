@@ -2,39 +2,16 @@
   "lambdaLayers": [],
   "environmentVariableList": [
     {
-      "cloudFormationParameterName": "campaignTableName",
-      "environmentVariableName": "CAMPAIGN_TABLE_NAME"
+      "cloudFormationParameterName": "userTableName",
+      "environmentVariableName": "USER_TABLE_NAME"
     },
     {
-      "cloudFormationParameterName": "secretApiKeyName",
-      "environmentVariableName": "SECRET_API_KEY_NAME"
-    },
-    {
-      "cloudFormationParameterName": "jwtSecret",
+      "cloudFormationParameterName": "jwtSecretArn",
       "environmentVariableName": "JWT_SECRET"
     },
     {
-      "cloudFormationParameterName": "campaignTableName",
-      "environmentVariableName": "CAMPAIGN_TABLE_NAME"
-    },
-    {
-      "cloudFormationParameterName": "secretApiKeyName",
-      "environmentVariableName": "SECRET_API_KEY_NAME"
+      "cloudFormationParameterName": "tokenExpiry",
+      "environmentVariableName": "TOKEN_EXPIRY"
     }
-  ],
-  "permissions": {
-    "storage": {
-      "Campaigns": [
-        "create",
-        "read",
-        "update",
-        "delete"
-      ]
-    },
-    "secretsmanager": {
-      "APP_API": [
-        "read"
-      ]
-    }
-  }
+  ]
 }

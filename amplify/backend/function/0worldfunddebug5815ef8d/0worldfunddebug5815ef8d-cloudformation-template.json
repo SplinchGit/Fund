@@ -15,6 +15,28 @@
     },
     "s3Key": {
       "Type": "String"
+    },
+    "jwtSecret": {
+      "Type": "String"
+    },
+    "jwtSecretArn": {
+      "Type": "String",
+      "Description": "ARN of the JWT Secret in Secrets Manager"
+    },
+    "userTableName": {
+      "Type": "String"
+    },
+    "secretApiKeyName": {
+      "Type": "String",
+      "Description": "Name of the API Key Secret"
+    },
+    "campaignTableName": {
+      "Type": "String",
+      "Description": "Name of the Campaign DynamoDB Table"
+    },
+    "tokenExpiry": {
+      "Type": "String",
+      "Default": "24h"
     }
   },
   "Conditions": {
@@ -69,6 +91,24 @@
             },
             "REGION": {
               "Ref": "AWS::Region"
+            },
+            "JWT_SECRET": {
+              "Ref": "jwtSecret"
+            },
+            "JWT_SECRET_ARN": {
+              "Ref": "jwtSecretArn"
+            },
+            "USER_TABLE_NAME": {
+              "Ref": "userTableName"
+            },
+            "SECRET_API_KEY_NAME": {
+              "Ref": "secretApiKeyName"
+            },
+            "CAMPAIGN_TABLE_NAME": {
+              "Ref": "campaignTableName"
+            },
+            "TOKEN_EXPIRY": {
+              "Ref": "tokenExpiry"
             }
           }
         },
@@ -160,6 +200,14 @@
                   }
                 ]
               }
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "dynamodb:*"
+              ],
+              "Resource": "*"
             }
           ]
         }

@@ -24,6 +24,14 @@
     },
     "secretApiKeyName": {
       "Type": "String"
+    },
+    "jwtSecretArn": {
+      "Type": "String",
+      "Description": "ARN of the JWT Secret in Secrets Manager"
+    },
+    "userTableName": {
+      "Type": "String",
+      "Description": "Name of the User DynamoDB Table"
     }
   },
   "Conditions": {
@@ -87,6 +95,12 @@
             },
             "SECRET_API_KEY_NAME": {
               "Ref": "secretApiKeyName"
+            },
+            "JWT_SECRET_ARN": {
+              "Ref": "jwtSecretArn"
+            },
+            "USER_TABLE_NAME": {
+              "Ref": "userTableName"
             }
           }
         },
@@ -178,6 +192,14 @@
                   }
                 ]
               }
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "dynamodb:*"
+              ],
+              "Resource": "*"
             }
           ]
         }

@@ -18,6 +18,10 @@
     },
     "userTableName": {
       "Type": "String"
+    },
+    "jwtSecretArn": {
+      "Type": "String",
+      "Description": "ARN of the JWT Secret in Secrets Manager"
     }
   },
   "Conditions": {
@@ -75,6 +79,9 @@
             },
             "USER_TABLE_NAME": {
               "Ref": "userTableName"
+            },
+            "JWT_SECRET_ARN": {
+              "Ref": "jwtSecretArn"
             }
           }
         },
@@ -166,6 +173,14 @@
                   }
                 ]
               }
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "dynamodb:*"
+              ],
+              "Resource": "*"
             }
           ]
         }
