@@ -6,8 +6,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.400.0",
     "@aws-sdk/util-dynamodb": "^3.400.0",
-    "argon2": "^0.28.4",
-    "jsonwebtoken": "^8.5.1",
+    "jsonwebtoken": "^9.0.2",
     "uuid": "^9.0.0"
   }
 }

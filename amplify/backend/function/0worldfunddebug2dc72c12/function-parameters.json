@@ -12,6 +12,14 @@
     {
       "cloudFormationParameterName": "jwtSecret",
       "environmentVariableName": "JWT_SECRET"
+    },
+    {
+      "cloudFormationParameterName": "campaignTableName",
+      "environmentVariableName": "CAMPAIGN_TABLE_NAME"
+    },
+    {
+      "cloudFormationParameterName": "secretApiKeyName",
+      "environmentVariableName": "SECRET_API_KEY_NAME"
     }
   ],
   "permissions": {

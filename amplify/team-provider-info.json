@@ -24,7 +24,9 @@
         "0worldfunddebug2dc72c12": {
           "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
           "s3Key": "amplify-builds/0worldfunddebug2dc72c12-7734447a5237522b3272-build.zip",
-          "splinchName": "Splinch"
+          "splinchName": "Splinch",
+          "campaignTableName": "Campaigns-dev",
+          "secretApiKeyName": "prod/campaign-api-key"
         },
         "getSecrets": {
           "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",

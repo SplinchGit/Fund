@@ -3,14 +3,14 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
-import argon2 from 'argon2'; // ← switched to Argon2
+import { scryptSync, randomBytes } from 'crypto';  // ← swapped from Argon2
 
 // Initialize DynamoDB Client (outside handler for connection reuse)
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 
 // Get table name from Lambda Environment Variables
-const USER_TABLE_NAME = process.env.USER_TABLE_NAME;
+const USER_TABLE_NAME = process.env.USER_TABLE_NAME as string;
 
 // --- CORS Headers ---
 const CORS_HEADERS = {
@@ -103,20 +103,17 @@ export const handler = async (
       };
     }
 
-    // 2. Hash the password with Argon2id
+    // 2. Hash the password with scrypt (memory-hard KDF)
     console.log(`Hashing password for user: ${username}`);
-    const passwordHash = await argon2.hash(password, {
-      type: argon2.argon2id,
-      memoryCost: 2 ** 16,  // 64 MiB
-      timeCost: 3,
-      parallelism: 4
-    });
+    const salt = randomBytes(16).toString('hex');
+    const derivedKey = scryptSync(password, salt, 64).toString('hex');
+    const passwordHash = `${salt}:${derivedKey}`;
     console.log(`Password hashed successfully.`);
 
     // 3. Store new user
     const newUserItem = {
       username,
-      passwordHash,             // Store the Argon2 hash
+      passwordHash,            // Store the scrypt hash
       createdAt: new Date().toISOString(),
     };
     await docClient.send(

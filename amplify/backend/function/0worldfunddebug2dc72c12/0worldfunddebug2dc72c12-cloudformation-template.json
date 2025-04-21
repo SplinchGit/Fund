@@ -18,6 +18,12 @@
     },
     "splinchName": {
       "Type": "String"
+    },
+    "campaignTableName": {
+      "Type": "String"
+    },
+    "secretApiKeyName": {
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -75,6 +81,12 @@
             },
             "SPLINCH_NAME": {
               "Ref": "splinchName"
+            },
+            "CAMPAIGN_TABLE_NAME": {
+              "Ref": "campaignTableName"
+            },
+            "SECRET_API_KEY_NAME": {
+              "Ref": "secretApiKeyName"
             }
           }
         },

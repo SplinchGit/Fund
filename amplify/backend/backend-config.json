@@ -69,6 +69,14 @@
     }
   },
   "parameters": {
+    "AMPLIFY_function_0worldfunddebug2dc72c12_campaignTableName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug2dc72c12"
+        }
+      ]
+    },
     "AMPLIFY_function_0worldfunddebug2dc72c12_deploymentBucketName": {
       "usedBy": [
         {
@@ -78,6 +86,14 @@
       ]
     },
     "AMPLIFY_function_0worldfunddebug2dc72c12_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug2dc72c12"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebug2dc72c12_secretApiKeyName": {
       "usedBy": [
         {
           "category": "function",

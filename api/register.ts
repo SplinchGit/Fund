@@ -10,8 +10,6 @@
 // ============================================================================
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 // Ensure the path to your Prisma client is correct
-import prisma from '../lib/prisma'; 
-import argon2 from 'argon2';
 import { randomUUID } from 'crypto';
 
 // ============================================================================
@@ -135,32 +133,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // These should eventually come from the frontend after World ID verification.
     const worldAppId: string = ''; 
     const worldNullifierHash: string = randomUUID(); 
-
-    // Hash the password securely using Argon2
-    const passwordHash: string = await argon2.hash(password);
-
-    // Attempt to create the new user record in the database using Prisma
-    const user = await prisma.user.create({
-      // Data to be inserted, matching the Prisma schema 'User' model
-      data: {
-        name: username, // Storing username in the 'name' field
-        passwordHash,
-        worldAppId,       // Using placeholder
-        worldNullifierHash, // Using placeholder
-        // isVerified defaults to false, createdAt defaults to now() via schema
-      },
-      // Select only the necessary fields to return in the response
-      select: { 
-        id: true,
-        name: true,
-        createdAt: true 
-      }
-    });
-
-    // Log successful registration on the server
-    console.log(`User registered successfully: ${user.name} (ID: ${user.id})`);
-    // Return a 201 Created status and the selected user data
-    return res.status(201).json({ user }); 
 
   } catch (err: any) {
     // 6. --- Error Handling ---
