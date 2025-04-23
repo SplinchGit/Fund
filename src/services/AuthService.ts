@@ -19,8 +19,8 @@ import type { ISuccessResult } from '@worldcoin/idkit';
 
 /// -----------------------------------------------------------------------------
 /// ENV VARS REQUIRED AT BUILD-TIME (Amplify Hosting → Environment variables):
-///   VITE_AMPLIFY_API    ← your API invoke URL + “/dev”
-///   VITE_API_KEY        ← the WorldFundAPI key
+///   VITE_AMPLIFY_API    ← your API Gateway invoke URL (e.g. https://xyz.execute-api.eu-west-2.amazonaws.com/dev)
+///   VITE_API_KEY        ← the API key for your REST endpoint
 /// -----------------------------------------------------------------------------
 
 /** A verified World ID proof (returned by your /verify Lambda) */
@@ -119,7 +119,7 @@ class AuthService {
     }
   }
 
-  /** Confirm a new user’s signup with their code */
+  /** Confirm a new user's signup with their code */
   public async confirmSignUp(
     username: string,
     code: string
@@ -175,5 +175,7 @@ class AuthService {
   }
 }
 
+// Export the singleton instance with both names for compatibility
 export const cognitoAuth = AuthService.getInstance();
+export const authService = AuthService.getInstance();
 export default AuthService;

@@ -210,3 +210,4 @@ class CognitoAuthService {
 }
 
 export const cognitoAuth = CognitoAuthService.getInstance();
+export default Login;

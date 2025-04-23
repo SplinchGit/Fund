@@ -19,7 +19,13 @@
         "0worldfunddebugd1266f95": {}
       },
       "function": {
-        "0worldfunddebug56fd6525": {}
+        "0worldfunddebug56fd6525": {
+          "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
+          "s3Key": "amplify-builds/0worldfunddebug56fd6525-395857764d2f6b68794d-build.zip"
+        }
+      },
+      "api": {
+        "WorldFundAPI": {}
       }
     }
   }

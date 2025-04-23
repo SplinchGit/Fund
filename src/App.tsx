@@ -6,11 +6,17 @@ import {
   Navigate,
   useNavigate,
 } from 'react-router-dom';
+
+// Use correct import for Login based on how it's exported
+// For a default export:
 import Login from './pages/Login';
+
 import Register from './pages/Register';
 import LandingPage from './pages/LandingPage';
 import TipJar from './pages/TipJar';
 import { CreateCampaignForm } from './components/CreateCampaignForm';
+
+// Import the authService instance directly
 import { authService, IVerifiedUser } from './services/AuthService';
 
 /** Debug Utility */
@@ -37,8 +43,9 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   useEffect(() => {
     (async () => {
       try {
-        const user = await authService.getCurrentUser();
-        setIsAuthenticated(!!user?.isVerified);
+        // Use the checkAuthStatus method instead of getCurrentUser
+        const { isAuthenticated } = await authService.checkAuthStatus();
+        setIsAuthenticated(isAuthenticated);
       } catch {
         setIsAuthenticated(false);
       } finally {
