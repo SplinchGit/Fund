@@ -6,7 +6,7 @@ import * as React from 'react';
 import { useState, useEffect, useCallback, JSX, } from 'react';
 import { Dialog } from '@headlessui/react';
 import WorldIDAuth from '../components/WorldIDAuth';
-import { authService, IVerifiedUser } from '../services/AuthService';
+import { cognitoAuth, IVerifiedUser } from '../services/AuthService';
 
 // -----------------------------
 // INTERFACES
@@ -68,13 +68,13 @@ export default function LandingPage({
 
   // Handle logout
   const handleLogout = () => {
-    authService.logout().then(() => {
+    cognitoAuth.logout().then(() => {
       console.log("Logout successful");
       setUserVerification(null);
       if (onVerificationChange) {
         onVerificationChange(null);
       }
-    }).catch(error => {
+    }).catch((error: any) => {
       console.error("Error during logout:", error);
     });
   };

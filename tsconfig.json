@@ -5,7 +5,7 @@
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "allowJs": false,
     "skipLibCheck": true,
-    "esModuleInterop": false,
+    "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
@@ -16,6 +16,9 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    // include Node built‑in types (crypto, process, etc.)
+    "types": ["node"],
+
     // your path aliases (optional)
     "baseUrl": "./",
     "paths": {
@@ -23,10 +26,9 @@
     }
   },
   "include": [
-    "src",      // your source files
-    "src/env.d.ts"   // <-- pick up the Vite env declarations
+    "src",           // front‑end source files
+    "src/env.d.ts",  // Vite env typings
+    "api/**/*"       // Vercel serverless functions
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }

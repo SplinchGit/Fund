@@ -1,260 +1,212 @@
-// Updated Login.tsx file
-// The fix focuses on the "Register here" link implementation
+// src/services/CognitoAuthService.ts
+import { signIn, signUp, confirmSignUp, signOut, getCurrentUser } from 'aws-amplify/auth';
+import { z } from 'zod';
+import { VerificationLevel } from '@worldcoin/idkit';
+import { userStore, UserData } from '../services/UserStore';
 
-import React, { useState } from 'react';
-import { IDKitWidget } from '@worldcoin/idkit';
-import { useNavigate, Link } from 'react-router-dom';  // Make sure Link is imported
 
+// World ID verification schema
+const VerifySchema = z.object({
+  merkle_root: z.string().min(1),
+  nullifier_hash: z.string().min(1),
+  proof: z.string().min(1),
+  action: z.string().min(1),
+  signal: z.string().optional(),
+});
 
-interface WorldIDProof {
-  merkle_root: string;
-  nullifier_hash: string;
-  proof: string;
-  verification_level?: string;
-  signal?: string;
-}
-
-interface IDKitWidgetProps {
-  open: () => void;
-}
-
-const Login = () => {
-  const navigate = useNavigate();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [loginStatus, setLoginStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [loginError, setLoginError] = useState('');
-  const [status, setStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
-
-  const APP_ID: string = import.meta.env.VITE_WORLD_APP_ID;
-  const ACTION_ID: string = import.meta.env.VITE_WORLD_ACTION_ID;
-
-  const handlePasswordLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginStatus('loading');
-    setLoginError('');
-    try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ username, password })
-      });
-
-      let data: any;
-      const contentType = res.headers.get('content-type') || '';
-      try {
-        data = contentType.includes('application/json')
-          ? await res.json()
-          : { error: await res.text() };
-      } catch {
-        data = { error: 'Invalid JSON response from server' };
-      }
-
-      if (!res.ok) throw new Error(data.error || 'Login failed');
-
-      setLoginStatus('success');
-      navigate('/');
-    } catch (err: any) {
-      console.error('Login error:', err);
-      setLoginStatus('error');
-      setLoginError(err.message || 'Login failed');
-    }
+export type IVerifiedUser = {
+  isVerified: boolean;
+  details?: {
+    nullifierHash: string;
+    merkleRoot: string;
+    proof: string;
+    verificationLevel: VerificationLevel;
+    action: string;
+    signal?: string;
+    timestamp: number;
+    code?: string;
+    detail?: string;
   };
-
-  const handleVerify = async (proof: WorldIDProof): Promise<void> => {
-    if (!proof) {
-      console.error('Proof is undefined');
-      setStatus('error');
-      setErrorMsg('Verification failed: Invalid proof data');
-      return;
-    }
-
-    setStatus('verifying');
-
-    try {
-      const response = await fetch('/api/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          merkle_root: proof.merkle_root,
-          nullifier_hash: proof.nullifier_hash,
-          proof: proof.proof,
-          verification_level: proof.verification_level || '',
-          action: ACTION_ID,
-          signal: proof.signal || '',
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.verified) {
-        localStorage.setItem('worldfund_user_verification_v2', JSON.stringify({
-          isVerified: true,
-          details: {
-            nullifierHash: data.nullifierHash || '',
-            timestamp: Date.now(),
-          }
-        }));
-
-        setStatus('success');
-        navigate('/');
-      } else {
-        setStatus('error');
-        setErrorMsg(data.error || data.detail || 'Verification failed');
-      }
-    } catch (err) {
-      console.error('Verification error:', err);
-      setStatus('error');
-      setErrorMsg('Failed to verify: Network error');
-    }
-  };
-
-  const handleError = (error: unknown): void => {
-    console.error('IDKit error:', error);
-    setStatus('error');
-    setErrorMsg('Failed to initialize World ID');
-  };
-
-  return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: '100vh',
-      padding: '20px',
-      backgroundColor: '#f5f5f5',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
-    }}>
-      <div style={{
-        maxWidth: '400px',
-        width: '100%',
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        padding: '20px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-      }}>
-        <h1 style={{ textAlign: 'center', marginBottom: '20px' }}>WorldFund Login</h1>
-
-        {/* Username/Password Form */}
-        <form onSubmit={handlePasswordLogin} style={{ marginBottom: '10px' }}>
-          <h2 style={{ marginBottom: '10px' }}>Login with Username</h2>
-          <input
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-            style={{ width: '100%', padding: '8px', marginBottom: '10px' }}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{ width: '100%', padding: '8px', marginBottom: '10px' }}
-          />
-          <button
-            type="submit"
-            disabled={loginStatus === 'loading'}
-            style={{
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              padding: '10px 20px',
-              width: '100%',
-              borderRadius: '5px',
-              cursor: 'pointer',
-            }}
-          >
-            {loginStatus === 'loading' ? 'Logging in...' : 'Login'}
-          </button>
-          {loginStatus === 'error' && (
-            <div style={{ color: 'red', marginTop: '10px' }}>{loginError}</div>
-          )}
-        </form>
-        
-        {/* Registration Link - FIXED IMPLEMENTATION */}
-        <div style={{ marginTop: '15px', marginBottom: '20px', textAlign: 'center' }}>
-          <span style={{ fontSize: '14px', color: '#4B5563' }}>
-            Don't have an account?{' '}
-            {/* Use Link component from react-router-dom instead of <a> tag */}
-            <Link
-              to="/register"
-              style={{
-                color: '#3b82f6',
-                textDecoration: 'underline',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              Register here
-            </Link>
-          </span>
-        </div>
-
-        {/* World ID Verification */}
-        {status === 'success' && (
-          <div style={{
-            padding: '10px',
-            backgroundColor: '#d1fae5',
-            color: '#065f46',
-            borderRadius: '5px',
-            marginBottom: '20px'
-          }}>
-            Verification successful!
-          </div>
-        )}
-
-        {status === 'error' && (
-          <div style={{
-            padding: '10px',
-            backgroundColor: '#fee2e2',
-            color: '#b91c1c',
-            borderRadius: '5px',
-            marginBottom: '20px'
-          }}>
-            {errorMsg || 'Verification failed'}
-          </div>
-        )}
-
-        {APP_ID && ACTION_ID ? (
-          <IDKitWidget
-            app_id={APP_ID as `app_${string}`}
-            action={ACTION_ID}
-            onSuccess={handleVerify}
-            onError={handleError}
-          >
-            {({ open }: IDKitWidgetProps) => (
-              <button
-                onClick={open}
-                disabled={status === 'verifying'}
-                style={{
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '5px',
-                  padding: '10px 20px',
-                  cursor: status === 'verifying' ? 'not-allowed' : 'pointer',
-                  opacity: status === 'verifying' ? 0.7 : 1,
-                  fontWeight: 500,
-                  width: '100%'
-                }}
-              >
-                {status === 'verifying' ? 'Verifying...' : 'Verify with World ID'}
-              </button>
-            )}
-          </IDKitWidget>
-        ) : (
-          <div style={{ color: 'red' }}>
-            Missing environment variables. Please check your configuration.
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  userData?: UserData;
 };
 
-export default Login;
+class CognitoAuthService {
+  private static instance: CognitoAuthService;
+  private WORLD_ID_STORAGE_KEY = 'worldfund_verification_v2';
+  private API_BASE = import.meta.env.VITE_AMPLIFY_API;
+
+  private constructor() {
+    console.log("CognitoAuthService: Initialized");
+  }
+
+  public static getInstance(): CognitoAuthService {
+    if (!CognitoAuthService.instance) {
+      CognitoAuthService.instance = new CognitoAuthService();
+    }
+    return CognitoAuthService.instance;
+  }
+
+  // Login with Cognito
+  public async login(username: string, password: string) {
+    try {
+      const { isSignedIn, nextStep } = await signIn({ username, password });
+      
+      if (isSignedIn) {
+        return { success: true };
+      } else if (nextStep.signInStep === 'CONFIRM_SIGN_UP') {
+        return { success: false, requiresConfirmation: true };
+      }
+      
+      return { success: false, error: 'Unknown login state' };
+    } catch (error: any) {
+      console.error('CognitoAuthService: Login error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Login failed' 
+      };
+    }
+  }
+
+  // Register with Cognito
+  public async register(username: string, password: string, email: string) {
+    try {
+      const { isSignUpComplete, userId, nextStep } = await signUp({
+        username,
+        password,
+        options: {
+          userAttributes: {
+            email
+          }
+        }
+      });
+
+      return { 
+        success: true, 
+        isComplete: isSignUpComplete,
+        userId,
+        nextStep
+      };
+    } catch (error: any) {
+      console.error('CognitoAuthService: Registration error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Registration failed' 
+      };
+    }
+  }
+
+  // Confirm registration with code
+  public async confirmRegistration(username: string, code: string) {
+    try {
+      const { isSignUpComplete } = await confirmSignUp({
+        username,
+        confirmationCode: code
+      });
+      
+      return { success: isSignUpComplete };
+    } catch (error: any) {
+      console.error('CognitoAuthService: Confirmation error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Confirmation failed' 
+      };
+    }
+  }
+
+  // Get current Cognito user
+  public async getCognitoUser() {
+    try {
+      const currentUser = await getCurrentUser();
+      return { 
+        success: true, 
+        user: currentUser 
+      };
+    } catch (error) {
+      console.log('CognitoAuthService: No authenticated user');
+      return { success: false };
+    }
+  }
+
+  // Logout
+  public async logout() {
+    try {
+      await signOut();
+      
+      // Also clear World ID verification
+      localStorage.removeItem(this.WORLD_ID_STORAGE_KEY);
+      
+      return { success: true };
+    } catch (error: any) {
+      console.error('CognitoAuthService: Logout error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Logout failed' 
+      };
+    }
+  }
+
+  // World ID verification - leveraging existing functionality
+  public async verifyWithWorldID(
+    payload: z.infer<typeof VerifySchema>
+  ): Promise<IVerifiedUser> {
+    console.log("CognitoAuthService: verifyWithWorldID received payload:", payload);
+
+    // Simple placeholder implementation for World ID verification
+    try {
+      // Validate payload
+      const parse = VerifySchema.safeParse(payload);
+      if (!parse.success) {
+        return {
+          isVerified: false,
+          details: { code: 'validation_error', detail: 'Invalid payload provided.', timestamp: Date.now() } as any
+        };
+      }
+
+      // For now, this is a simplified placeholder
+      return {
+        isVerified: true,
+        details: {
+          nullifierHash: payload.nullifier_hash,
+          merkleRoot: payload.merkle_root,
+          proof: payload.proof,
+          verificationLevel: VerificationLevel.Device,
+          action: payload.action,
+          signal: payload.signal,
+          timestamp: Date.now()
+        }
+      };
+    } catch (error: any) {
+      console.error("CognitoAuthService: World ID verification error:", error);
+      return {
+        isVerified: false,
+        details: {
+          code: 'error',
+          detail: error.message || 'Verification failed',
+          timestamp: Date.now()
+        } as any
+      };
+    }
+  }
+
+  // Get World ID verification from local storage
+  public getWorldIdVerification(): IVerifiedUser | null {
+    const raw = localStorage.getItem(this.WORLD_ID_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    try {
+      const stored = JSON.parse(raw) as IVerifiedUser;
+      const expiryTime = (stored.details?.timestamp ?? 0) + (24 * 3600 * 1000);
+      if (!stored.isVerified || Date.now() > expiryTime) {
+        localStorage.removeItem(this.WORLD_ID_STORAGE_KEY);
+        return null;
+      }
+      return stored;
+    } catch (error) {
+      localStorage.removeItem(this.WORLD_ID_STORAGE_KEY);
+      return null;
+    }
+  }
+}
+
+export const cognitoAuth = CognitoAuthService.getInstance();

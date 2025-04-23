@@ -1,6 +1,8 @@
-// src/services/UserStore.ts
-import { IWorldIDVerificationDetails } from './AuthService';
-
+export interface IWorldIDVerificationDetails {
+  nullifierHash: string;
+  verificationLevel: string;
+  timestamp: number;
+}
 // Define user data structure
 export interface UserData {
   id: string; // The nullifier hash from World ID

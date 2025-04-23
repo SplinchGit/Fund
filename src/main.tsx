@@ -4,8 +4,14 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
+import { configureAmplify } from './aws-config'; // Import the configuration
+
+// Initialize Amplify before the app starts
+configureAmplify();
 
 console.log("main.tsx - VITE_AMPLIFY_API:", import.meta.env.VITE_AMPLIFY_API);
+
+// Rest of your file remains the same...
 
 // Simple error boundary component
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
@@ -75,14 +81,11 @@ try {
   if (typeof window !== 'undefined') {
     console.log("Initializing on platform:", navigator.userAgent);
     
- // --- Add these logs to check actual values ---
- console.log("--- Checking Env Vars in main.tsx ---");
- console.log("Value for VITE_WORLD_APP_ID:", import.meta.env.VITE_WORLD_APP_ID);
- console.log("Value for VITE_WORLD_ACTION_ID:", import.meta.env.VITE_WORLD_ACTION_ID);
- // Let's also log the one we know works, for comparison
- console.log("Value for VITE_AMPLIFY_API:", import.meta.env.VITE_AMPLIFY_API);
- console.log("--------------------------------------");
- // --- End of added logs ---
+    console.log("--- Checking Env Vars in main.tsx ---");
+    console.log("Value for VITE_WORLD_ID_APP_ID:", import.meta.env.VITE_WORLD_ID_APP_ID);
+    console.log("Value for VITE_WORLD_ID_ACTION:", import.meta.env.VITE_WORLD_ID_ACTION);
+    console.log("Value for VITE_AMPLIFY_API:", import.meta.env.VITE_AMPLIFY_API);
+    console.log("--------------------------------------");
 
   const rootElement = document.getElementById('root');
   if (!rootElement) {
