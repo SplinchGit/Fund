@@ -1,217 +1,202 @@
 // src/services/AuthService.ts
-import { z } from 'zod';
-// Keep VerificationLevel import as the *backend response* uses it
-import { VerificationLevel } from '@worldcoin/idkit';
-import { userStore, UserData } from './UserStore';
 
-// --- Config constants ---
-console.log("AuthService: Reading VITE_AMPLIFY_API:", import.meta.env.VITE_AMPLIFY_API);
-const API_BASE = import.meta.env.VITE_AMPLIFY_API;
-const CONFIG_ENDPOINT = `${API_BASE}/config`;
+// Import specific functions from aws-amplify/auth for v6+
+import {
+  signUp,
+  signIn,
+  confirmSignUp,
+  getCurrentUser,
+  updateUserAttributes,
+  signOut,
+  type SignUpInput,
+  type SignUpOutput,
+  type SignInInput,
+  type ConfirmSignUpInput,
+  type UpdateUserAttributesInput,
+  // You might need specific types for errors if you want more granular handling
+} from 'aws-amplify/auth';
+import type { ISuccessResult } from '@worldcoin/idkit';
 
-// ***** MODIFIED Zod Schema *****
-const VerifySchema = z.object({
-  merkle_root: z.string().min(1),
-  nullifier_hash: z.string().min(1),
-  proof: z.string().min(1),
-  // REMOVED: verification_level: z.nativeEnum(VerificationLevel),
-  action: z.string().min(1),
-  signal: z.string().optional(),
-});
+/** A verified World ID proof (used later, not at sign-up) */
+export interface IVerifiedUser {
+  success: boolean;
+  details: ISuccessResult;
+}
 
-// --- Backend response types (Keep as is) ---
-type VerifySuccess = {
-  success: true;
-  nullifier_hash: string;
-  verification_level: VerificationLevel; // Backend tells us the level!
-};
-type VerifyError = {
-  success: false;
-  code: string;
-  detail: string;
-};
+/** Result of a Cognito registration attempt */
+export interface IRegisterResult {
+  success: boolean;
+  error?: string;
+  // The nextStep type in v6 is SignUpOutput
+  nextStep?: SignUpOutput;
+}
 
-// --- IVerifiedUser type (Keep as is) ---
-export type IVerifiedUser = {
-  isVerified: boolean;
-  details?: {
-    nullifierHash: string;
-    merkleRoot: string;
-    proof: string;
-    verificationLevel: VerificationLevel; // This comes from backend response
-    action: string;
-    signal?: string;
-    timestamp: number;
-    code?: string; // Error code
-    detail?: string; // Error detail
-  };
-  userData?: UserData;
-};
+/** Result of a Cognito login attempt */
+export interface ILoginResult {
+  success: boolean;
+  requiresConfirmation?: boolean;
+  error?: string;
+}
 
 class AuthService {
   private static instance: AuthService;
-  private STORAGE_KEY = 'worldfund_verification_v2';
+  // Ensure VITE_AMPLIFY_API is correctly defined in your .env file
+  private API_BASE = import.meta.env.VITE_AMPLIFY_API!;
 
   private constructor() {}
 
-  public static getInstance() {
-    return this.instance ?? (this.instance = new AuthService());
-  }
-
-  private async getServerConfig(): Promise<any> {
-    if (!API_BASE) {
-      console.error('AuthService: API_BASE is not defined, cannot fetch server config.');
-      return null;
-    }
-    try {
-      const response = await fetch(CONFIG_ENDPOINT);
-      if (!response.ok) {
-        throw new Error(`Config endpoint returned status ${response.status}`);
+  public static getInstance(): AuthService {
+      if (!AuthService.instance) {
+          AuthService.instance = new AuthService();
       }
-      const config = await response.json();
-      console.log("AuthService: Fetched server config:", config);
-      return config;
-    } catch (error) {
-      console.error('AuthService: Failed to fetch server config:', error);
-      return null;
-    }
+      return AuthService.instance;
   }
 
-  // Function signature still expects ONE object, matching the *modified* schema
-  public async verifyWithWorldID(
-    payload: z.infer<typeof VerifySchema> // Type matches the *modified* schema
-  ): Promise<IVerifiedUser> {
-    console.log("AuthService: verifyWithWorldID received payload:", payload);
-
-    // Validate payload against the *modified* schema
-    const parse = VerifySchema.safeParse(payload);
-    if (!parse.success) {
-      console.error('AuthService: Invalid verify payload received:', payload, parse.error.format());
-      return {
-        isVerified: false,
-        details: { code: 'validation_error', detail: 'Invalid payload provided.', timestamp: Date.now() } as any
-      };
-    }
-    const validatedData = parse.data; // Has no verification_level now
-    console.log("AuthService: Payload validated successfully:", validatedData);
-
-    // --- Server config fetching logic (Keep as is) ---
-    let serverConfig = null;
-    try { serverConfig = await this.getServerConfig(); } catch (error) { console.warn('AuthService: Could not fetch server config, using client fallback.'); }
-
-
-    // Call backend API
-    let resp: Response | undefined;
-    try {
-      const apiEndpoint = serverConfig?.api?.endpoint || API_BASE;
-      if (!apiEndpoint) { throw new Error("API Endpoint is undefined"); } // Throw error instead of return
-
-      console.log(`AuthService: Sending verification request to ${apiEndpoint}/verify`);
-      resp = await fetch(`${apiEndpoint}/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(validatedData), // Send validated data (no level)
+  /** (Later) Verify a World ID proof server-side */
+  public async verifyWorldId(details: ISuccessResult): Promise<IVerifiedUser> {
+      const res = await fetch(`${this.API_BASE}/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(details),
       });
-      console.log(`AuthService: Received response status ${resp.status} from verify endpoint`);
-
-    } catch (e: any) {
-      console.error('AuthService: Network or config error verifying WorldID:', e);
-      return { isVerified: false, details: { code: e.message.includes("API Endpoint") ? 'config_error' : 'network_error', detail: e.message || 'Request failed.', timestamp: Date.now() } as any };
-    }
-
-    // Process response
-    if (!resp) { /* Should be caught above */ return { isVerified: false, details: { code: 'internal_error', detail: 'No response.', timestamp: Date.now() } as any }; }
-
-    let data: any;
-    try { data = await resp.json(); } catch (err) {
-        console.error("AuthService: Failed to parse JSON response:", err);
-        return { isVerified: false, details: { code: 'invalid_json', detail: `Failed to parse server response (Status: ${resp.status}).`, timestamp: Date.now() } as any };
-    }
-
-    // Check backend failure
-    if (!resp.ok || (data as VerifyError).success === false) {
-      const errorData = data as VerifyError;
-      console.error('AuthService: Backend verification failed:', errorData);
-      return {
-          isVerified: false,
-          details: { // Include original data + error info
-              nullifierHash: validatedData.nullifier_hash,
-              merkleRoot: validatedData.merkle_root,
-              proof: validatedData.proof,
-              action: validatedData.action,
-              signal: validatedData.signal,
-              code: errorData.code || `http_${resp.status}`,
-              detail: errorData.detail || `Verification failed with status ${resp.status}`,
-              timestamp: Date.now()
-          } as any // Cast needed as verificationLevel is missing
-       };
-    }
-
-    // --- Verification Success ---
-    console.log("AuthService: Backend verification successful:", data);
-    const ok = data as VerifySuccess; // ok now contains the verification_level from backend
-
-    // Construct success details object
-    const details: IVerifiedUser['details'] = { // Use type for safety
-      nullifierHash: ok.nullifier_hash,
-      merkleRoot: validatedData.merkle_root, // from original payload
-      proof: validatedData.proof,           // from original payload
-      verificationLevel: ok.verification_level, // ***** FROM BACKEND RESPONSE *****
-      action: validatedData.action,         // from original payload
-      signal: validatedData.signal,         // from original payload
-      timestamp: Date.now(),
-      code: undefined, // Ensure no error fields
-      detail: undefined,
-    };
-
-    // Persist user data
-    const userData = userStore.saveUser({
-      id: details.nullifierHash,
-      verifiedAt: details.timestamp,
-      verificationLevel: details.verificationLevel, // Use level from backend
-    });
-    console.log("AuthService: User data saved/updated:", userData);
-
-    const verifiedUser: IVerifiedUser = { isVerified: true, details, userData };
-
-    try { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(verifiedUser)); console.log("AuthService: Verification details stored."); } catch (storageError) { console.error("AuthService: Failed to write to localStorage:", storageError); }
-
-    return verifiedUser;
-  } // End of verifyWithWorldID function
-
-  // getCurrentUser function (with fix for return value)
-  public getCurrentUser(): IVerifiedUser | null {
-    const raw = localStorage.getItem(this.STORAGE_KEY);
-    if (!raw) {
-        return null; // Returns null if no item - OK
-    }
-    try {
-      const stored = JSON.parse(raw) as IVerifiedUser;
-      const expiryTime = (stored.details?.timestamp ?? 0) + (24 * 3600 * 1000);
-      if (!stored.isVerified || Date.now() > expiryTime ) {
-        console.log("AuthService: Stored user verification expired or invalid. Clearing.");
-        localStorage.removeItem(this.STORAGE_KEY);
-        return null; // Returns null if expired/invalid - OK
+      if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          // Use the error message from the body if available
+          throw new Error(body?.error || 'World ID verification failed');
       }
-      if (stored.details?.nullifierHash) {
-        stored.userData = userStore.getUser(stored.details.nullifierHash) ?? stored.userData;
-      }
-      return stored; // Returns the valid user object - OK
-    } catch (error) {
-      console.error("AuthService: Error parsing user from localStorage:", error);
-      localStorage.removeItem(this.STORAGE_KEY);
-      return null; // Explicitly return null if any error occurred in the try block - OK
-    }
-  } // End of getCurrentUser function
-
-  // ***** LOGOUT FUNCTION ADDED HERE *****
-  public logout() {
-    console.log("AuthService: logout called. Clearing user from localStorage.");
-    localStorage.removeItem(this.STORAGE_KEY);
-    // Add any other related logout logic if needed (e.g., clearing userStore state)
+      // Assuming the endpoint returns an object matching IVerifiedUser
+      return (await res.json()) as IVerifiedUser;
   }
-  // ***** END OF LOGOUT FUNCTION *****
 
-} // End of AuthService class
+  /** Register in Cognito — no proof required here */
+  public async register(
+      username: string,
+      password: string,
+      email: string
+  ): Promise<IRegisterResult> {
+      try {
+          // v6+ signature uses an object argument
+          const input: SignUpInput = {
+              username,
+              password,
+              options: {
+                  userAttributes: { email },
+                  // Add autoSignIn if desired, e.g.:
+                  // autoSignIn: true
+              }
+          };
+          const output = await signUp(input);
+          return { success: true, nextStep: output };
+      } catch (e: any) {
+          // It's good practice to log the actual error for debugging
+          console.error("Registration failed:", e);
+          return { success: false, error: e.message || 'Sign-up failed' };
+      }
+  }
 
-export const authService = AuthService.getInstance();
+  /** Sign in an existing user */
+  public async login(
+      username: string,
+      password: string
+  ): Promise<ILoginResult> {
+      try {
+          // v6+ signature uses an object argument
+          const input: SignInInput = { username, password };
+          const { isSignedIn, nextStep } = await signIn(input);
+
+          if (isSignedIn) {
+              return { success: true };
+          } else {
+              // Handle cases like needing confirmation, MFA setup, etc.
+              // Check nextStep.signInStep if needed for more complex flows
+              if (nextStep?.signInStep === 'CONFIRM_SIGN_UP') {
+                  console.log('Sign in requires confirmation');
+                   // Resend code if needed: await resendSignUpCode({ username });
+                  return { success: false, requiresConfirmation: true };
+              }
+              // Handle other potential next steps if necessary
+              console.error("Sign in attempt resulted in next step:", nextStep);
+              return { success: false, error: 'Sign-in requires additional steps.' };
+          }
+
+      } catch (e: any) {
+           // Specific check for UserNotConfirmedException remains similar
+          if (e.name === 'UserNotConfirmedException') {
+              console.log('Sign in caught UserNotConfirmedException');
+               // Optionally resend code here too: await resendSignUpCode({ username });
+              return { success: false, requiresConfirmation: true };
+          }
+          console.error("Sign-in failed:", e);
+          return { success: false, error: e.message || 'Sign-in failed' };
+      }
+  }
+
+  /** Confirm a new user’s signup with their confirmation code */
+  public async confirmSignUp(
+      username: string,
+      code: string
+  ): Promise<IRegisterResult> { // Reusing IRegisterResult as it fits
+      try {
+          // v6+ signature uses an object argument
+          const input: ConfirmSignUpInput = {
+              username,
+              confirmationCode: code
+          };
+          await confirmSignUp(input);
+          return { success: true };
+      } catch (e: any) {
+          console.error("Confirmation failed:", e);
+          return { success: false, error: e.message || 'Confirmation failed' };
+      }
+  }
+
+  /** After verifying proof, attach the nullifierHash to the current user */
+  public async attachNullifier(
+      nullifier: string
+  ): Promise<{ success: boolean; error?: string }> {
+      try {
+          // No need to fetch the user first in v6 for this operation
+          const input: UpdateUserAttributesInput = {
+              userAttributes: {
+                  'custom:nullifierHash': nullifier,
+              }
+          };
+          await updateUserAttributes(input);
+          return { success: true };
+      } catch (e: any) {
+          console.error("Attach nullifier failed:", e);
+          // Check if the error is related to authentication state
+          if (e.name === 'NotAuthorizedException' || e.message?.includes('logged out')) {
+               return { success: false, error: 'User is not authenticated.' };
+          }
+          return { success: false, error: e.message || 'Attach failed' };
+      }
+  }
+
+  /** Sign the user out of Cognito */
+  public async logout(): Promise<{ success: boolean; error?: string }> {
+      try {
+          // v6+ signature - signOut() might take an options object { global: true } for everywhere
+          await signOut(/* { global: true } */);
+          return { success: true };
+      } catch (e: any) {
+          console.error("Sign-out failed:", e);
+          return { success: false, error: e.message || 'Sign-out failed' };
+      }
+  }
+
+   /** Helper to check current auth status (optional but useful) */
+   public async checkAuthStatus(): Promise<{isAuthenticated: boolean, username?: string}> {
+      try {
+          const { username, userId } = await getCurrentUser();
+          console.log(`User ${username} (${userId}) is authenticated.`);
+          return { isAuthenticated: true, username };
+      } catch (error) {
+          console.log("User is not authenticated.");
+          return { isAuthenticated: false };
+      }
+  }
+}
+
+export const cognitoAuth = AuthService.getInstance();
+export default AuthService; // Exporting class remains the same
