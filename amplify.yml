@@ -1,32 +1,16 @@
 version: 1
-
-# Declare each project in your monorepo as an "application"
-applications:
-  # ──────────────── Frontend Application ────────────────
-  - appRoot: frontend
-    frontend:
-      phases:
-        preBuild:
-          commands:
-            - npm ci
-        build:
-          commands:
-            - npm run build
-      artifacts:
-        # Matches your `vite.config.ts` outDir
-        baseDirectory: build
-        files:
-          - '**/*'
-      cache:
-        paths:
-          - node_modules/**/*
-  # ──────────────── Backend Application ────────────────
-  - appRoot: backend
-    backend:
-      phases:
-        preBuild:
-          commands:
-            - npm ci
-        build:
-          # This will provision/update your AWS resources for the current branch
-          - amplifyPush --simple
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: build
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
