@@ -10,25 +10,29 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler", // Updated from "Node"
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-
-    // include Node built‑in types (crypto, process, etc.)
     "types": ["node"],
-
-    // your path aliases (optional)
     "baseUrl": "./",
     "paths": {
-      "@debug/*": ["src/components/debug/*"]
-    }
+      "@debug/*": ["src/components/debug/*"],
+      "@/*": ["src/*"] // Add a root path alias
+    },
+    "noUncheckedIndexedAccess": true, // Adds safety for indexed access
+    "strictNullChecks": true
   },
   "include": [
-    "src",           // front‑end source files
-    "src/env.d.ts",  // Vite env typings
-    "api/**/*"       // 
+    "src",
+    "src/env.d.ts",
+    "configs/**/*", // Include your config files
+    "api/**/*"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build"
+  ]
 }

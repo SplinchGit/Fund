@@ -1,31 +1,27 @@
 {
   "type": "module",
   "name": "0worldfunddebug",
-  "version": "1.4.1",
-  "description": "This is a simplified React project built with Vite, TypeScript, Tailwind CSS, and ESLint. Configuration files are organized under `configs/` to keep the root clean.",
+  "version": "1.5.0",
+  "description": "WorldFund mini app built with Vite, TypeScript, Tailwind CSS, and AWS Amplify",
   "main": "npmrc.js",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
     "build": "vite build",
-    "dev": "vite dev"
+    "dev": "vite dev",
+    "lint": "eslint . --ext .ts,.tsx"
   },
   "dependencies": {
     "@aws-amplify/auth": "^6.12.3",
-    "@aws-sdk/client-cognito-identity-provider": "^3.794.0",
-    "@aws-sdk/client-dynamodb": "^3.788.0",
-    "@aws-sdk/client-secrets-manager": "^3.787.0",
+    "@aws-sdk/client-dynamodb": "^3.794.0",
     "@aws-sdk/lib-dynamodb": "^3.789.0",
     "@headlessui/react": "^2.2.1",
     "@worldcoin/idkit": "^2.0.2",
     "@worldcoin/minikit-js": "^1.8.0",
     "aws-amplify": "^6.14.3",
     "eruda": "^3.4.1",
-    "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
-    "next": "^15.3.1",
-    "pg": "^8.14.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.5.2",
@@ -33,15 +29,12 @@
     "zod": "^3.24.3"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.149",
-    "@types/next": "^8.0.7",
     "@types/node": "^22.14.1",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.0",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.24.0",
-    "path-to-regexp": "^8.2.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.4",
     "typescript": "^5.8.3",
@@ -49,30 +42,12 @@
   },
   "overrides": {
     "esbuild": ">=0.25.0",
-    "undici": ">=5.28.5",
-    "react-shadow": {
-      "peerDependencies": {
-        "react": "^18.0.0",
-        "react-dom": "^18.0.0"
-      }
-    },
-    "react-use": {
-      "peerDependencies": {
-        "react": "^18.0.0",
-        "react-dom": "^18.0.0",
-        "undici": "^7.9.0"
-      }
-    }
+    "undici": ">=5.28.5"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/SplinchGit/WorldFund.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/SplinchGit/WorldFund/issues"
-  },
-  "homepage": "https://github.com/SplinchGit/WorldFund#readme"
+  "keywords": ["worldfund", "react", "vite", "aws", "worldcoin"],
+  "license": "ISC"
 }
