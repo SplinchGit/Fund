@@ -7,19 +7,17 @@ import {
   useNavigate,
 } from 'react-router-dom';
 
-// Use correct import for Login based on how it's exported
-// For a default export:
+// ← your new Login page
 import Login from './pages/Login';
-
 import Register from './pages/Register';
 import LandingPage from './pages/LandingPage';
 import TipJar from './pages/TipJar';
 import { CreateCampaignForm } from './components/CreateCampaignForm';
 
-// Import the authService instance directly
+// ← single source of truth for auth
 import { authService, IVerifiedUser } from './services/AuthService';
 
-/** Debug Utility */
+/** Debug Utility – no changes here */
 const debug = (message: string, data?: any) => {
   console.log(`[Debug] ${message}`, data || '');
   try {
@@ -32,21 +30,29 @@ const debug = (message: string, data?: any) => {
   }
 };
 
-/**
- * ProtectedRoute
- * Wraps any children that require authentication.
- */
+/** ProtectedRoute */
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading]             = useState(true);
+  const [isLoading, setIsLoading]         = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        // Use the checkAuthStatus method instead of getCurrentUser
-        const { isAuthenticated } = await authService.checkAuthStatus();
-        setIsAuthenticated(isAuthenticated);
-      } catch {
+        debug('ProtectedRoute: Checking Cognito auth status...');
+        const status = await authService.checkAuthStatus();
+        debug('ProtectedRoute: Cognito status', status);
+
+        let ok = status.isAuthenticated;
+
+        // TODO: once you have world-ID details stored in App state,
+        // you can also check them here. For example:
+        //
+        // const worldId = /* from context or prop */;
+        // ok = ok && worldId?.success === true;
+
+        setIsAuthenticated(ok);
+      } catch (err) {
+        debug('ProtectedRoute: Error', err);
         setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
@@ -72,10 +78,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     : <Navigate to="/login" replace />;
 };
 
-/**
- * Dashboard
- * A simple protected dashboard screen.
- */
+/** Dashboard */
 const Dashboard: React.FC = () => {
   debug('Dashboard rendered');
   const navigate = useNavigate();
@@ -94,7 +97,7 @@ const Dashboard: React.FC = () => {
     }}>
       <h1 style={{ marginBottom: '20px' }}>WorldFund Dashboard</h1>
       <p style={{ marginBottom: '20px' }}>
-        You&apos;ve successfully authenticated with World ID!
+        You&apos;ve successfully authenticated!
       </p>
       <button
         onClick={handleLogout}
@@ -113,10 +116,7 @@ const Dashboard: React.FC = () => {
   );
 };
 
-/**
- * App
- * The only default export, handles all routing.
- */
+/** App */
 const App: React.FC = () => {
   const [verification, setVerification] = useState<IVerifiedUser | null>(null);
   debug('App component mounted');
@@ -156,7 +156,6 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/tip-jar"
           element={
@@ -176,7 +175,6 @@ const App: React.FC = () => {
           }
         />
 
-        {/* Keep your campaign form demo route if you like */}
         <Route path="/new-campaign" element={<CreateCampaignForm />} />
 
         <Route path="*" element={<Navigate to="/login" replace />} />

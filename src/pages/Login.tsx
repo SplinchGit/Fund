@@ -1,20 +1,11 @@
-// src/services/CognitoAuthService.ts
-import { signIn, signUp, confirmSignUp, signOut, getCurrentUser } from 'aws-amplify/auth';
-import { z } from 'zod';
+// src/pages/REFACT_Login.tsx
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { signIn } from 'aws-amplify/auth';
 import { VerificationLevel } from '@worldcoin/idkit';
-import { userStore, UserData } from '../services/UserStore';
 
-
-// World ID verification schema
-const VerifySchema = z.object({
-  merkle_root: z.string().min(1),
-  nullifier_hash: z.string().min(1),
-  proof: z.string().min(1),
-  action: z.string().min(1),
-  signal: z.string().optional(),
-});
-
-export type IVerifiedUser = {
+// Re-export the existing IVerifiedUser type (to maintain compatibility with App.tsx)
+export interface IVerifiedUser {
   isVerified: boolean;
   details?: {
     nullifierHash: string;
@@ -27,187 +18,179 @@ export type IVerifiedUser = {
     code?: string;
     detail?: string;
   };
-  userData?: UserData;
-};
+  userData?: any; // Using any for simplicity, you might want to define a proper type
+}
 
-class CognitoAuthService {
-  private static instance: CognitoAuthService;
-  private WORLD_ID_STORAGE_KEY = 'worldfund_verification_v2';
-  private API_BASE = import.meta.env.VITE_AMPLIFY_API;
-
-  private constructor() {
-    console.log("CognitoAuthService: Initialized");
-  }
-
-  public static getInstance(): CognitoAuthService {
-    if (!CognitoAuthService.instance) {
-      CognitoAuthService.instance = new CognitoAuthService();
-    }
-    return CognitoAuthService.instance;
-  }
-
-  // Login with Cognito
-  public async login(username: string, password: string) {
+// Create a minimal version of the Auth service for login functionality
+// This is just to make the Login component work until you refactor everything
+export const cognitoAuth = {
+  async login(username: string, password: string) {
     try {
       const { isSignedIn, nextStep } = await signIn({ username, password });
       
       if (isSignedIn) {
         return { success: true };
-      } else if (nextStep.signInStep === 'CONFIRM_SIGN_UP') {
+      } else if (nextStep?.signInStep === 'CONFIRM_SIGN_UP') {
         return { success: false, requiresConfirmation: true };
       }
       
       return { success: false, error: 'Unknown login state' };
     } catch (error: any) {
-      console.error('CognitoAuthService: Login error:', error);
+      console.error('Login error:', error);
       return { 
         success: false, 
         error: error.message || 'Login failed' 
       };
     }
+  },
+  // Stub methods to satisfy App.tsx imports (replace with actual implementations as needed)
+  async getCognitoUser() {
+    // Minimal implementation to prevent errors
+    return { success: false };
+  },
+  getWorldIdVerification() {
+    // Minimal implementation to prevent errors
+    return null;
+  },
+  async logout() {
+    // Minimal implementation
+    return { success: true };
   }
+};
 
-  // Register with Cognito
-  public async register(username: string, password: string, email: string) {
-    try {
-      const { isSignUpComplete, userId, nextStep } = await signUp({
-        username,
-        password,
-        options: {
-          userAttributes: {
-            email
-          }
-        }
-      });
+// The Login component
+export const Login: React.FC = () => {
+  // State for form fields
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  
+  // State for form processing and errors
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  
+  const navigate = useNavigate();
 
-      return { 
-        success: true, 
-        isComplete: isSignUpComplete,
-        userId,
-        nextStep
-      };
-    } catch (error: any) {
-      console.error('CognitoAuthService: Registration error:', error);
-      return { 
-        success: false, 
-        error: error.message || 'Registration failed' 
-      };
+  // Handle login form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Reset error states
+    setError(null);
+    setNeedsConfirmation(false);
+    
+    // Validate input
+    if (!username || !password) {
+      setError('Please enter both username and password');
+      return;
     }
-  }
-
-  // Confirm registration with code
-  public async confirmRegistration(username: string, code: string) {
+    
+    setIsLoading(true);
+    
     try {
-      const { isSignUpComplete } = await confirmSignUp({
-        username,
-        confirmationCode: code
-      });
+      // Call the auth service to perform login
+      const result = await cognitoAuth.login(username, password);
       
-      return { success: isSignUpComplete };
-    } catch (error: any) {
-      console.error('CognitoAuthService: Confirmation error:', error);
-      return { 
-        success: false, 
-        error: error.message || 'Confirmation failed' 
-      };
-    }
-  }
-
-  // Get current Cognito user
-  public async getCognitoUser() {
-    try {
-      const currentUser = await getCurrentUser();
-      return { 
-        success: true, 
-        user: currentUser 
-      };
-    } catch (error) {
-      console.log('CognitoAuthService: No authenticated user');
-      return { success: false };
-    }
-  }
-
-  // Logout
-  public async logout() {
-    try {
-      await signOut();
-      
-      // Also clear World ID verification
-      localStorage.removeItem(this.WORLD_ID_STORAGE_KEY);
-      
-      return { success: true };
-    } catch (error: any) {
-      console.error('CognitoAuthService: Logout error:', error);
-      return { 
-        success: false, 
-        error: error.message || 'Logout failed' 
-      };
-    }
-  }
-
-  // World ID verification - leveraging existing functionality
-  public async verifyWithWorldID(
-    payload: z.infer<typeof VerifySchema>
-  ): Promise<IVerifiedUser> {
-    console.log("CognitoAuthService: verifyWithWorldID received payload:", payload);
-
-    // Simple placeholder implementation for World ID verification
-    try {
-      // Validate payload
-      const parse = VerifySchema.safeParse(payload);
-      if (!parse.success) {
-        return {
-          isVerified: false,
-          details: { code: 'validation_error', detail: 'Invalid payload provided.', timestamp: Date.now() } as any
-        };
+      if (result.success) {
+        // Successful login - redirect to dashboard
+        navigate('/dashboard');
+      } else if (result.requiresConfirmation) {
+        // User needs to confirm their account
+        setNeedsConfirmation(true);
+      } else {
+        // Handle other login failures
+        setError(result.error || 'Login failed');
       }
-
-      // For now, this is a simplified placeholder
-      return {
-        isVerified: true,
-        details: {
-          nullifierHash: payload.nullifier_hash,
-          merkleRoot: payload.merkle_root,
-          proof: payload.proof,
-          verificationLevel: VerificationLevel.Device,
-          action: payload.action,
-          signal: payload.signal,
-          timestamp: Date.now()
-        }
-      };
-    } catch (error: any) {
-      console.error("CognitoAuthService: World ID verification error:", error);
-      return {
-        isVerified: false,
-        details: {
-          code: 'error',
-          detail: error.message || 'Verification failed',
-          timestamp: Date.now()
-        } as any
-      };
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // If the user needs to confirm their account, show a message
+  if (needsConfirmation) {
+    return (
+      <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg">
+        <h2 className="text-2xl font-bold text-center mb-6">Account Confirmation Required</h2>
+        <p className="mb-4 text-gray-700">
+          Your account needs to be confirmed before you can log in.
+          Please check your email for a confirmation code.
+        </p>
+        <div className="text-center">
+          <Link to="/register" className="text-blue-600 hover:text-blue-800">
+            Go to Registration to confirm your account
+          </Link>
+        </div>
+      </div>
+    );
   }
 
-  // Get World ID verification from local storage
-  public getWorldIdVerification(): IVerifiedUser | null {
-    const raw = localStorage.getItem(this.WORLD_ID_STORAGE_KEY);
-    if (!raw) {
-      return null;
-    }
-    try {
-      const stored = JSON.parse(raw) as IVerifiedUser;
-      const expiryTime = (stored.details?.timestamp ?? 0) + (24 * 3600 * 1000);
-      if (!stored.isVerified || Date.now() > expiryTime) {
-        localStorage.removeItem(this.WORLD_ID_STORAGE_KEY);
-        return null;
-      }
-      return stored;
-    } catch (error) {
-      localStorage.removeItem(this.WORLD_ID_STORAGE_KEY);
-      return null;
-    }
-  }
-}
+  return (
+    <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg">
+      <h2 className="text-2xl font-bold text-center mb-6">Log In</h2>
+      
+      <form onSubmit={handleSubmit}>
+        {/* Username field */}
+        <div className="mb-4">
+          <label htmlFor="username" className="block text-gray-700 text-sm font-bold mb-2">
+            Username
+          </label>
+          <input
+            id="username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={isLoading}
+            required
+          />
+        </div>
+        
+        {/* Password field */}
+        <div className="mb-6">
+          <label htmlFor="password" className="block text-gray-700 text-sm font-bold mb-2">
+            Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={isLoading}
+            required
+          />
+        </div>
+        
+        {/* Error message */}
+        {error && (
+          <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded-md">
+            {error}
+          </div>
+        )}
+        
+        {/* Submit button */}
+        <button
+          type="submit"
+          disabled={isLoading}
+          className={`w-full py-2 px-4 rounded-md text-white font-medium
+            ${isLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+        >
+          {isLoading ? 'Logging in...' : 'Log In'}
+        </button>
+      </form>
+      
+      {/* Registration link */}
+      <div className="mt-4 text-center">
+        <span className="text-gray-600">Don't have an account? </span>
+        <Link to="/register" className="text-blue-600 hover:text-blue-800">
+          Register here
+        </Link>
+      </div>
+    </div>
+  );
+};
 
-export const cognitoAuth = CognitoAuthService.getInstance();
+// Also provide a default export for compatibility
 export default Login;

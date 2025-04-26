@@ -28,7 +28,7 @@
   "include": [
     "src",           // front‑end source files
     "src/env.d.ts",  // Vite env typings
-    "api/**/*"       // Vercel serverless functions
+    "api/**/*"       // 
   ],
   "exclude": ["node_modules"]
 }
