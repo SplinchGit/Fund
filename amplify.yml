@@ -1,0 +1,16 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci                     # install deps
+    build:
+      commands:
+        - npm run build             # runs your Vite/CRA build into "build/"
+  artifacts:
+    baseDirectory: build           # <— match this to your actual output
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*           # cache installed modules
