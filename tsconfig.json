@@ -29,7 +29,7 @@
     "src/env.d.ts",
     "configs/**/*", // Include your config files
     "api/**/*"
-  ],
+, "vite.config.ts"  ],
   "exclude": [
     "node_modules",
     "dist",
