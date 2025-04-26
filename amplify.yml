@@ -1,16 +1,33 @@
 version: 1
+
+backend:
+  phases:
+    build:
+      commands:
+        - echo "⏱️ BACKEND PUSH START"
+        - amplifyPush --simple
+
 frontend:
   phases:
     preBuild:
       commands:
+        - echo "⏱️ PREBUILD START"
         - npm ci
     build:
       commands:
+        - echo "⏱️ BUILD START"
         - npm run build
-  artifacts:
-    baseDirectory: build
-    files:
-      - '**/*'
-  cache:
-    paths:
-      - node_modules/**/*
+        - echo "⏱️ WORKDIR: $(pwd)"
+        - echo "⏱️ ROOT TREE:"
+        - ls -R .
+        - echo "⏱️ BUILD TREE:"
+        - ls -R build
+
+artifacts:
+  baseDirectory: build
+  files:
+    - '**/*'
+
+cache:
+  paths:
+    - node_modules/**/*
