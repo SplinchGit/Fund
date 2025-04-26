@@ -8,16 +8,23 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: 'build', // This is crucial for Amplify
+    outDir: 'build', 
     rollupOptions: {
       output: {
         manualChunks(id) {
+          // More aggressive chunk splitting
           if (id.includes('node_modules')) {
+            // Split large libraries into separate chunks
+            if (id.includes('@worldcoin')) return 'worldcoin';
+            if (id.includes('react')) return 'react';
+            if (id.includes('aws-amplify')) return 'aws-amplify';
             return 'vendor';
           }
         }
       }
-    }
+    },
+    // Increase chunk size warning limit
+    chunkSizeWarningLimit: 1000
   },
   resolve: {
     alias: {
