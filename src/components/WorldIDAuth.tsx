@@ -1,3 +1,4 @@
+// src/components/WorldIDAuth.tsx
 import React, { useState } from 'react';
 import { IDKitWidget, ISuccessResult } from '@worldcoin/idkit';  // World ID widget and types
 

@@ -1,3 +1,5 @@
+// src/services//CampaignService.ts
+
 // TODO: Transfer to production url before submitting to World for review.
 // Inside the createCampaign function:
 const backendApiEndpoint = import.meta.env.VITE_AMPLIFY_API;

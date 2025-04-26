@@ -1,3 +1,4 @@
+// src/pages/VerifyAccount.tsx
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import WorldIDAuth from '../components/WorldIDAuth'

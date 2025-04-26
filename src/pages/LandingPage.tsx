@@ -1,5 +1,5 @@
 // -----------------------------
-// WORLDFund - Landing Page Component
+// WORLDFund - Landing Page Component - LandingPage.tsx
 // -----------------------------
 
 import * as React from 'react';

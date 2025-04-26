@@ -1,3 +1,4 @@
+// src/services/UserStore.ts
 export interface IWorldIDVerificationDetails {
   nullifierHash: string;
   verificationLevel: string;
