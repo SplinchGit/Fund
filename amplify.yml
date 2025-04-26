@@ -3,14 +3,20 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm ci                     # install deps
+        - echo "Node.js version: $(node -v)"
+        - npm ci
     build:
       commands:
-        - npm run build             # runs your Vite/CRA build into "build/"
+        - npm run build
+        # Explicitly list and verify build artifacts
+        - ls -la build
+        - echo "Verifying build artifact contents"
+        - find build -type f
   artifacts:
-    baseDirectory: build           # <— match this to your actual output
+    baseDirectory: build
     files:
       - '**/*'
+    discard-paths: no
   cache:
     paths:
-      - node_modules/**/*           # cache installed modules
+      - node_modules/**/*
