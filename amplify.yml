@@ -1,5 +1,4 @@
 version: 1
-
 backend:
   phases:
     build:
@@ -22,12 +21,10 @@ frontend:
         - ls -R .
         - echo "⏱️ BUILD TREE:"
         - ls -R build
-
-artifacts:
-  baseDirectory: build
-  files:
-    - '**/*'
-
-cache:
-  paths:
-    - node_modules/**/*
+  artifacts:
+    baseDirectory: build
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
