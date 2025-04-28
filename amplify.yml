@@ -3,24 +3,18 @@ backend:
   phases:
     build:
       commands:
-        - "echo \"BACKEND PUSH START\""
+        - "echo \"BACKEND BUILD STARTING\""
         - amplifyPush --simple
 
 frontend:
   phases:
     preBuild:
       commands:
-        - "echo \"PREBUILD START\""
         - npm ci
     build:
       commands:
-        - "echo \"BUILD START\""
         - npm run build
-        - "echo \"WORKDIR: $(pwd)\""
-        - "echo \"ROOT TREE:\""
-        - ls -R .
-        - "echo \"BUILD TREE:\""
-        - ls -R build
+        - "echo \"Build completed\""
   artifacts:
     baseDirectory: build
     files:
