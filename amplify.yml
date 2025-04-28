@@ -1,3 +1,29 @@
+# ───────────────────────────────────────────────────────────────────────────────
+# IMPORTANT AMPLIFY CONFIG NOTES:
+#
+# 1. This is a STATIC VITE SITE:
+#    - Ensure `baseDirectory` below always matches your Vite `outDir` ("build" by default).
+#    - If you change Vite’s output folder, update `baseDirectory:` here immediately.
+#
+# 2. NO SSR / NEXT.JS:
+#    - This app is hosted as a pure static site (platform=WEB).
+#    - Do _not_ add or re-enable any SSR rewrite rules in Hosting → Rewrites & redirects.
+#    - Confirm in Amplify Console → App settings → General that Platform = WEB.
+#
+# 3. ALWAYS RUN FRONTEND BUILD:
+#    - We disable diff-based skips so the frontend phase runs on every commit:
+#      • In Amplify Console → App settings → Environment variables:
+#          AMPLIFY_DIFF_DEPLOY = false
+#
+# 4. KEEP THIS FILE AT REPO ROOT:
+#    - amplify.yml must live alongside package.json and the `amplify/` folder.
+#    - Any syntax or indentation errors here will break the build.
+#
+# 5. WHENEVER YOU CHANGE BACKEND OR FRONTEND:
+#    - Commit & push both your `amplify/` folder _and_ this amplify.yml together on main.
+#    - Trigger a redeploy (empty commit or “Redeploy this version”) to pick up changes.
+# ───────────────────────────────────────────────────────────────────────────────
+
 version: 1
 backend:
   phases:
