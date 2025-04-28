@@ -3,7 +3,7 @@ backend:
   phases:
     build:
       commands:
-        - "echo \"BACKEND BUILD STARTING\""
+        - echo "BACKEND BUILD STARTING"
         - amplifyPush --simple
 
 frontend:
@@ -14,9 +14,10 @@ frontend:
     build:
       commands:
         - npm run build
-        - "echo \"Build completed\""
+        - echo "Build completed"
   artifacts:
-    baseDirectory: build
+    # ← change this to Vite’s output dir
+    baseDirectory: dist
     files:
       - '**/*'
   cache:
