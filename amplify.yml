@@ -2,8 +2,8 @@
 # IMPORTANT AMPLIFY CONFIG NOTES:
 #
 # 1. STATIC VITE SITE:
-#    - baseDirectory must match Vite’s outDir ("build" by default).
-#    - If you change Vite’s outDir, update baseDirectory immediately.
+#    - baseDirectory must match Vite's outDir ("build" by default).
+#    - If you change Vite's outDir, update baseDirectory immediately.
 #
 # 2. NO SSR / NEXT.JS:
 #    - Platform = WEB (static).  Do not re-enable any SSR rewrite rules.
@@ -41,17 +41,35 @@ frontend:
         - echo "Build completed"
 
   artifacts:
-    baseDirectory: build   # Vite’s output folder
+    baseDirectory: build   # Vite's output folder
     files:
       - '**/*'
 
   cache:
     paths:
       - node_modules/**/*   # dependency cache
-      - .vite/**/*          # Vite’s cache
+      - .vite/**/*          # Vite's cache
       - ~/.npm/**/*         # npm global cache
 
   customHeaders:
+    # MIME type configuration for JavaScript modules
+    - pattern: '*.js'
+      headers:
+        - key: 'Content-Type'
+          value: 'application/javascript'
+    - pattern: '*.mjs'
+      headers:
+        - key: 'Content-Type'
+          value: 'application/javascript'
+    - pattern: '*.js.map'
+      headers:
+        - key: 'Content-Type'
+          value: 'application/json'
+    - pattern: '*.css'
+      headers:
+        - key: 'Content-Type'
+          value: 'text/css'
+    # Original cache control settings
     - pattern: '**/*'
       headers:
         - key: Cache-Control

@@ -30,5 +30,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     }
-  }
+  },
+  // Ensure base path is set correctly
+  base: '/'
 });
