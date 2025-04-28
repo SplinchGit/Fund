@@ -4,12 +4,13 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
-import { configureAmplify } from './aws-config'; // Import the configuration
-import ErudaProvider from './debug/ErudaProvider'; // Debug console
+import { configureAmplify } from './aws-config';      // Import the configuration
+import ErudaProvider from './debug/ErudaProvider';   // Debug console
 
 // Initialize Amplify before the app starts
 configureAmplify();
 
+// Log the Amplify API endpoint
 console.log("main.tsx - VITE_AMPLIFY_API:", import.meta.env.VITE_AMPLIFY_API);
 
 // Simple error boundary component
@@ -76,6 +77,16 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 try {
   console.log("Starting application...");
 
+  // Only run these logs in the browser
+  if (typeof window !== 'undefined') {
+    console.log("Initializing on platform:", navigator.userAgent);
+    console.log("--- Checking Env Vars in main.tsx ---");
+    console.log("Value for VITE_WORLD_ID_APP_ID:", import.meta.env.VITE_WORLD_ID_APP_ID);
+    console.log("Value for VITE_WORLD_ID_ACTION:", import.meta.env.VITE_WORLD_ID_ACTION);
+    console.log("Value for VITE_AMPLIFY_API:", import.meta.env.VITE_AMPLIFY_API);
+    console.log("--------------------------------------");
+  }
+
   const rootElement = document.getElementById('root');
   if (!rootElement) {
     throw new Error("Failed to find the root element");
@@ -83,7 +94,7 @@ try {
 
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      {/* Initialize Eruda in dev mode, on mobile, or when ?eruda is in the URL */}
+      {/* Initialize Eruda in dev mode, on mobile, or when ?eruda=1 is present */}
       {(import.meta.env.DEV ||
         /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ||
         window.location.search.includes('eruda')) && <ErudaProvider />}
