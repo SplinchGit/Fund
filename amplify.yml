@@ -3,26 +3,20 @@ backend:
   phases:
     build:
       commands:
-        - echo "BACKEND BUILD STARTING"
+        - '# Execute Amplify CLI to deploy backend'
         - amplifyPush --simple
 frontend:
   phases:
     preBuild:
       commands:
-        - npm ci
+        - npm ci              # Or yarn install
     build:
       commands:
-        - npm run build
-        - echo "Build completed"
+        - npm run build       # Run Vite build
   artifacts:
-    baseDirectory: dist
+    baseDirectory: dist       # Vite's default output folder
     files:
       - '**/*'
   cache:
     paths:
-      - node_modules/**/*
-  customHeaders:
-    - pattern: '**/*'
-      headers:
-        - key: Cache-Control
-          value: max-age=0, no-cache, no-store, must-revalidate
+      - node_modules/**/* 
