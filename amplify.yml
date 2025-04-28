@@ -5,7 +5,6 @@ backend:
       commands:
         - echo "BACKEND BUILD STARTING"
         - amplifyPush --simple
-
 frontend:
   phases:
     preBuild:
@@ -15,17 +14,14 @@ frontend:
       commands:
         - npm run build
         - echo "Build completed"
-  
   artifacts:
-    # ← Vite’s default output folder
-    baseDirectory: dist
+    # ← changed from dist → build
+    baseDirectory: build
     files:
       - '**/*'
-  
   cache:
     paths:
       - node_modules/**/*
-  
   customHeaders:
     - pattern: '**/*'
       headers:
