@@ -45,10 +45,19 @@ export interface ILoginResult {
 
 class AuthService {
   private static instance: AuthService;
-  private API_BASE = import.meta.env.VITE_AMPLIFY_API!;
-  private API_KEY  = import.meta.env.VITE_API_KEY!;
-
-  private constructor() {}
+  private API_BASE = import.meta.env.VITE_AMPLIFY_API;
+  private API_KEY = import.meta.env.SECRET_API_KEY_NAME || import.meta.env.VITE_API_KEY;
+  
+  private constructor() {
+    // Validate required configuration
+    if (!this.API_BASE) {
+      console.error('Missing API endpoint environment variable (VITE_AMPLIFY_API)');
+    }
+    // API key might be optional depending on your API Gateway settings
+    if (!this.API_KEY) {
+      console.warn('Missing API key environment variable (SECRET_API_KEY_NAME or VITE_API_KEY)');
+    }
+  }
 
   public static getInstance(): AuthService {
     if (!AuthService.instance) {

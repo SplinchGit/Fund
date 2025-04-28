@@ -7,10 +7,12 @@
   "directories": {
     "lib": "lib"
   },
-  "scripts": {
+ "scripts": {
     "build": "vite build",
+    "build:production": "vite build",
     "dev": "vite dev",
-    "lint": "eslint . --ext .ts,.tsx"
+    "lint": "eslint . --ext .ts,.tsx",
+    "start": "vite preview"
   },
   "dependencies": {
     "@aws-amplify/auth": "^6.12.3",

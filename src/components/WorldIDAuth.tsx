@@ -1,5 +1,5 @@
 // src/components/WorldIDAuth.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { IDKitWidget, ISuccessResult } from '@worldcoin/idkit';  // World ID widget and types
 
 // Define the shape of the World ID verification result (proof details)
@@ -33,10 +33,18 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
   // State to track if a user has been verified via World ID
   const [verification, setVerification] = useState<IVerifiedUser | null>(null);
 
-  // World ID application parameters (replace with your actual app values)
-  const appId = import.meta.env.VITE_WORLD_ID_APP_ID || 'YOUR_WORLD_ID_APP_ID';
-  const actionName = import.meta.env.VITE_WORLD_ID_ACTION_NAME || 'YOUR_ACTION_NAME';
-
+  const appId = import.meta.env.VITE_WORLD_APP_ID || import.meta.env.VITE_WORLD_ID_APP_ID;
+  const actionName = import.meta.env.VITE_WORLD_ACTION_ID || import.meta.env.VITE_WORLD_ID_ACTION_NAME;
+  
+  // Validate required configuration
+  useEffect(() => {
+    if (!appId) {
+      console.error('Missing World ID App ID environment variable (VITE_WORLD_APP_ID)');
+    }
+    if (!actionName) {
+      console.error('Missing World ID Action ID environment variable (VITE_WORLD_ACTION_ID)');
+    }
+  }, [appId, actionName]);
   // Handle a successful verification result from World ID widget
   const handleSuccess = (result: ISuccessResult) => {
     const verifiedUser: IVerifiedUser = {

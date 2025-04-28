@@ -95,7 +95,7 @@ const TipJar: React.FC<TipJarProps> = ({ onNavigate }) => {
               </p>
               <IDKitWidget
                 app_id={import.meta.env.VITE_WORLD_APP_ID as `app_${string}`}
-                action={import.meta.env.VITE_WORLD_ID_ACTION}
+                action={import.meta.env.VITE_WORLD_ACTION_ID || import.meta.env.VITE_WORLD_ID_ACTION}
                 verification_level={VerificationLevel.Device}
                 onSuccess={handleVerificationSuccess}
                 onError={handleVerificationError}
