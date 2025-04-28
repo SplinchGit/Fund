@@ -1,27 +1,24 @@
 # ───────────────────────────────────────────────────────────────────────────────
 # IMPORTANT AMPLIFY CONFIG NOTES:
 #
-# 1. This is a STATIC VITE SITE:
-#    - Ensure `baseDirectory` below always matches your Vite `outDir` ("build" by default).
-#    - If you change Vite’s output folder, update `baseDirectory:` here immediately.
+# 1. STATIC VITE SITE:
+#    - baseDirectory must match Vite’s outDir ("build" by default).
+#    - If you change Vite’s outDir, update baseDirectory immediately.
 #
 # 2. NO SSR / NEXT.JS:
-#    - This app is hosted as a pure static site (platform=WEB).
-#    - Do _not_ add or re-enable any SSR rewrite rules in Hosting → Rewrites & redirects.
-#    - Confirm in Amplify Console → App settings → General that Platform = WEB.
+#    - Platform = WEB (static).  Do not re-enable any SSR rewrite rules.
 #
 # 3. ALWAYS RUN FRONTEND BUILD:
-#    - We disable diff-based skips so the frontend phase runs on every commit:
-#      • In Amplify Console → App settings → Environment variables:
-#          AMPLIFY_DIFF_DEPLOY = false
+#    - We disable diff-based skips for frontend: AMPLIFY_DIFF_DEPLOY=false
 #
-# 4. KEEP THIS FILE AT REPO ROOT:
-#    - amplify.yml must live alongside package.json and the `amplify/` folder.
-#    - Any syntax or indentation errors here will break the build.
+# 4. SPEED OPTIMIZATIONS:
+#    - Enable diff-based skip for backend to save ~90s when infra is unchanged:
+#        AMPLIFY_DIFF_BACKEND=true (set in Console → Env variables)
+#    - Cache Vite & npm caches to slash install times.
 #
-# 5. WHENEVER YOU CHANGE BACKEND OR FRONTEND:
-#    - Commit & push both your `amplify/` folder _and_ this amplify.yml together on main.
-#    - Trigger a redeploy (empty commit or “Redeploy this version”) to pick up changes.
+# 5. KEEP FILE AT REPO ROOT:
+#    - amplify.yml beside package.json & amplify/ folder.
+#    - Watch indentation—YAML is sensitive!
 # ───────────────────────────────────────────────────────────────────────────────
 
 version: 1
@@ -31,23 +28,29 @@ backend:
       commands:
         - echo "BACKEND BUILD STARTING"
         - amplifyPush --simple
+
 frontend:
   phases:
     preBuild:
       commands:
-        - npm ci
+        # faster npm install: offline cache & no audit
+        - npm ci --prefer-offline --no-audit
     build:
       commands:
         - npm run build
         - echo "Build completed"
+
   artifacts:
-    # ← changed from dist → build
-    baseDirectory: build
+    baseDirectory: build   # Vite’s output folder
     files:
       - '**/*'
+
   cache:
     paths:
-      - node_modules/**/*
+      - node_modules/**/*   # dependency cache
+      - .vite/**/*          # Vite’s cache
+      - ~/.npm/**/*         # npm global cache
+
   customHeaders:
     - pattern: '**/*'
       headers:
