@@ -7,11 +7,18 @@ import './index.css';
 import { configureAmplify } from './aws-config';      // Import the configuration
 import ErudaProvider from './debug/ErudaProvider';   // Debug console
 
-// Initialize Amplify before the app starts
-configureAmplify();
+// Initialize Amplify before the app starts with better error handling
+try {
+  configureAmplify();
+  console.log("Amplify configured successfully");
+} catch (error) {
+  console.error("Failed to configure Amplify:", error);
+}
 
-// Log the Amplify API endpoint
+// Log the Amplify API endpoint and other env vars
 console.log("main.tsx - VITE_AMPLIFY_API:", import.meta.env.VITE_AMPLIFY_API);
+console.log("main.tsx - VITE_WORLD_APP_ID:", import.meta.env.VITE_WORLD_APP_ID);
+console.log("main.tsx - VITE_WORLD_ACTION_ID:", import.meta.env.VITE_WORLD_ACTION_ID);
 
 // Simple error boundary component
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean; error: any}> {
@@ -77,13 +84,27 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 try {
   console.log("Starting application...");
 
-  // Only run these logs in the browser
+  // Check for environment variables that match both naming patterns
   if (typeof window !== 'undefined') {
     console.log("Initializing on platform:", navigator.userAgent);
-    console.log("--- Checking Env Vars in main.tsx ---");
-    console.log("Value for VITE_WORLD_ID_APP_ID:", import.meta.env.VITE_WORLD_ID_APP_ID);
-    console.log("Value for VITE_WORLD_ID_ACTION:", import.meta.env.VITE_WORLD_ID_ACTION);
-    console.log("Value for VITE_AMPLIFY_API:", import.meta.env.VITE_AMPLIFY_API);
+    console.log("--- Environment Variables Check ---");
+    
+    // Check World ID variables with both naming conventions
+    const worldAppId = import.meta.env.VITE_WORLD_APP_ID || import.meta.env.VITE_WORLD_ID_APP_ID || 'app_0de9312869c4818fc1a1ec64306551b69';
+    const worldActionId = import.meta.env.VITE_WORLD_ACTION_ID || import.meta.env.VITE_WORLD_ID_ACTION || 'verify-user';
+    
+    console.log("World App ID:", worldAppId);
+    console.log("World Action ID:", worldActionId);
+    console.log("API Endpoint:", import.meta.env.VITE_AMPLIFY_API);
+    
+    // Make environment variables globally available as a fallback
+    // @ts-ignore
+    window.__ENV__ = {
+      WORLD_APP_ID: worldAppId,
+      WORLD_ACTION_ID: worldActionId,
+      AMPLIFY_API: import.meta.env.VITE_AMPLIFY_API
+    };
+    
     console.log("--------------------------------------");
   }
 
@@ -92,12 +113,13 @@ try {
     throw new Error("Failed to find the root element");
   }
 
+  // Always enable Eruda for debugging
+  const shouldEnableEruda = true; // Change this to force Eruda to load
+  
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      {/* Initialize Eruda in dev mode, on mobile, or when ?eruda=1 is present */}
-      {(import.meta.env.DEV ||
-        /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ||
-        window.location.search.includes('eruda')) && <ErudaProvider />}
+      {/* Always initialize Eruda for debugging */}
+      {shouldEnableEruda && <ErudaProvider />}
 
       <BrowserRouter>
         <ErrorBoundary>

@@ -136,7 +136,7 @@ const App: React.FC = () => {
         padding: '10px',
         fontSize: '12px',
         zIndex: 9999,
-        display: 'none', // flip to 'block' to see logs
+        display: 'block', // Changed from 'none' to 'block' to make debug logs visible
       }}
     />
   );
@@ -144,7 +144,7 @@ const App: React.FC = () => {
   return (
     <>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/landing" replace />} /> {/* Changed from /login to /landing */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
@@ -177,7 +177,7 @@ const App: React.FC = () => {
 
         <Route path="/new-campaign" element={<CreateCampaignForm />} />
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/landing" replace />} /> {/* Changed from /login to /landing */}
       </Routes>
 
       {debugOutput}
