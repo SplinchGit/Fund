@@ -28,37 +28,42 @@ export default function MiniKitProvider({
   appId
 }: MiniKitProviderProps) {
   const [appIdToUse, setAppIdToUse] = useState<string | undefined>(appId);
+  const [isInitialized, setIsInitialized] = useState(false);
   
   // Determine the app ID to use on mount
   useEffect(() => {
-    // First check if appId was passed as prop
-    if (appId) {
-      console.log('Using World App ID from props:', appId);
-      setAppIdToUse(appId);
-      return;
-    }
-    
-    // Then check for Vite environment variables with all possible naming patterns
-    const envAppId = import.meta.env.VITE_WORLD_APP_ID || 
-                     import.meta.env.VITE_WORLD_ID_APP_ID ||
-                     import.meta.env.WORLD_APP_ID || 
-                     // Use fallback from Amplify console if available
-                     'app_0de9312869c4818fc1a1ec64306551b69';
-    
-    console.log('MiniKitProvider - Environment App ID:', envAppId);
-    
-    // Check for global fallback from main.tsx if it exists
-    // @ts-ignore - This is set in main.tsx as a global fallback
-    const globalEnvAppId = window.__ENV__?.WORLD_APP_ID;
-    
-    if (globalEnvAppId) {
-      console.log('Using World App ID from global window.__ENV__:', globalEnvAppId);
-      setAppIdToUse(globalEnvAppId);
-    } else if (envAppId) {
-      console.log('Using World App ID from environment variables:', envAppId);
-      setAppIdToUse(envAppId);
-    } else {
-      console.warn('No World App ID found in environment variables or props');
+    try {
+      // First check if appId was passed as prop
+      if (appId) {
+        console.log('Using World App ID from props:', appId);
+        setAppIdToUse(appId);
+        return;
+      }
+      
+      // Then check for Vite environment variables with all possible naming patterns
+      const envAppId = import.meta.env.VITE_WORLD_APP_ID || 
+                       import.meta.env.VITE_WORLD_ID_APP_ID ||
+                       import.meta.env.WORLD_APP_ID || 
+                       // Use fallback from Amplify console if available
+                       'app_0de9312869c4818fc1a1ec64306551b69';
+      
+      console.log('MiniKitProvider - Environment App ID:', envAppId);
+      
+      // Check for global fallback from main.tsx if it exists
+      // @ts-ignore - This is set in main.tsx as a global fallback
+      const globalEnvAppId = window.__ENV__?.WORLD_APP_ID;
+      
+      if (globalEnvAppId) {
+        console.log('Using World App ID from global window.__ENV__:', globalEnvAppId);
+        setAppIdToUse(globalEnvAppId);
+      } else if (envAppId) {
+        console.log('Using World App ID from environment variables:', envAppId);
+        setAppIdToUse(envAppId);
+      } else {
+        console.warn('No World App ID found in environment variables or props');
+      }
+    } catch (error) {
+      console.error('Error setting up MiniKit App ID:', error);
     }
   }, [appId]);
 
@@ -69,6 +74,7 @@ export default function MiniKitProvider({
       return;
     }
     
+    let isMounted = true;
     console.log('Attempting to initialize MiniKit with App ID:', appIdToUse);
     
     const initializeMiniKit = async () => {
@@ -79,7 +85,10 @@ export default function MiniKitProvider({
           return;
         }
         
-        if (!MiniKit.isInstalled || !MiniKit.isInstalled()) {
+        // Check if MiniKit needs to be installed
+        const isInstalled = MiniKit.isInstalled && MiniKit.isInstalled();
+        
+        if (!isInstalled) {
           // Install MiniKit with your app ID
           console.log('Installing MiniKit...');
           await MiniKit.install(appIdToUse);
@@ -91,6 +100,9 @@ export default function MiniKitProvider({
         // Check if MiniKit is actually active
         if (MiniKit.isInstalled && MiniKit.isInstalled()) {
           console.log('MiniKit is active and ready');
+          if (isMounted) {
+            setIsInitialized(true);
+          }
         } else {
           console.error('MiniKit installation check failed');
         }
@@ -106,6 +118,11 @@ export default function MiniKitProvider({
     };
 
     initializeMiniKit();
+    
+    // Cleanup function for useEffect
+    return () => {
+      isMounted = false;
+    };
   }, [appIdToUse]);
 
   return <>{children}</>;

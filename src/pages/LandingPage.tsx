@@ -649,69 +649,66 @@ export default function LandingPage({
       </div>
 
       {/* --- World ID Authentication Modal --- */}
-      {/* FIXED: Removed unnecessary key prop and simplified Dialog implementation */}
-      <Dialog 
-        open={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
-        className="relative z-[110]"
-      >
-        {/* Backdrop */}
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        
-        {/* Modal Panel Container */}
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          {/* Modal Panel Content */}
-          <Dialog.Panel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="text-center mb-4">
-              <Dialog.Title className="text-xl font-bold mb-2 text-gray-900">Verify with World ID</Dialog.Title>
-              <p className="text-sm text-gray-600">Verify your identity to unlock all features</p>
-            </div>
-
-            {/* WorldIDAuth Component */}
-            <div className="py-4 flex justify-center">
-              <WorldIDAuth
-                onSuccess={handleVerificationSuccess}
-                onError={(error) => {
-                  console.error('WorldID verification error:', error);
-                }}
-              />
-            </div>
-
-            {/* Informational text about World ID benefits */}
-            <div className="mt-4 text-center">
-              <div className="flex flex-col gap-2 text-sm text-gray-600 mb-4">
-                <div className="flex items-center gap-2 justify-center">
-                  <svg style={{ width: '14px', height: '14px', color: '#34a853' }} viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                  </svg>
-                  Verify you're human
-                </div>
-                <div className="flex items-center gap-2 justify-center">
-                  <svg style={{ width: '14px', height: '14px', color: '#34a853' }} viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                  </svg>
-                  Prove your uniqueness
-                </div>
-                <div className="flex items-center gap-2 justify-center">
-                  <svg style={{ width: '14px', height: '14px', color: '#34a853' }} viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                  </svg>
-                  Protect your privacy
-                </div>
-              </div>
-
-              {/* Cancel button */}
-              <button
-                type="button"
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition duration-150 ease-in-out"
-                onClick={() => setIsAuthModalOpen(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          </Dialog.Panel> 
+{isAuthModalOpen && (
+  <Dialog 
+    open={isAuthModalOpen} 
+    onClose={() => setIsAuthModalOpen(false)}
+  >
+    {/* Backdrop */}
+    <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+    
+    {/* Modal Panel Container */}
+    <div className="fixed inset-0 flex items-center justify-center p-4">
+      {/* Modal Panel Content */}
+      <Dialog.Panel className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+        <div className="text-center mb-4">
+          <Dialog.Title className="text-xl font-bold mb-2 text-gray-900">Verify with World ID</Dialog.Title>
+          <p className="text-sm text-gray-600">Verify your identity to unlock all features</p>
         </div>
-      </Dialog>
+        {/* WorldIDAuth Component */}
+        <div className="py-4 flex justify-center">
+          <WorldIDAuth
+            onSuccess={handleVerificationSuccess}
+            onError={(error) => {
+              console.error('WorldID verification error:', error);
+            }}
+          />
+        </div>
+        {/* Informational text about World ID benefits */}
+        <div className="mt-4 text-center">
+          <div className="flex flex-col gap-2 text-sm text-gray-600 mb-4">
+            <div className="flex items-center gap-2 justify-center">
+              <svg style={{ width: '14px', height: '14px', color: '#34a853' }} viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+              </svg>
+              Verify you're human
+            </div>
+            <div className="flex items-center gap-2 justify-center">
+              <svg style={{ width: '14px', height: '14px', color: '#34a853' }} viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+              </svg>
+              Prove your uniqueness
+            </div>
+            <div className="flex items-center gap-2 justify-center">
+              <svg style={{ width: '14px', height: '14px', color: '#34a853' }} viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+              </svg>
+              Protect your privacy
+            </div>
+          </div>
+          {/* Cancel button */}
+          <button
+            type="button"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg transition duration-150 ease-in-out"
+            onClick={() => setIsAuthModalOpen(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      </Dialog.Panel> 
     </div>
-  );
+  </Dialog>
+)}
+</div>
+);
 }

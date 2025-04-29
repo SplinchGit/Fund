@@ -6,6 +6,14 @@ import App from './App';
 import './index.css';
 import { configureAmplify } from './aws-config';      // Import the configuration
 import ErudaProvider from './debug/ErudaProvider';   // Debug console
+import MiniKitProvider from './MiniKitProvider';   // MiniKit for World ID
+
+// Define Window.__ENV__ typing
+declare global {
+  interface Window {
+    __ENV__: Record<string, string>;
+  }
+}
 
 // Initialize Amplify before the app starts with better error handling
 try {
@@ -26,15 +34,15 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
     super(props);
     this.state = { hasError: false, error: null };
   }
-
+  
   static getDerivedStateFromError(error: any) {
     return { hasError: true, error };
   }
-
+  
   componentDidCatch(error: any, errorInfo: any) {
     console.error("React Error:", error, errorInfo);
   }
-
+  
   render() {
     if (this.state.hasError) {
       return (
@@ -83,7 +91,7 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 
 try {
   console.log("Starting application...");
-
+  
   // Check for environment variables that match both naming patterns
   if (typeof window !== 'undefined') {
     console.log("Initializing on platform:", navigator.userAgent);
@@ -98,11 +106,10 @@ try {
     console.log("API Endpoint:", import.meta.env.VITE_AMPLIFY_API);
     
     // Make environment variables globally available as a fallback
-    // @ts-ignore
     window.__ENV__ = {
       WORLD_APP_ID: worldAppId,
       WORLD_ACTION_ID: worldActionId,
-      AMPLIFY_API: import.meta.env.VITE_AMPLIFY_API
+      AMPLIFY_API: String(import.meta.env.VITE_AMPLIFY_API || '')
     };
     
     console.log("--------------------------------------");
@@ -120,7 +127,7 @@ try {
     <React.StrictMode>
       {/* Always initialize Eruda for debugging */}
       {shouldEnableEruda && <ErudaProvider />}
-
+      
       <BrowserRouter>
         <ErrorBoundary>
           <App />
@@ -130,7 +137,7 @@ try {
   );
 } catch (e) {
   console.error("Error during initialization:", e);
-
+  
   const rootElement = document.getElementById('root');
   if (rootElement) {
     rootElement.innerHTML = `
