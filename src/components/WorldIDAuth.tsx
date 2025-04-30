@@ -1,127 +1,131 @@
 // src/components/WorldIDAuth.tsx
-import React, { useEffect, useState } from 'react';
-import { IDKitWidget, ISuccessResult } from '@worldcoin/idkit';
-import { authService } from '../services/AuthService';
+import React, { useEffect, useState, useCallback } from 'react';
+import { IDKitWidget, ISuccessResult, VerificationLevel } from '@worldcoin/idkit';
+// Removed authService import - parent component handles backend calls
+// import { authService } from '../services/AuthService'; 
+// Import useAuth to get wallet address and authentication status
+import { useAuth } from './AuthContext'; 
 
-export interface IVerifiedUser {
-  success: boolean;
-  details: ISuccessResult;
-}
+// Removed local IVerifiedUser interface definition
 
+// Define the props this component expects
 export interface WorldIDAuthProps {
-  onSuccess?: (verification: IVerifiedUser) => void;
-  onError?: (error: unknown) => void;
+  // Callback function when IDKit returns a successful proof
+  onSuccess: (result: ISuccessResult) => void; 
+  // Callback function for errors within this component or IDKit
+  onError?: (error: unknown) => void; 
+  // Optional props for customization
   buttonText?: string;
   className?: string;
-  onLogout?: () => void;
+  // Optional props to pass to IDKitWidget
+  action: string; // Action ID is now required via props
+  app_id: `app_${string}`; // App ID is now required via props
+  verification_level?: VerificationLevel; // Optional verification level
+  // Removed onLogout prop
 }
 
 const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
-  onSuccess,
+  onSuccess, // Renamed handleSuccess internally
   onError,
   buttonText = 'Verify with World ID',
   className,
-  onLogout,
+  action, // Destructure required props
+  app_id,
+  verification_level = VerificationLevel.Orb // Default to Orb verification
 }) => {
-  const [verification, setVerification] = useState<IVerifiedUser | null>(null);
-  const [signal, setSignal] = useState<string>('');
+  // Removed local verification state
+  // const [verification, setVerification] = useState<IVerifiedUser | null>(null);
 
-  const appId = import.meta.env.VITE_WORLD_APP_ID;
-  const actionName = import.meta.env.VITE_WORLD_ACTION_ID;
+  // State to hold the signal (wallet address)
+  const [signal, setSignal] = useState<string>(''); 
+  // Get auth state from context
+  const { isAuthenticated, walletAddress } = useAuth(); 
 
+  // Validate required props and set signal based on auth state
   useEffect(() => {
-    if (!appId) {
-      const err = new Error('Missing VITE_WORLD_APP_ID');
+    // Check required props passed from parent
+    if (!app_id) {
+      const err = new Error('WorldIDAuth component requires an app_id prop.');
       console.error(err);
       onError?.(err);
+      return; // Stop if essential props are missing
     }
-    if (!actionName) {
-      const err = new Error('Missing VITE_WORLD_ACTION_ID');
+    if (!action) {
+      const err = new Error('WorldIDAuth component requires an action prop.');
       console.error(err);
       onError?.(err);
+      return; // Stop if essential props are missing
     }
 
-    authService
-      .checkAuthStatus()
-      .then(({ isAuthenticated, username }) => {
-        if (!isAuthenticated || !username) {
-          const err = new Error('User must be logged in to verify World ID');
-          console.error(err);
-          onError?.(err);
-        } else {
-          setSignal(username);
-        }
-      })
-      .catch((e) => {
-        console.error('Error checking auth status:', e);
-        onError?.(e);
-      });
-  }, [appId, actionName, onError]);
-
-  const handleSuccess = async (result: ISuccessResult) => {
-    try {
-      const serverResult = await authService.verifyWorldId(result);
-      if (!serverResult.success) {
-        throw new Error('Server rejected World ID proof');
-      }
-
-      await authService.attachNullifier(result.nullifier_hash);
-
-      const verifiedUser: IVerifiedUser = { success: true, details: result };
-      setVerification(verifiedUser);
-      onSuccess?.(verifiedUser);
-    } catch (e) {
-      console.error('World ID full verification failed:', e);
-      onError?.(e);
+    // Check if user is authenticated via context
+    if (!isAuthenticated || !walletAddress) {
+      const err = new Error('User must be authenticated (wallet connected) to verify World ID.');
+      console.error('[WorldIDAuth]', err.message);
+      // Don't immediately call onError here, let the button click handle it
+      // onError?.(err); 
+      setSignal(''); // Ensure signal is empty if not authenticated
+    } else {
+      // Use the authenticated wallet address as the signal
+      console.log('[WorldIDAuth] Setting signal to wallet address:', walletAddress);
+      setSignal(walletAddress);
     }
-  };
+    // Dependencies: Run when auth state changes or required props change
+  }, [isAuthenticated, walletAddress, app_id, action, onError]);
 
-  const handleError = (e: unknown) => {
-    console.error('World ID widget error:', e);
-    onError?.(e);
-  };
+  // Simplified handleSuccess: Directly call the onSuccess prop passed by the parent
+  const handleIDKitSuccess = useCallback((result: ISuccessResult) => {
+    console.log('[WorldIDAuth] IDKit verification successful, returning proof:', result);
+    // Pass the raw proof result to the parent component
+    onSuccess(result); 
+    // Parent component (e.g., VerifyAccount) is now responsible for:
+    // 1. Calling authService.verifyWorldIdProof(result)
+    // 2. Handling the backend response
+    // 3. Updating global state if needed
+  }, [onSuccess]); // Dependency: onSuccess prop
 
-  const handleLogoutClick = () => {
-    setVerification(null);
-    onLogout?.();
-  };
+  // Simplified handleError: Directly call the onError prop
+  const handleIDKitError = useCallback((error: unknown) => {
+    console.error('[WorldIDAuth] IDKit widget error:', error);
+    onError?.(error); // Pass the error up to the parent
+  }, [onError]); // Dependency: onError prop
 
-  if (verification) {
-    return (
-      <div className={className}>
-        <span>✅ World ID verified</span>
-        {onLogout && (
-          <button onClick={handleLogoutClick} style={{ marginLeft: 8 }}>
-            Logout
-          </button>
-        )}
-      </div>
-    );
+  // Removed handleLogoutClick and the conditional rendering based on local state
+
+  // Check if essential props are missing before rendering IDKit
+  if (!app_id || !action) {
+     return <button disabled className={className}>World ID Widget Configuration Error</button>;
   }
 
+  // Render the IDKitWidget
   return (
     <IDKitWidget
-      app_id={appId as `app_${string}`}
-      action={actionName!}
-      signal={signal}
-      onSuccess={handleSuccess}
-      onError={handleError}
+      app_id={app_id}
+      action={action}
+      signal={signal} // Use walletAddress as signal
+      onSuccess={handleIDKitSuccess} // Pass the simplified success handler
+      onError={handleIDKitError}     // Pass the simplified error handler
+      verification_level={verification_level} // Pass verification level
+      // Other IDKit props like `theme`, `enableTelemetry` can be added here
     >
       {({ open }) => (
         <button
           type="button"
           onClick={() => {
-            if (!signal) {
+            // Check for authentication / signal *before* opening the modal
+            if (!isAuthenticated || !signal) {
               const err = new Error(
-                'Cannot open World ID widget without user signal'
+                'User must be authenticated with a wallet address to verify.'
               );
-              console.error(err);
-              onError?.(err);
-              return;
+              console.error('[WorldIDAuth]', err.message);
+              onError?.(err); // Notify parent of the error
+              return; // Don't open if not ready
             }
-            open();
+            console.log('[WorldIDAuth] Opening IDKit modal...');
+            open(); // Open the IDKit modal
           }}
           className={className}
+          // Disable button if not authenticated or signal isn't ready
+          disabled={!isAuthenticated || !signal} 
         >
           {buttonText}
         </button>
