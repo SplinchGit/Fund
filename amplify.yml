@@ -41,14 +41,14 @@ frontend:
         - echo "Build completed"
 
   artifacts:
-    baseDirectory: build   # Vite's output folder
+    baseDirectory: dist    # ← updated to match Vite’s outDir
     files:
       - '**/*'
 
   cache:
     paths:
       - node_modules/**/*   # dependency cache
-      - .vite/**/*          # Vite's cache
+      - .vite/**/*          # Vite’s cache
       - ~/.npm/**/*         # npm global cache
 
   customHeaders:
@@ -72,5 +72,5 @@ frontend:
     # Original cache control settings
     - pattern: '**/*'
       headers:
-        - key: Cache-Control
+        - key: 'Cache-Control'
           value: max-age=0, no-cache, no-store, must-revalidate
