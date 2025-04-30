@@ -1,36 +1,42 @@
 // src/services/AuthService.ts
 
 import {
+  fetchAuthSession,
+  getCurrentUser,
   signUp,
   signIn,
   confirmSignUp,
   updateUserAttributes,
   signOut,
-  getCurrentUser,
-  fetchAuthSession
-} from 'aws-amplify/auth';
+} from '@aws-amplify/auth';
 import type { ISuccessResult } from '@worldcoin/idkit';
 
 /// -----------------------------------------------------------------------------
 /// ENV VARS REQUIRED AT BUILD-TIME (Amplify Hosting → Environment variables):
-///   VITE_AMPLIFY_API    ← your API Gateway invoke URL
-///   VITE_API_KEY        ← the API key for your REST endpoint (if used)
+///   VITE_AMPLIFY_API    ← API Gateway invoke URL (e.g. https://xyz.execute-api.region.amazonaws.com/dev)
+///   VITE_API_KEY        ← the API key for your REST endpoint (if required)
 /// -----------------------------------------------------------------------------
 
-/** A verified World ID proof (returned by your /verify Lambda) */
+/**
+ * A verified World ID proof (returned by your /verify Lambda)
+ */
 export interface IVerifiedUser {
   success: boolean;
   details: ISuccessResult;
 }
 
-/** Result of a Cognito registration attempt */
+/**
+ * Result of a Cognito registration attempt
+ */
 export interface IRegisterResult {
   success: boolean;
   error?: string;
   nextStep?: any;
 }
 
-/** Result of a Cognito login attempt */
+/**
+ * Result of a Cognito login attempt
+ */
 export interface ILoginResult {
   success: boolean;
   requiresConfirmation?: boolean;
@@ -47,6 +53,9 @@ class AuthService {
     if (!this.API_KEY) console.warn('Missing VITE_API_KEY');
   }
 
+  /**
+   * Get singleton instance
+   */
   public static getInstance(): AuthService {
     if (!AuthService.instance) {
       AuthService.instance = new AuthService();
@@ -55,26 +64,24 @@ class AuthService {
   }
 
   /**
-   * Verify World ID proof via backend
+   * Send World ID proof details to backend for server-side verification
    */
   public async verifyWorldId(details: ISuccessResult): Promise<IVerifiedUser> {
     const session = await fetchAuthSession();
     const idTokenObj = session.tokens?.idToken;
-    if (!idTokenObj) {
-      throw new Error('No ID token available in session');
-    }
+    if (!idTokenObj) throw new Error('No ID token available');
     const token = idTokenObj.toString();
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`
+      Authorization: `Bearer ${token}`,
     };
     if (this.API_KEY) headers['x-api-key'] = this.API_KEY;
 
     const res = await fetch(`${this.API_BASE}/verify`, {
       method: 'POST',
       headers,
-      body: JSON.stringify(details)
+      body: JSON.stringify(details),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
@@ -92,15 +99,15 @@ class AuthService {
     email: string
   ): Promise<IRegisterResult> {
     try {
-      const output = await signUp({
+      const nextStep = await signUp({
         username,
         password,
-        options: { userAttributes: { email } }
+        options: { userAttributes: { email } },
       });
-      return { success: true, nextStep: output };
-    } catch (err: any) {
-      console.error('Registration failed:', err);
-      return { success: false, error: err.message || 'Sign-up failed' };
+      return { success: true, nextStep };
+    } catch (e: any) {
+      console.error('Registration failed:', e);
+      return { success: false, error: e.message || 'Sign-up failed' };
     }
   }
 
@@ -117,17 +124,17 @@ class AuthService {
         return { success: false, requiresConfirmation: true };
       }
       return { success: true };
-    } catch (err: any) {
-      if (err.name === 'UserNotConfirmedException') {
+    } catch (e: any) {
+      if (e.name === 'UserNotConfirmedException') {
         return { success: false, requiresConfirmation: true };
       }
-      console.error('Sign-in failed:', err);
-      return { success: false, error: err.message || 'Sign-in failed' };
+      console.error('Sign-in failed:', e);
+      return { success: false, error: e.message || 'Sign-in failed' };
     }
   }
 
   /**
-   * Confirm user sign-up
+   * Confirm a newly-registered user with their confirmation code
    */
   public async confirmSignUp(
     username: string,
@@ -136,45 +143,47 @@ class AuthService {
     try {
       await confirmSignUp({ username, confirmationCode: code });
       return { success: true };
-    } catch (err: any) {
-      console.error('Confirmation failed:', err);
-      return { success: false, error: err.message || 'Confirmation failed' };
+    } catch (e: any) {
+      console.error('Confirmation failed:', e);
+      return { success: false, error: e.message || 'Confirmation failed' };
     }
   }
 
   /**
-   * Persist World ID nullifier for user
+   * Persist World ID nullifier hash to Cognito user attributes
    */
   public async attachNullifier(
     nullifier: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      // fetch the current authenticated user
-      const user = await getCurrentUser();
-      // update the custom attribute with the nullifier hash
-      await updateUserAttributes({
+      await updateUserAttributes({ 
         userAttributes: { 'custom:nullifierHash': nullifier }
       });
       return { success: true };
-    } catch (err: any) {
-      console.error('Attach nullifier failed:', err);
-      if (err.name === 'NotAuthorizedException') {
+    } catch (e: any) {
+      console.error('Attach nullifier failed:', e);
+      if (e.name === 'NotAuthorizedException') {
         return { success: false, error: 'User not authenticated' };
       }
-      return { success: false, error: err.message || 'Attach failed' };
-    }
-  }public async logout(): Promise<{ success: boolean; error?: string }> {
-    try {
-      await signOut();
-      return { success: true };
-    } catch (err: any) {
-      console.error('Sign-out failed:', err);
-      return { success: false, error: err.message || 'Sign-out failed' };
+      return { success: false, error: e.message || 'Attach failed' };
     }
   }
 
   /**
-   * Check if user is authenticated
+   * Sign out the current Cognito user
+   */
+  public async logout(): Promise<{ success: boolean; error?: string }> {
+    try {
+      await signOut();
+      return { success: true };
+    } catch (e: any) {
+      console.error('Sign-out failed:', e);
+      return { success: false, error: e.message || 'Sign-out failed' };
+    }
+  }
+
+  /**
+   * Check if a user is currently authenticated
    */
   public async checkAuthStatus(): Promise<{ isAuthenticated: boolean; username?: string }> {
     try {
