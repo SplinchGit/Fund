@@ -1,48 +1,57 @@
-// src/main.tsx - Ensuring BrowserRouter is properly set up and Eruda for debugging
+// src/main.tsx
+
+// Top-level error listeners to capture real, source-mapped stacks
+window.addEventListener('error', (event) => {
+  console.error('🔥 Caught error stack:', event.error?.stack);
+});
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('🔥 Unhandled promise rejection:', event.reason?.stack || event.reason);
+});
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
-import { configureAmplify } from './aws-config';      // Import the configuration
-import ErudaProvider from './debug/ErudaProvider';   // Debug console
-import MiniKitProvider from './MiniKitProvider';   // MiniKit for World ID
+import { configureAmplify } from './aws-config';      // AWS Amplify setup
+import ErudaProvider from './debug/ErudaProvider';   // In-app console
+import MiniKitProvider from './MiniKitProvider';     // World ID Kit
 
-// Define Window.__ENV__ typing
+// Extend window typing for injected env vars
 declare global {
   interface Window {
     __ENV__: Record<string, string>;
   }
 }
 
-// Initialize Amplify before the app starts with better error handling
+// Configure Amplify before mounting
 try {
   configureAmplify();
-  console.log("Amplify configured successfully");
+  console.log('Amplify configured successfully');
 } catch (error) {
-  console.error("Failed to configure Amplify:", error);
+  console.error('Failed to configure Amplify:', error);
 }
 
-// Log the Amplify API endpoint and other env vars
-console.log("main.tsx - VITE_AMPLIFY_API:", import.meta.env.VITE_AMPLIFY_API);
-console.log("main.tsx - VITE_WORLD_APP_ID:", import.meta.env.VITE_WORLD_APP_ID);
-console.log("main.tsx - VITE_WORLD_ACTION_ID:", import.meta.env.VITE_WORLD_ACTION_ID);
+// Log key env variables
+console.log('main.tsx - VITE_AMPLIFY_API:', import.meta.env.VITE_AMPLIFY_API);
+console.log('main.tsx - VITE_WORLD_APP_ID:', import.meta.env.VITE_WORLD_APP_ID);
+console.log('main.tsx - VITE_WORLD_ACTION_ID:', import.meta.env.VITE_WORLD_ACTION_ID);
 
-// Simple error boundary component
-class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean; error: any}> {
-  constructor(props: {children: React.ReactNode}) {
+// A simple React error boundary
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
+  constructor(props: { children: React.ReactNode }) {
     super(props);
     this.state = { hasError: false, error: null };
   }
-  
+
   static getDerivedStateFromError(error: any) {
     return { hasError: true, error };
   }
-  
-  componentDidCatch(error: any, errorInfo: any) {
-    console.error("React Error:", error, errorInfo);
+
+  componentDidCatch(error: any, info: any) {
+    console.error('React Error:', error, info);
   }
-  
+
   render() {
     if (this.state.hasError) {
       return (
@@ -66,7 +75,7 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
             overflow: 'auto',
             fontSize: '12px'
           }}>
-            {this.state.error && this.state.error.toString()}
+            {this.state.error?.toString()}
           </pre>
           <button
             onClick={() => window.location.reload()}
@@ -85,62 +94,66 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
         </div>
       );
     }
+
     return this.props.children;
   }
 }
 
+// Bootstrapping
 try {
-  console.log("Starting application...");
-  
-  // Check for environment variables that match both naming patterns
+  console.log('Starting application...');
+
   if (typeof window !== 'undefined') {
-    console.log("Initializing on platform:", navigator.userAgent);
-    console.log("--- Environment Variables Check ---");
-    
-    // Check World ID variables with both naming conventions
-    const worldAppId = import.meta.env.VITE_WORLD_APP_ID || import.meta.env.VITE_WORLD_ID_APP_ID || 'app_0de9312869c4818fc1a1ec64306551b69';
-    const worldActionId = import.meta.env.VITE_WORLD_ACTION_ID || import.meta.env.VITE_WORLD_ID_ACTION || 'verify-user';
-    
-    console.log("World App ID:", worldAppId);
-    console.log("World Action ID:", worldActionId);
-    console.log("API Endpoint:", import.meta.env.VITE_AMPLIFY_API);
-    
-    // Make environment variables globally available as a fallback
+    console.log('Initializing on platform:', navigator.userAgent);
+    console.log('--- Environment Variables Check ---');
+
+    const worldAppId = import.meta.env.VITE_WORLD_APP_ID
+      || import.meta.env.VITE_WORLD_ID_APP_ID
+      || 'app_0de9312869c4818fc1a1ec64306551b69';
+    const worldActionId = import.meta.env.VITE_WORLD_ACTION_ID
+      || import.meta.env.VITE_WORLD_ID_ACTION
+      || 'verify-user';
+
+    console.log('World App ID:', worldAppId);
+    console.log('World Action ID:', worldActionId);
+    console.log('API Endpoint:', import.meta.env.VITE_AMPLIFY_API);
+
     window.__ENV__ = {
       WORLD_APP_ID: worldAppId,
       WORLD_ACTION_ID: worldActionId,
       AMPLIFY_API: String(import.meta.env.VITE_AMPLIFY_API || '')
     };
-    
-    console.log("--------------------------------------");
+
+    console.log('--------------------------------------');
   }
 
-  const rootElement = document.getElementById('root');
-  if (!rootElement) {
-    throw new Error("Failed to find the root element");
-  }
+  const root = document.getElementById('root');
+  if (!root) throw new Error('Failed to find the root element');
 
-  // Always enable Eruda for debugging
-  const shouldEnableEruda = true; // Change this to force Eruda to load
-  
-  ReactDOM.createRoot(rootElement).render(
+  // Always load Eruda for on-device debugging
+  const shouldEnableEruda = true;
+
+  ReactDOM.createRoot(root).render(
     <React.StrictMode>
-      {/* Always initialize Eruda for debugging */}
       {shouldEnableEruda && <ErudaProvider />}
-      
+
       <BrowserRouter>
         <ErrorBoundary>
-          <App />
+          {/* Wrap the whole app in MiniKitProvider so context is initialized */}
+          <MiniKitProvider>
+            <App />
+          </MiniKitProvider>
         </ErrorBoundary>
       </BrowserRouter>
     </React.StrictMode>
   );
+
 } catch (e) {
-  console.error("Error during initialization:", e);
-  
-  const rootElement = document.getElementById('root');
-  if (rootElement) {
-    rootElement.innerHTML = `
+  console.error('Error during initialization:', e);
+
+  const root = document.getElementById('root');
+  if (root) {
+    root.innerHTML = `
       <div style="padding:20px;margin:0 auto;max-width:500px;text-align:center;color:#e53e3e;">
         <h1>Failed to start application</h1>
         <p>${e instanceof Error ? e.message : String(e)}</p>
