@@ -1,6 +1,13 @@
 // src/main.tsx
 
-// Top-level error listeners to capture real, source-mapped stacks
+/**
+ * 🛠️ IMPORTANT SETUP:
+ * 1. Wrap <App/> in <MiniKitProvider> so World ID’s context initializes properly.
+ * 2. Global error listeners print full, source-mapped stack traces.
+ * 3. Ensure VITE_WORLD_APP_ID is injected into window.__ENV__ before render.
+ */
+
+// 3) Global error listeners
 window.addEventListener('error', (event) => {
   console.error('🔥 Caught error stack:', event.error?.stack);
 });
@@ -14,17 +21,17 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
 import { configureAmplify } from './aws-config';      // AWS Amplify setup
-import ErudaProvider from './debug/ErudaProvider';   // In-app console
-import MiniKitProvider from './MiniKitProvider';     // World ID Kit
+import ErudaProvider from './debug/ErudaProvider';   // In-app debug console
+import MiniKitProvider from './MiniKitProvider';     // Official World ID MiniKit provider
 
 // Extend window typing for injected env vars
 declare global {
   interface Window {
-    __ENV__: Record<string, string>;
+    __ENV__?: Record<string, string>;
   }
 }
 
-// Configure Amplify before mounting
+// 1) Initialize Amplify
 try {
   configureAmplify();
   console.log('Amplify configured successfully');
@@ -36,6 +43,16 @@ try {
 console.log('main.tsx - VITE_AMPLIFY_API:', import.meta.env.VITE_AMPLIFY_API);
 console.log('main.tsx - VITE_WORLD_APP_ID:', import.meta.env.VITE_WORLD_APP_ID);
 console.log('main.tsx - VITE_WORLD_ACTION_ID:', import.meta.env.VITE_WORLD_ACTION_ID);
+
+// 2) Inject WORLD_APP_ID into global scope for MiniKitProvider
+const envAppId = import.meta.env.VITE_WORLD_APP_ID
+  || import.meta.env.VITE_WORLD_ID_APP_ID;
+if (envAppId) {
+  window.__ENV__ = { ...(window.__ENV__ || {}), WORLD_APP_ID: envAppId };
+  console.log('Injected WORLD_APP_ID into window.__ENV__:', envAppId);
+} else {
+  console.warn('No VITE_WORLD_APP_ID found; MiniKitProvider may error if not passed via props');
+}
 
 // A simple React error boundary
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
@@ -94,73 +111,26 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
         </div>
       );
     }
-
     return this.props.children;
   }
 }
 
-// Bootstrapping
-try {
-  console.log('Starting application...');
+// Render application
+const rootEl = document.getElementById('root');
+if (!rootEl) throw new Error('Root element not found');
 
-  if (typeof window !== 'undefined') {
-    console.log('Initializing on platform:', navigator.userAgent);
-    console.log('--- Environment Variables Check ---');
+ReactDOM.createRoot(rootEl).render(
+  <React.StrictMode>
+    {/* In-app debug console via Eruda */}
+    <ErudaProvider />
 
-    const worldAppId = import.meta.env.VITE_WORLD_APP_ID
-      || import.meta.env.VITE_WORLD_ID_APP_ID
-      || 'app_0de9312869c4818fc1a1ec64306551b69';
-    const worldActionId = import.meta.env.VITE_WORLD_ACTION_ID
-      || import.meta.env.VITE_WORLD_ID_ACTION
-      || 'verify-user';
-
-    console.log('World App ID:', worldAppId);
-    console.log('World Action ID:', worldActionId);
-    console.log('API Endpoint:', import.meta.env.VITE_AMPLIFY_API);
-
-    window.__ENV__ = {
-      WORLD_APP_ID: worldAppId,
-      WORLD_ACTION_ID: worldActionId,
-      AMPLIFY_API: String(import.meta.env.VITE_AMPLIFY_API || '')
-    };
-
-    console.log('--------------------------------------');
-  }
-
-  const root = document.getElementById('root');
-  if (!root) throw new Error('Failed to find the root element');
-
-  // Always load Eruda for on-device debugging
-  const shouldEnableEruda = true;
-
-  ReactDOM.createRoot(root).render(
-    <React.StrictMode>
-      {shouldEnableEruda && <ErudaProvider />}
-
-      <BrowserRouter>
-        <ErrorBoundary>
-          {/* Wrap the whole app in MiniKitProvider so context is initialized */}
-          <MiniKitProvider>
-            <App />
-          </MiniKitProvider>
-        </ErrorBoundary>
-      </BrowserRouter>
-    </React.StrictMode>
-  );
-
-} catch (e) {
-  console.error('Error during initialization:', e);
-
-  const root = document.getElementById('root');
-  if (root) {
-    root.innerHTML = `
-      <div style="padding:20px;margin:0 auto;max-width:500px;text-align:center;color:#e53e3e;">
-        <h1>Failed to start application</h1>
-        <p>${e instanceof Error ? e.message : String(e)}</p>
-        <button onclick="window.location.reload()" style="margin-top:20px;padding:10px 20px;background-color:#3182ce;color:white;border:none;border-radius:5px;cursor:pointer;">
-          Reload Page
-        </button>
-      </div>
-    `;
-  }
-}
+    <BrowserRouter>
+      {/* Wrap the entire app in MiniKitProvider for World ID context */}
+      <ErrorBoundary>
+        <MiniKitProvider>
+          <App />
+        </MiniKitProvider>
+      </ErrorBoundary>
+    </BrowserRouter>
+  </React.StrictMode>
+);
