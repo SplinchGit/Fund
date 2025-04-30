@@ -1,144 +1,108 @@
 // src/pages/Register.tsx
+
 import React, { useState } from 'react';
-import { cognitoAuth, IVerifiedUser } from '../services/AuthService';
+import { authService, IVerifiedUser } from '../services/AuthService';
 import WorldIDAuth from '../components/WorldIDAuth';
+import { useNavigate, Link } from 'react-router-dom';
 
-const Register: React.FC = () => {
-  // --- Form state ---
-  const [email, setEmail] = useState('');
+export const Register: React.FC = () => {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-
-  // --- World ID verification state ---
+  const [email, setEmail] = useState('');
   const [verification, setVerification] = useState<IVerifiedUser | null>(null);
-  const [worldError, setWorldError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
-  // --- Registration state ---
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Called when WorldIDAuth succeeds
-  const handleWorldSuccess = (v: IVerifiedUser) => {
-    setVerification(v);
-    setWorldError(null);
-  };
-
-  // Called when WorldIDAuth errors
-  const handleWorldError = (err: unknown) => {
-    setVerification(null);
-    setWorldError('World ID verification failed. Please try again.');
-  };
-
-  // Handle the full registration flow
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitError(null);
-
-    // Basic form validation
-    if (!email || !password) {
-      setSubmitError('Email and password are required.');
+    setError(null);
+    if (!username || !password || !email) {
+      setError('All fields are required');
       return;
     }
-    if (!verification) {
-      setSubmitError('Please complete World ID verification first.');
-      return;
-    }
-
-    setIsSubmitting(true);
-
+    setIsLoading(true);
     try {
-      // 1) (Optional) re-verify the proof server-side
-      await cognitoAuth.verifyWorldId(verification.details);
-
-      // 2) register in Cognito, passing the proof nullifier
-      const result = await cognitoAuth.register(
-        email,
-        password,
-        email,
-      );
-      if (!result.success) {
-        throw new Error(result.error || 'Registration failed');
+      const result = await authService.register(username, password, email);
+      if (result.success) {
+        // proceed to world ID verification if desired
+        navigate('/login');
+      } else {
+        setError(result.error || 'Registration failed');
       }
-
-      // Success!
-      alert('Registration successful! Please check your email to confirm.');
-      // Reset form & state
-      setEmail('');
-      setPassword('');
-      setVerification(null);
     } catch (err: any) {
-      setSubmitError(err.message || 'Registration encountered an error.');
+      setError(err.message || 'An unexpected error occurred');
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: '2rem auto', padding: '1rem', border: '1px solid #ccc', borderRadius: 8 }}>
-      <h2 style={{ textAlign: 'center' }}>Create Account</h2>
-
-      <form onSubmit={handleSubmit} noValidate>
-        {/* Email */}
-        <div style={{ marginBottom: '0.75rem' }}>
-          <label htmlFor="email">Email</label><br />
+    <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg">
+      <h2 className="text-2xl font-bold text-center mb-6">Register</h2>
+      <form onSubmit={handleSubmit}>
+        <div className="mb-4">
+          <label htmlFor="username" className="block text-gray-700 text-sm font-bold mb-2">
+            Username
+          </label>
+          <input
+            id="username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={isLoading}
+            required
+          />
+        </div>
+        <div className="mb-4">
+          <label htmlFor="email" className="block text-gray-700 text-sm font-bold mb-2">
+            Email
+          </label>
           <input
             id="email"
             type="email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
-            style={{ width: '100%', padding: 8, boxSizing: 'border-box' }}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={isLoading}
             required
           />
         </div>
-
-        {/* Password */}
-        <div style={{ marginBottom: '0.75rem' }}>
-          <label htmlFor="password">Password</label><br />
+        <div className="mb-6">
+          <label htmlFor="password" className="block text-gray-700 text-sm font-bold mb-2">
+            Password
+          </label>
           <input
             id="password"
             type="password"
             value={password}
-            onChange={e => setPassword(e.target.value)}
-            style={{ width: '100%', padding: 8, boxSizing: 'border-box' }}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={isLoading}
             required
-            minLength={8}
           />
         </div>
-
-        {/* World ID Verification */}
-        <div style={{ margin: '1rem 0' }}>
-          <label>World ID Verification</label><br />
-          <WorldIDAuth
-            onSuccess={handleWorldSuccess}
-            onError={handleWorldError}
-            buttonText="Verify with World ID"
-          />
-          {worldError && (
-            <div style={{ color: 'red', marginTop: 4 }}>{worldError}</div>
-          )}
-        </div>
-
-        {/* Submission error */}
-        {submitError && (
-          <div style={{ color: 'red', marginBottom: 8 }}>{submitError}</div>
+        {error && (
+          <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded-md">
+            {error}
+          </div>
         )}
-
-        {/* Submit button */}
         <button
           type="submit"
-          disabled={isSubmitting}
-          style={{
-            width: '100%',
-            padding: '0.75rem',
-            background: isSubmitting ? '#ccc' : '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: 4,
-            cursor: isSubmitting ? 'not-allowed' : 'pointer'
-          }}
+          disabled={isLoading}
+          className={`w-full py-2 px-4 rounded-md text-white font-medium
+            ${isLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
         >
-          {isSubmitting ? 'Registering…' : 'Register'}
+          {isLoading ? 'Registering...' : 'Register'}
         </button>
       </form>
+      <div className="mt-4 text-center">
+        <span className="text-gray-600">Already have an account? </span>
+        <Link to="/login" className="text-blue-600 hover:text-blue-800">
+          Log in here
+        </Link>
+      </div>
     </div>
   );
 };
