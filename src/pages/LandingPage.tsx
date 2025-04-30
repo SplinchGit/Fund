@@ -1,158 +1,50 @@
-// -----------------------------
-// WORLDFund - Landing Page Component - LandingPage.tsx
-// -----------------------------
 
-import * as React from 'react';
-import { useState, useEffect, useCallback, JSX, } from 'react';
-import { Dialog } from '@headlessui/react';
-import WorldIDAuth from '../components/WorldIDAuth';
-import { cognitoAuth, IVerifiedUser } from '../services/AuthService';
-
-// -----------------------------
-// INTERFACES
-// -----------------------------
-
-interface LandingPageProps {
-  initialVerification: IVerifiedUser | null;
-  onVerificationChange: (verification: IVerifiedUser | null) => void;
-  onNavigate?: (page: string) => void; // Add this new prop
-}
-
-interface Campaign {
-  id: number;
-  title: string;
-  creator: string;
-  raised: string;
-  goal: string;
-  image: string;
-  description: string;
-  daysLeft: number;
-  isVerified: boolean;
-}
-
-// -----------------------------
-// MAIN COMPONENT
-// -----------------------------
-
-export default function LandingPage({
-  initialVerification = null,
-  onVerificationChange,
-  onNavigate // Add this
-}: LandingPageProps): JSX.Element {
-
-  // -----------------------------
-  // STATE MANAGEMENT
-  // -----------------------------
+  import React, { useState } from 'react';
+  import { Dialog } from '@headlessui/react';
+  import WorldIDAuth from '../components/WorldIDAuth';
   
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [userVerification, setUserVerification] = useState(initialVerification as IVerifiedUser | null);
-
-  // Monitor modal state for debugging
-  useEffect(() => {
-    console.log("[Effect] Modal state changed:", isAuthModalOpen);
-  }, [isAuthModalOpen]);
-
-  // -----------------------------
-  // EVENT HANDLERS
-  // -----------------------------
+  const LandingPage: React.FC = () => {
+    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+    const [userVerification, setUserVerification] = useState(false);
   
-  // Handle successful verification
-  const handleVerificationSuccess = useCallback((verifiedUser: IVerifiedUser) => {
-    console.log("LandingPage: Verification successful callback received:", verifiedUser);
-    setUserVerification(verifiedUser);
-    if (onVerificationChange) {
-      onVerificationChange(verifiedUser);
+    const handleVerifyButtonClick = () => {
+      setIsAuthModalOpen(true);
+    };
+  
+    const handleVerificationSuccess = () => {
+      setUserVerification(true);
+      setIsAuthModalOpen(false);
+    };
+  
+    const handleLogout = () => {
+      setUserVerification(false);
+    };
+  
+    const calculateProgressPercentage = (raised: number, goal: number) => {
+      return Math.min(Math.round((raised / goal) * 100), 100) + '%';
+    };
+  
+    interface Campaign {
+      id: string;
+      title: string;
+      description: string;
+      image: string;
+      raised: number;
+      goal: number;
+      daysLeft: number;
+      creator: string;
+      isVerified: boolean;
     }
-    setIsAuthModalOpen(false);
-  }, [onVerificationChange]);
-
-  // Handle logout
-  const handleLogout = () => {
-    cognitoAuth.logout().then(() => {
-      console.log("Logout successful");
-      setUserVerification(null);
-      if (onVerificationChange) {
-        onVerificationChange(null);
-      }
-    }).catch((error: any) => {
-      console.error("Error during logout:", error);
-    });
-  };
-
-  // Handle verify button click - Fixed implementation
-  const handleVerifyButtonClick = useCallback(() => {
-    // Simpler implementation without try/catch and extra logging
-    setIsAuthModalOpen(true);
-  }, []);
-
-  // -----------------------------
-  // DATA & UTILITIES
-  // -----------------------------
   
-  // Sample campaign data
-  const campaigns: Campaign[] = [
-    {
-      id: 1,
-      title: "PC Monitor",
-      creator: "John Adams",
-      raised: "£57",
-      goal: "£300",
-      image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
-      description: "Help me upgrade my workstation with a new monitor for coding and design projects.",
-      daysLeft: 14,
-      isVerified: true
-    },
-    {
-      id: 2,
-      title: "Desk",
-      creator: "Rachel Scott",
-      raised: "£17",
-      goal: "£50",
-      image: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
-      description: "Looking to replace my broken desk with a sturdy new one for my home office setup.",
-      daysLeft: 21,
-      isVerified: true
-    },
-    {
-      id: 3,
-      title: "Coffee",
-      creator: "Gary Thomas",
-      raised: "£0.5",
-      goal: "£3",
-      image: "https://images.unsplash.com/photo-1461988625982-7e46a099bf4f?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
-      description: "Just need a coffee to get through this coding session. Every little helps!",
-      daysLeft: 1,
-      isVerified: true
-    },
-    {
-      id: 4,
-      title: "New Windows",
-      creator: "Jenny Smith",
-      raised: "£60",
-      goal: "£750",
-      image: "https://images.unsplash.com/photo-1581345628965-9adb6a0195b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=150&q=80",
-      description: "Raising funds to replace the old windows in my apartment with energy-efficient ones.",
-      daysLeft: 30,
-      isVerified: true
-    },
-  ];
-
-  // Calculate progress percentage for campaign cards
-  const calculateProgressPercentage = (raised: string, goal: string): string => {
-    const raisedValue = parseFloat(raised.slice(1));
-    const goalValue = parseFloat(goal.slice(1));
-    if (isNaN(raisedValue) || isNaN(goalValue) || goalValue <= 0) {
-      return '0%';
-    }
-    const percentage = Math.min((raisedValue / goalValue * 100), 100);
-    return `${percentage.toFixed(0)}%`;
-  };
-
-  // -----------------------------
-  // STYLING
-  // -----------------------------
+    const campaigns: Campaign[] = [
+      // Add your campaign data here
+    ];
   
-  const styles: { [key: string]: React.CSSProperties } = {
+    // -----------------------------
+    // STYLING
+    // -----------------------------
+    
+    const styles: { [key: string]: React.CSSProperties } = {
     // Core layout styles
     page: {
       textAlign: 'center' as const,
@@ -711,4 +603,4 @@ export default function LandingPage({
 )}
 </div>
 );
-}
+};

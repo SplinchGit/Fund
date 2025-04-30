@@ -1,26 +1,20 @@
 // src/services/AuthService.ts
 
-// Import specific functions from aws-amplify/auth for v6+
 import {
   signUp,
   signIn,
   confirmSignUp,
-  getCurrentUser,
   updateUserAttributes,
   signOut,
-  type SignUpInput,
-  type SignUpOutput,
-  type SignInInput,
-  type ConfirmSignUpInput,
-  type UpdateUserAttributesInput,
+  getCurrentUser,
+  fetchAuthSession
 } from 'aws-amplify/auth';
-
 import type { ISuccessResult } from '@worldcoin/idkit';
 
 /// -----------------------------------------------------------------------------
 /// ENV VARS REQUIRED AT BUILD-TIME (Amplify Hosting → Environment variables):
-///   VITE_AMPLIFY_API    ← your API Gateway invoke URL (e.g. https://xyz.execute-api.eu-west-2.amazonaws.com/dev)
-///   VITE_API_KEY        ← the API key for your REST endpoint
+///   VITE_AMPLIFY_API    ← your API Gateway invoke URL
+///   VITE_API_KEY        ← the API key for your REST endpoint (if used)
 /// -----------------------------------------------------------------------------
 
 /** A verified World ID proof (returned by your /verify Lambda) */
@@ -33,7 +27,7 @@ export interface IVerifiedUser {
 export interface IRegisterResult {
   success: boolean;
   error?: string;
-  nextStep?: SignUpOutput;
+  nextStep?: any;
 }
 
 /** Result of a Cognito login attempt */
@@ -45,18 +39,12 @@ export interface ILoginResult {
 
 class AuthService {
   private static instance: AuthService;
-  private API_BASE = import.meta.env.VITE_AMPLIFY_API;
-  private API_KEY = import.meta.env.SECRET_API_KEY_NAME || import.meta.env.VITE_API_KEY;
-  
+  private API_BASE = import.meta.env.VITE_AMPLIFY_API!;
+  private API_KEY = import.meta.env.VITE_API_KEY;
+
   private constructor() {
-    // Validate required configuration
-    if (!this.API_BASE) {
-      console.error('Missing API endpoint environment variable (VITE_AMPLIFY_API)');
-    }
-    // API key might be optional depending on your API Gateway settings
-    if (!this.API_KEY) {
-      console.warn('Missing API key environment variable (SECRET_API_KEY_NAME or VITE_API_KEY)');
-    }
+    if (!this.API_BASE) console.error('Missing VITE_AMPLIFY_API');
+    if (!this.API_KEY) console.warn('Missing VITE_API_KEY');
   }
 
   public static getInstance(): AuthService {
@@ -66,15 +54,27 @@ class AuthService {
     return AuthService.instance;
   }
 
-  /** Call your /verify Lambda via API Gateway */
+  /**
+   * Verify World ID proof via backend
+   */
   public async verifyWorldId(details: ISuccessResult): Promise<IVerifiedUser> {
+    const session = await fetchAuthSession();
+    const idTokenObj = session.tokens?.idToken;
+    if (!idTokenObj) {
+      throw new Error('No ID token available in session');
+    }
+    const token = idTokenObj.toString();
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    };
+    if (this.API_KEY) headers['x-api-key'] = this.API_KEY;
+
     const res = await fetch(`${this.API_BASE}/verify`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.API_KEY,
-      },
-      body: JSON.stringify(details),
+      headers,
+      body: JSON.stringify(details)
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
@@ -83,97 +83,99 @@ class AuthService {
     return (await res.json()) as IVerifiedUser;
   }
 
-  /** Register in Cognito — no proof required here */
+  /**
+   * Register a new user in Cognito
+   */
   public async register(
     username: string,
     password: string,
     email: string
   ): Promise<IRegisterResult> {
     try {
-      const input: SignUpInput = {
+      const output = await signUp({
         username,
         password,
-        options: { userAttributes: { email } },
-      };
-      const output = await signUp(input);
+        options: { userAttributes: { email } }
+      });
       return { success: true, nextStep: output };
-    } catch (e: any) {
-      console.error('Registration failed:', e);
-      return { success: false, error: e.message || 'Sign-up failed' };
+    } catch (err: any) {
+      console.error('Registration failed:', err);
+      return { success: false, error: err.message || 'Sign-up failed' };
     }
   }
 
-  /** Sign in an existing user */
+  /**
+   * Sign in an existing Cognito user
+   */
   public async login(
     username: string,
     password: string
   ): Promise<ILoginResult> {
     try {
-      const input: SignInInput = { username, password };
-      const { isSignedIn, nextStep } = await signIn(input);
-
-      if (isSignedIn) {
-        return { success: true };
-      }
-      if (nextStep?.signInStep === 'CONFIRM_SIGN_UP') {
+      const result = await signIn({ username, password });
+      if (result.nextStep?.signInStep === 'CONFIRM_SIGN_UP') {
         return { success: false, requiresConfirmation: true };
       }
-      return { success: false, error: 'Sign-in requires additional steps.' };
-    } catch (e: any) {
-      if (e.name === 'UserNotConfirmedException') {
+      return { success: true };
+    } catch (err: any) {
+      if (err.name === 'UserNotConfirmedException') {
         return { success: false, requiresConfirmation: true };
       }
-      console.error('Sign-in failed:', e);
-      return { success: false, error: e.message || 'Sign-in failed' };
+      console.error('Sign-in failed:', err);
+      return { success: false, error: err.message || 'Sign-in failed' };
     }
   }
 
-  /** Confirm a new user's signup with their code */
+  /**
+   * Confirm user sign-up
+   */
   public async confirmSignUp(
     username: string,
     code: string
   ): Promise<IRegisterResult> {
     try {
-      const input: ConfirmSignUpInput = { username, confirmationCode: code };
-      await confirmSignUp(input);
+      await confirmSignUp({ username, confirmationCode: code });
       return { success: true };
-    } catch (e: any) {
-      console.error('Confirmation failed:', e);
-      return { success: false, error: e.message || 'Confirmation failed' };
+    } catch (err: any) {
+      console.error('Confirmation failed:', err);
+      return { success: false, error: err.message || 'Confirmation failed' };
     }
   }
 
-  /** Attach the World ID nullifier hash to the current Cognito user */
+  /**
+   * Persist World ID nullifier for user
+   */
   public async attachNullifier(
     nullifier: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const input: UpdateUserAttributesInput = {
-        userAttributes: { 'custom:nullifierHash': nullifier },
-      };
-      await updateUserAttributes(input);
+      // fetch the current authenticated user
+      const user = await getCurrentUser();
+      // update the custom attribute with the nullifier hash
+      await updateUserAttributes({
+        userAttributes: { 'custom:nullifierHash': nullifier }
+      });
       return { success: true };
-    } catch (e: any) {
-      console.error('Attach nullifier failed:', e);
-      if (e.name === 'NotAuthorizedException') {
+    } catch (err: any) {
+      console.error('Attach nullifier failed:', err);
+      if (err.name === 'NotAuthorizedException') {
         return { success: false, error: 'User not authenticated' };
       }
-      return { success: false, error: e.message || 'Attach failed' };
+      return { success: false, error: err.message || 'Attach failed' };
     }
-  }
-
-  /** Sign the user out of Cognito */
-  public async logout(): Promise<{ success: boolean; error?: string }> {
+  }public async logout(): Promise<{ success: boolean; error?: string }> {
     try {
       await signOut();
       return { success: true };
-    } catch (e: any) {
-      console.error('Sign-out failed:', e);
-      return { success: false, error: e.message || 'Sign-out failed' };
+    } catch (err: any) {
+      console.error('Sign-out failed:', err);
+      return { success: false, error: err.message || 'Sign-out failed' };
     }
   }
 
-  /** Optional helper to check current auth status */
+  /**
+   * Check if user is authenticated
+   */
   public async checkAuthStatus(): Promise<{ isAuthenticated: boolean; username?: string }> {
     try {
       const { username } = await getCurrentUser();
@@ -184,7 +186,5 @@ class AuthService {
   }
 }
 
-// Export the singleton instance with both names for compatibility
-export const cognitoAuth = AuthService.getInstance();
 export const authService = AuthService.getInstance();
 export default AuthService;

@@ -1,97 +1,97 @@
 // src/components/WorldIDAuth.tsx
 import React, { useEffect, useState } from 'react';
-import { IDKitWidget, ISuccessResult } from '@worldcoin/idkit';  // World ID widget and types
+import { IDKitWidget, ISuccessResult } from '@worldcoin/idkit';
+import { authService } from '../services/AuthService';
 
-// Define the shape of the World ID verification result (proof details)
 export interface IVerifiedUser {
   success: boolean;
   details: ISuccessResult;
 }
 
-// Define the props for the WorldIDAuth component
 export interface WorldIDAuthProps {
-  /** Callback when World ID verification succeeds */
   onSuccess?: (verification: IVerifiedUser) => void;
-  /** Callback when World ID verification fails or is canceled */
   onError?: (error: unknown) => void;
-  /** Custom text to display on the verify button */
   buttonText?: string;
-  /** CSS class for styling the verify button (and container) */
   className?: string;
-  /** Optional handler for "logout" (reset) action after successful verification */
   onLogout?: () => void;
 }
 
-// WorldIDAuth component: renders a World ID verification button or status
 const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
   onSuccess,
   onError,
   buttonText = 'Verify with World ID',
   className,
-  onLogout
+  onLogout,
 }) => {
-  // State to track if a user has been verified via World ID
   const [verification, setVerification] = useState<IVerifiedUser | null>(null);
+  const [signal, setSignal] = useState<string>('');
 
-  // Use values from your environment or from hard-coded values from Amplify console
-  const appId = import.meta.env.VITE_WORLD_APP_ID || 
-                import.meta.env.VITE_WORLD_ID_APP_ID || 
-                'app_0de9312869c4818fc1a1ec64306551b69'; // Fallback to value from Amplify
-                
-  const actionName = import.meta.env.VITE_WORLD_ACTION_ID || 
-                    import.meta.env.VITE_WORLD_ID_ACTION_NAME || 
-                    'verify-user'; // Fallback to value from Amplify
-  
-  // Log configuration for debugging
+  const appId = import.meta.env.VITE_WORLD_APP_ID;
+  const actionName = import.meta.env.VITE_WORLD_ACTION_ID;
+
   useEffect(() => {
-    console.log('WorldIDAuth initialized with:', { appId, actionName });
-    
     if (!appId) {
-      console.error('Missing World ID App ID environment variable (VITE_WORLD_APP_ID)');
+      const err = new Error('Missing VITE_WORLD_APP_ID');
+      console.error(err);
+      onError?.(err);
     }
     if (!actionName) {
-      console.error('Missing World ID Action ID environment variable (VITE_WORLD_ACTION_ID)');
+      const err = new Error('Missing VITE_WORLD_ACTION_ID');
+      console.error(err);
+      onError?.(err);
     }
-  }, [appId, actionName]);
-  
-  // Handle a successful verification result from World ID widget
-  const handleSuccess = (result: ISuccessResult) => {
-    console.log('World ID verification successful:', result);
-    
-    const verifiedUser: IVerifiedUser = {
-      success: true,
-      details: result
-    };
-    setVerification(verifiedUser);             // update internal state to mark as verified
-    if (onSuccess) {
-      onSuccess(verifiedUser);                 // propagate result to parent if callback provided
+
+    authService
+      .checkAuthStatus()
+      .then(({ isAuthenticated, username }) => {
+        if (!isAuthenticated || !username) {
+          const err = new Error('User must be logged in to verify World ID');
+          console.error(err);
+          onError?.(err);
+        } else {
+          setSignal(username);
+        }
+      })
+      .catch((e) => {
+        console.error('Error checking auth status:', e);
+        onError?.(e);
+      });
+  }, [appId, actionName, onError]);
+
+  const handleSuccess = async (result: ISuccessResult) => {
+    try {
+      const serverResult = await authService.verifyWorldId(result);
+      if (!serverResult.success) {
+        throw new Error('Server rejected World ID proof');
+      }
+
+      await authService.attachNullifier(result.nullifier_hash);
+
+      const verifiedUser: IVerifiedUser = { success: true, details: result };
+      setVerification(verifiedUser);
+      onSuccess?.(verifiedUser);
+    } catch (e) {
+      console.error('World ID full verification failed:', e);
+      onError?.(e);
     }
   };
 
-  // Handle an error or closure from the World ID widget
-  const handleError = (error: unknown) => {
-    console.error('World ID verification error:', error);
-    
-    if (onError) {
-      onError(error);                          // propagate error to parent if callback provided
-    }
+  const handleError = (e: unknown) => {
+    console.error('World ID widget error:', e);
+    onError?.(e);
   };
 
-  // Handle logout (reset the verification state)
   const handleLogoutClick = () => {
-    setVerification(null);                     // reset internal verification state
-    if (onLogout) {
-      onLogout();                              // notify parent component about the logout/reset
-    }
+    setVerification(null);
+    onLogout?.();
   };
 
-  // If the user has completed World ID verification, show a verified status and optional logout button
   if (verification) {
     return (
       <div className={className}>
         <span>✅ World ID verified</span>
         {onLogout && (
-          <button type="button" onClick={handleLogoutClick} style={{ marginLeft: '0.5em' }}>
+          <button onClick={handleLogoutClick} style={{ marginLeft: 8 }}>
             Logout
           </button>
         )}
@@ -99,22 +99,28 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
     );
   }
 
-  // Otherwise, render the IDKitWidget which provides the World ID verification modal
   return (
     <IDKitWidget
-      app_id={appId as `app_${string}`} // Type cast to satisfy IDKitWidget requirements
-      action={actionName}
+      app_id={appId as `app_${string}`}
+      action={actionName!}
+      signal={signal}
       onSuccess={handleSuccess}
       onError={handleError}
     >
       {({ open }) => (
-        // The child is a render-prop: we render a button that opens the World ID modal
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={() => {
-            console.log('Opening World ID verification modal');
+            if (!signal) {
+              const err = new Error(
+                'Cannot open World ID widget without user signal'
+              );
+              console.error(err);
+              onError?.(err);
+              return;
+            }
             open();
-          }} 
+          }}
           className={className}
         >
           {buttonText}
