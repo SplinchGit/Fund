@@ -17,6 +17,7 @@
   "dependencies": {
     "@aws-amplify/auth": "^6.12.4",
     "@aws-sdk/client-dynamodb": "^3.798.0",
+    "@aws-sdk/client-secrets-manager": "^3.799.0",
     "@aws-sdk/lib-dynamodb": "^3.798.0",
     "@headlessui/react": "^2.2.2",
     "@worldcoin/idkit": "^2.0.2",
@@ -28,6 +29,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.5.3",
+    "siwe": "^3.0.0",
     "uuid": "^11.1.0",
     "zod": "^3.24.3"
   },
