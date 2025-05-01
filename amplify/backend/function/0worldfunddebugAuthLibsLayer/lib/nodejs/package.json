@@ -1,0 +1,12 @@
+{
+  "name": "auth-libs-layer",
+  "version": "1.0.0",
+  "description": "Shared dependencies for auth functions",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "siwe": "^3.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "@aws-sdk/client-secrets-manager": "^3.799.0", 
+    "ethers": "^6.13.7"
+  }
+}

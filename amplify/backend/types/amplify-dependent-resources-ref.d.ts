@@ -24,6 +24,9 @@ export type AmplifyDependentResourcesAttributes = {
       "LambdaExecutionRoleArn": "string",
       "Name": "string",
       "Region": "string"
+    },
+    "0worldfunddebugAuthLibsLayer": {
+      "Arn": "string"
     }
   },
   "storage": {

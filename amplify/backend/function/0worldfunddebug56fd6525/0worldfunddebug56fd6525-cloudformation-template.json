@@ -15,6 +15,10 @@
     },
     "s3Key": {
       "Type": "String"
+    },
+    "function0worldfunddebugAuthLibsLayerArn": {
+      "Type": "String",
+      "Default": "function0worldfunddebugAuthLibsLayerArn"
     }
   },
   "Conditions": {
@@ -79,7 +83,11 @@
           ]
         },
         "Runtime": "nodejs22.x",
-        "Layers": [],
+        "Layers": [
+          {
+            "Ref": "function0worldfunddebugAuthLibsLayerArn"
+          }
+        ],
         "Timeout": 25
       }
     },

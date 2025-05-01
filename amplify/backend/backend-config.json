@@ -44,8 +44,22 @@
   "function": {
     "0worldfunddebug56fd6525": {
       "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "0worldfunddebugAuthLibsLayer"
+        }
+      ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
+    },
+    "0worldfunddebugAuthLibsLayer": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "LambdaLayer"
     }
   },
   "parameters": {
@@ -62,6 +76,22 @@
         {
           "category": "function",
           "resourceName": "0worldfunddebug56fd6525"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebugAuthLibsLayer_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebugAuthLibsLayer"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebugAuthLibsLayer_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebugAuthLibsLayer"
         }
       ]
     }
