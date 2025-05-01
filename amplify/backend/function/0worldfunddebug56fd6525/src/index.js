@@ -38,60 +38,59 @@ const getJwtSecret = async () => {
     const data = await secretsClient.send(command);
     
     if (data.SecretString) {
-      let secretValue;
+      let secretValue = null;
       try {
-        // *** Attempt to parse as JSON first ***
+        // Attempt to parse as JSON
         const secretObject = JSON.parse(data.SecretString);
-        // *** Check if the specific key exists ***
+        // Check if it's an object and has the specific key
         if (secretObject && typeof secretObject === 'object' && 'jwtSecret' in secretObject) {
            secretValue = secretObject.jwtSecret; 
            console.log("Successfully parsed secret from JSON object key 'jwtSecret'.");
         } else {
-           // It's valid JSON, but doesn't have the expected key. 
-           // Assume the whole string is the secret.
-           console.log("Secret is valid JSON but missing 'jwtSecret' key. Assuming plain text.");
-           secretValue = data.SecretString;
+           // It parsed as JSON, but wasn't the expected structure. 
+           // Log a warning and treat the original string as the secret.
+           console.warn("Secret parsed as JSON but missing 'jwtSecret' key. Treating raw string as secret.");
+           secretValue = data.SecretString; 
         }
       } catch (parseError) {
-         // *** If JSON parsing fails, assume it's plain text ***
+         // JSON parsing failed, assume it's plain text
          console.log("Failed to parse secret as JSON, assuming plain text value.");
          secretValue = data.SecretString;
       }
 
-      // Check if we actually got a non-empty string
+      // Final check: ensure we have a non-empty string
       if (!secretValue || typeof secretValue !== 'string' || secretValue.trim() === '') {
-           console.error("Extracted secret value is empty or not a string.");
-           throw new Error("Could not extract a valid secret value.");
+           console.error("Extracted secret value is empty or not a string. Value:", secretValue);
+           throw new Error("Could not extract a valid secret value from Secrets Manager.");
       }
       
-      cachedJwtSecret = secretValue; // Cache the extracted secret
+      cachedJwtSecret = secretValue; // Cache the valid secret
       console.log("JWT secret fetched and cached successfully.");
       return cachedJwtSecret;
 
     } else if (data.SecretBinary) {
+      // Handle binary secrets if necessary
       console.error("JWT Secret is stored as binary, expected string.");
       throw new Error("Server configuration error: Invalid JWT secret format.");
     } else {
+       // Neither SecretString nor SecretBinary was found
        throw new Error("Secret value not found in Secrets Manager response.");
     }
   } catch (error) {
     console.error("Failed to fetch/process JWT secret from Secrets Manager:", error);
-    // Add more details if available
     const errorMessage = error instanceof Error ? error.message : String(error);
-    // Throw a specific error that will be caught by the handler
+    // Ensure the outer function knows why it failed
     throw new Error(`Server configuration error: Could not retrieve JWT secret. Details: ${errorMessage}`); 
   }
 };
 
 // Generates a secure random nonce
 const generateNonce = () => {
-  // ... (no changes needed) ...
   return crypto.randomBytes(16).toString('hex');
 };
 
 // Creates a standard API Gateway response with CORS headers
 const createResponse = (statusCode, body, origin = ALLOWED_ORIGIN) => {
-  // ... (no changes needed) ...
   return {
     statusCode: statusCode,
     headers: {
@@ -106,13 +105,13 @@ const createResponse = (statusCode, body, origin = ALLOWED_ORIGIN) => {
 
 // --- Main Handler ---
 exports.handler = async (event) => {
-  // ... (routing logic remains the same) ...
   console.log('Received event:', JSON.stringify(event, null, 2));
 
   const httpMethod = event.httpMethod;
   const path = event.requestContext?.http?.path || event.path; 
   console.log(`Handling request: ${httpMethod} ${path}`);
 
+  // Handle CORS preflight OPTIONS requests globally
   if (httpMethod === 'OPTIONS') {
     console.log('Handling OPTIONS preflight request');
     return createResponse(200, {}); 
@@ -120,7 +119,6 @@ exports.handler = async (event) => {
 
   // --- Route: GET /auth/nonce ---
   if (httpMethod === 'GET' && path === '/auth/nonce') {
-    // ... (no changes needed) ...
     try {
       const nonce = generateNonce();
       console.log('Generated nonce:', nonce);
@@ -136,13 +134,9 @@ exports.handler = async (event) => {
     let jwtSecret;
     try {
       console.log('Received signature verification request');
-      // *** Call the updated getJwtSecret ***
-      jwtSecret = await getJwtSecret(); 
+      jwtSecret = await getJwtSecret(); // Fetch/cache the secret
 
-      // ... (rest of the signature verification logic remains the same) ...
-      if (!event.body) {
-        return createResponse(400, { message: 'Missing request body' });
-      }
+      if (!event.body) { return createResponse(400, { message: 'Missing request body' }); }
       console.log('Raw request body:', event.body); 
       const { payload, nonce: receivedNonce } = JSON.parse(event.body);
       console.log('Parsed payload:', payload);
@@ -182,52 +176,49 @@ exports.handler = async (event) => {
       // --- End Placeholder ---
 
       const tokenPayload = { sub: userIdFromDb, walletAddress: walletAddress };
+      // *** Ensure jwtSecret is valid before signing ***
+      if (!jwtSecret) { throw new Error("JWT Secret is unavailable for signing."); } 
       const sessionToken = jwt.sign(tokenPayload, jwtSecret, { expiresIn: JWT_EXPIRY });
       console.log('Session token generated.');
 
       return createResponse(200, { token: sessionToken, walletAddress: walletAddress });
 
     } catch (error) {
-      // *** Updated Error Catching ***
       console.error('Error verifying wallet signature:', error);
-      const message = (error instanceof SyntaxError)
-          ? 'Invalid JSON in request body'
-          // Use the specific error message if available
-          : (error instanceof Error ? error.message : 'Internal server error during signature verification'); 
-      // Determine status code based on error type
+      const message = (error instanceof SyntaxError) ? 'Invalid JSON in request body' 
+                      : (error instanceof Error ? error.message 
+                      : 'Internal server error during signature verification'); 
       const statusCode = (error instanceof SyntaxError || error?.message?.includes('Nonce mismatch')) ? 400 
-                       : (error?.message?.includes('JWT secret')) ? 500 // Configuration error
-                       : 500; // Default to 500
-      if (error instanceof Error && statusCode === 500) {
-         console.error(`Error Type: ${error.name}`);
-      }
+                       : (error?.message?.includes('JWT secret')) ? 500 
+                       : 500; 
+      if (error instanceof Error && statusCode === 500) { console.error(`Error Type: ${error.name}`); }
       return createResponse(statusCode, { message });
     }
   }
 
   // --- Route: POST /verify-worldid ---
   if (httpMethod === 'POST' && path === '/verify-worldid') {
-    // ... (logic remains mostly the same, just ensure getJwtSecret is called) ...
     let jwtSecret;
     try {
         console.log('Received World ID verification request');
         jwtSecret = await getJwtSecret(); // Fetch/cache the secret
 
-        // ... (rest of the verification logic) ...
-         const authHeader = event.headers?.Authorization || event.headers?.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return createResponse(401, { message: 'Missing or invalid Authorization header' });
-        }
+        // --- Verify Session Token ---
+        const authHeader = event.headers?.Authorization || event.headers?.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) { return createResponse(401, { message: 'Missing or invalid Authorization header' }); }
         const token = authHeader.split(' ')[1];
         let decodedToken;
         try {
+            // *** Ensure jwtSecret is valid before verifying ***
+            if (!jwtSecret) { throw new Error("JWT Secret is unavailable for verification."); }
             decodedToken = jwt.verify(token, jwtSecret);
             console.log('Session token verified for user:', decodedToken.sub);
         } catch (jwtError) {
             console.error('Session token verification failed:', jwtError);
             return createResponse(401, { message: 'Invalid or expired session token' });
         }
-        
+        // --- End Verify Session Token ---
+
         if (!event.body) { return createResponse(400, { message: 'Missing request body' }); }
         console.log('Raw World ID proof body:', event.body);
         const proofDetails = JSON.parse(event.body); 
@@ -268,8 +259,12 @@ exports.handler = async (event) => {
 
     } catch (error) {
         console.error('Error verifying World ID proof:', error);
-        const message = (error instanceof SyntaxError) ? 'Invalid JSON in request body' : (error.message || 'Internal server error during World ID verification');
-        const statusCode = (error instanceof SyntaxError) ? 400 : (error?.message?.includes('JWT secret')) ? 500 : 500;
+        const message = (error instanceof SyntaxError) ? 'Invalid JSON in request body' 
+                      : (error instanceof Error ? error.message 
+                      : 'Internal server error during World ID verification');
+        const statusCode = (error instanceof SyntaxError) ? 400 
+                       : (error?.message?.includes('JWT secret')) ? 500 
+                       : 500;
          if (error instanceof Error && statusCode === 500) { console.error(`Error Type: ${error.name}`); }
         return createResponse(statusCode, { message });
     }
