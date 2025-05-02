@@ -1,21 +1,28 @@
 // amplify/backend/function/Oworldfunddebug56fd6525/src/index.js
 
 const crypto = require('crypto');
+// Ensure 'siwe' v2+ and 'ethers' v5/v6 are installed in the Lambda Layer
 const { SiweMessage } = require('siwe');
+const { ethers } = require('ethers'); // Added ethers
 const jwt = require('jsonwebtoken');
 const { SecretsManagerClient, GetSecretValueCommand } = require("@aws-sdk/client-secrets-manager");
 
 // --- Configuration ---
-const JWT_EXPIRY = '1d'; 
-const WORLD_ID_APP_ID = process.env.VITE_WORLD_APP_ID || process.env.WORLD_APP_ID; 
-const ALLOWED_ORIGIN = process.env.FRONTEND_URL || 'https://main.d2fvyjulmwt6nl.amplifyapp.com';
-const JWT_SECRET_ARN = process.env.JWT_SECRET_ARN; 
-const WORLD_ID_ACTION_ID = process.env.VITE_WORLD_ACTION_ID || 'verify-user'; 
+const JWT_EXPIRY = '1d';
+const WORLD_ID_APP_ID = process.env.VITE_WORLD_APP_ID |
+ process.env.WORLD_APP_ID;
+const ALLOWED_ORIGIN = process.env.FRONTEND_URL |
+ 'https://main.d2fvyjulmwt6nl.amplifyapp.com';
+const JWT_SECRET_ARN = process.env.JWT_SECRET_ARN;
+const WORLD_ID_ACTION_ID = process.env.VITE_WORLD_ACTION_ID |
+ 'verify-user';
+// *** Add RPC URL environment variable ***
+const RPC_URL = process.env.RPC_URL; // e.g., 'https://mainnet.optimism.io' or your preferred provider URL
 
 // --- AWS SDK Clients ---
 const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
 // --- DynamoDB Placeholders ---
-// ...
+//...
 
 // --- Global variable to cache the JWT secret ---
 let cachedJwtSecret = null;
@@ -36,7 +43,7 @@ const getJwtSecret = async () => {
     console.log("Fetching JWT secret from Secrets Manager using ARN:", JWT_SECRET_ARN);
     const command = new GetSecretValueCommand({ SecretId: JWT_SECRET_ARN });
     const data = await secretsClient.send(command);
-    
+
     if (data.SecretString) {
       let secretValue = null;
       try {
@@ -44,26 +51,28 @@ const getJwtSecret = async () => {
         const secretObject = JSON.parse(data.SecretString);
         // Check if it's an object and has the specific key
         if (secretObject && typeof secretObject === 'object' && 'jwtSecret' in secretObject) {
-           secretValue = secretObject.jwtSecret; 
-           console.log("Successfully parsed secret from JSON object key 'jwtSecret'.");
+            secretValue = secretObject.jwtSecret;
+            console.log("Successfully parsed secret from JSON object key 'jwtSecret'.");
         } else {
-           // It parsed as JSON, but wasn't the expected structure. 
-           // Log a warning and treat the original string as the secret.
-           console.warn("Secret parsed as JSON but missing 'jwtSecret' key. Treating raw string as secret.");
-           secretValue = data.SecretString; 
+            // It parsed as JSON, but wasn't the expected structure.
+            // Log a warning and treat the original string as the secret.
+            console.warn("Secret parsed as JSON but missing 'jwtSecret' key. Treating raw string as secret.");
+            secretValue = data.SecretString;
         }
       } catch (parseError) {
-         // JSON parsing failed, assume it's plain text
-         console.log("Failed to parse secret as JSON, assuming plain text value.");
-         secretValue = data.SecretString;
+          // JSON parsing failed, assume it's plain text
+          console.log("Failed to parse secret as JSON, assuming plain text value.");
+          secretValue = data.SecretString;
       }
 
       // Final check: ensure we have a non-empty string
-      if (!secretValue || typeof secretValue !== 'string' || secretValue.trim() === '') {
-           console.error("Extracted secret value is empty or not a string. Value:", secretValue);
-           throw new Error("Could not extract a valid secret value from Secrets Manager.");
+      if (!secretValue |
+ typeof secretValue!== 'string' |
+ secretValue.trim() === '') {
+          console.error("Extracted secret value is empty or not a string. Value:", secretValue);
+          throw new Error("Could not extract a valid secret value from Secrets Manager.");
       }
-      
+
       cachedJwtSecret = secretValue; // Cache the valid secret
       console.log("JWT secret fetched and cached successfully.");
       return cachedJwtSecret;
@@ -73,14 +82,14 @@ const getJwtSecret = async () => {
       console.error("JWT Secret is stored as binary, expected string.");
       throw new Error("Server configuration error: Invalid JWT secret format.");
     } else {
-       // Neither SecretString nor SecretBinary was found
-       throw new Error("Secret value not found in Secrets Manager response.");
+        // Neither SecretString nor SecretBinary was found
+        throw new Error("Secret value not found in Secrets Manager response.");
     }
   } catch (error) {
     console.error("Failed to fetch/process JWT secret from Secrets Manager:", error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error? error.message : String(error);
     // Ensure the outer function knows why it failed
-    throw new Error(`Server configuration error: Could not retrieve JWT secret. Details: ${errorMessage}`); 
+    throw new Error(`Server configuration error: Could not retrieve JWT secret. Details: ${errorMessage}`);
   }
 };
 
@@ -97,9 +106,9 @@ const createResponse = (statusCode, body, origin = ALLOWED_ORIGIN) => {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': origin,
       'Access-Control-Allow-Headers': 'Content-Type,Authorization,x-api-key',
-      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS' 
+      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS'
     },
-    body: typeof body === 'string' ? body : JSON.stringify(body),
+    body: typeof body === 'string'? body : JSON.stringify(body),
   };
 };
 
@@ -108,13 +117,14 @@ exports.handler = async (event) => {
   console.log('Received event:', JSON.stringify(event, null, 2));
 
   const httpMethod = event.httpMethod;
-  const path = event.requestContext?.http?.path || event.path; 
+  const path = event.requestContext?.http?.path |
+ event.path;
   console.log(`Handling request: ${httpMethod} ${path}`);
 
   // Handle CORS preflight OPTIONS requests globally
   if (httpMethod === 'OPTIONS') {
     console.log('Handling OPTIONS preflight request');
-    return createResponse(200, {}); 
+    return createResponse(200, {});
   }
 
   // --- Route: GET /auth/nonce ---
@@ -132,38 +142,63 @@ exports.handler = async (event) => {
   // --- Route: POST /auth/verify-signature ---
   if (httpMethod === 'POST' && path === '/auth/verify-signature') {
     let jwtSecret;
+    let provider; // Declare provider here
+
     try {
       console.log('Received signature verification request');
       jwtSecret = await getJwtSecret(); // Fetch/cache the secret
 
+      // *** Instantiate ethers Provider ***
+      if (!RPC_URL) {
+        console.error("RPC_URL environment variable is not set.");
+        throw new Error("Server configuration error: RPC URL missing.");
+      }
+      provider = new ethers.JsonRpcProvider(RPC_URL); //
+      console.log(`Using RPC provider at: ${RPC_URL}`);
+      // *** End Instantiate Provider ***
+
       if (!event.body) { return createResponse(400, { message: 'Missing request body' }); }
-      console.log('Raw request body:', event.body); 
+      console.log('Raw request body:', event.body);
       const { payload, nonce: receivedNonce } = JSON.parse(event.body);
       console.log('Parsed payload:', payload);
       console.log('Received nonce:', receivedNonce);
 
-      if (!payload || typeof payload !== 'object' || !payload.message || !payload.signature || !receivedNonce) {
+      if (!payload |
+ typeof payload!== 'object' ||!payload.message ||!payload.signature ||!receivedNonce) {
         console.error('Invalid request body structure:', { payload, receivedNonce });
         return createResponse(400, { message: 'Invalid request body. Required fields: payload (with message and signature), nonce.' });
       }
 
       console.log('Verifying SIWE message...');
       const siweMessage = new SiweMessage(payload.message);
+
+      // *** Updated verify call with provider for EIP-1271 support ***
       const verificationResult = await siweMessage.verify({
         signature: payload.signature,
-        nonce: receivedNonce,
+        nonce: receivedNonce, // Nonce check is handled by the library here
+      }, {
+        provider: provider, // Pass the ethers provider
+        suppressExceptions: true // Prevent verify from throwing, return error object instead
       }).catch(verifyError => {
-          console.error('Error during siweMessage.verify:', verifyError);
-          return { success: false, error: verifyError }; 
+          // Catch any unexpected errors during the verify call itself
+          console.error('Unexpected error during siweMessage.verify call:', verifyError);
+          return { success: false, error: verifyError };
       });
+      // *** End Updated verify call ***
 
       if (!verificationResult.success) {
-        const errorDetail = verificationResult.error instanceof Error ? verificationResult.error.message : String(verificationResult.error);
-        console.error('SIWE verification failed:', errorDetail);
-        return createResponse(401, { message: `Signature verification failed: ${errorDetail}` });
+        // Log the specific SIWE error type if available
+        const errorType = verificationResult.error?.type |
+ 'Unknown';
+        const errorMessage = verificationResult.error instanceof Error? verificationResult.error.message : String(verificationResult.error);
+        console.error(`SIWE verification failed. Type: ${errorType}, Message: ${errorMessage}`);
+        // Return a more specific error message if possible
+        return createResponse(401, { message: `Signature verification failed: ${errorType}` });
       }
-      if (verificationResult.data.nonce !== receivedNonce) {
-         console.error(`Nonce mismatch during verification. Expected: ${receivedNonce}, Got: ${verificationResult.data.nonce}`);
+
+      // Double-check nonce match (though siwe library should handle this)
+      if (verificationResult.data.nonce!== receivedNonce) {
+         console.error(`Nonce mismatch after successful verification (unexpected). Expected: ${receivedNonce}, Got: ${verificationResult.data.nonce}`);
          return createResponse(401, { message: 'Nonce mismatch.' });
       }
 
@@ -172,31 +207,40 @@ exports.handler = async (event) => {
 
       // --- Placeholder: Find or Create User in DynamoDB ---
       console.log(`Placeholder: Find/Create user for wallet: ${walletAddress} in DB`);
-      const userIdFromDb = `user_${walletAddress.substring(0, 8)}`; 
+      const userIdFromDb = `user_${walletAddress.substring(0, 8)}`;
       // --- End Placeholder ---
 
       const tokenPayload = { sub: userIdFromDb, walletAddress: walletAddress };
       // *** Ensure jwtSecret is valid before signing ***
-      if (!jwtSecret) { throw new Error("JWT Secret is unavailable for signing."); } 
+      if (!jwtSecret) { throw new Error("JWT Secret is unavailable for signing."); }
       const sessionToken = jwt.sign(tokenPayload, jwtSecret, { expiresIn: JWT_EXPIRY });
       console.log('Session token generated.');
 
       return createResponse(200, { token: sessionToken, walletAddress: walletAddress });
 
     } catch (error) {
-      console.error('Error verifying wallet signature:', error);
-      const message = (error instanceof SyntaxError) ? 'Invalid JSON in request body' 
-                      : (error instanceof Error ? error.message 
-                      : 'Internal server error during signature verification'); 
-      const statusCode = (error instanceof SyntaxError || error?.message?.includes('Nonce mismatch')) ? 400 
-                       : (error?.message?.includes('JWT secret')) ? 500 
-                       : 500; 
+      console.error('Error in /auth/verify-signature handler:', error);
+      const message = (error instanceof SyntaxError)? 'Invalid JSON in request body'
+                      : (error instanceof Error? error.message
+                      : 'Internal server error during signature verification');
+      // Determine status code based on error type
+      let statusCode = 500;
+      if (error instanceof SyntaxError) {
+          statusCode = 400;
+      } else if (error?.message?.includes('Nonce mismatch')) {
+          statusCode = 401; // Or 400 depending on your preference
+      } else if (error?.message?.includes('JWT secret') |
+ error?.message?.includes('RPC URL')) {
+          statusCode = 500; // Configuration errors
+      }
+
       if (error instanceof Error && statusCode === 500) { console.error(`Error Type: ${error.name}`); }
       return createResponse(statusCode, { message });
     }
   }
 
   // --- Route: POST /verify-worldid ---
+  //... (Keep your existing World ID verification logic here)...
   if (httpMethod === 'POST' && path === '/verify-worldid') {
     let jwtSecret;
     try {
@@ -204,8 +248,9 @@ exports.handler = async (event) => {
         jwtSecret = await getJwtSecret(); // Fetch/cache the secret
 
         // --- Verify Session Token ---
-        const authHeader = event.headers?.Authorization || event.headers?.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) { return createResponse(401, { message: 'Missing or invalid Authorization header' }); }
+        const authHeader = event.headers?.Authorization |
+ event.headers?.authorization;
+        if (!authHeader ||!authHeader.startsWith('Bearer ')) { return createResponse(401, { message: 'Missing or invalid Authorization header' }); }
         const token = authHeader.split(' ')[1];
         let decodedToken;
         try {
@@ -221,8 +266,8 @@ exports.handler = async (event) => {
 
         if (!event.body) { return createResponse(400, { message: 'Missing request body' }); }
         console.log('Raw World ID proof body:', event.body);
-        const proofDetails = JSON.parse(event.body); 
-        if (!proofDetails.merkle_root || !proofDetails.nullifier_hash || !proofDetails.proof || !proofDetails.verification_level) {
+        const proofDetails = JSON.parse(event.body);
+        if (!proofDetails.merkle_root ||!proofDetails.nullifier_hash ||!proofDetails.proof ||!proofDetails.verification_level) {
             console.error('Invalid World ID proof body structure:', proofDetails);
             return createResponse(400, { message: 'Invalid request body. Missing required World ID proof fields.' });
         }
@@ -237,21 +282,28 @@ exports.handler = async (event) => {
             merkle_root: proofDetails.merkle_root,
             nullifier_hash: proofDetails.nullifier_hash,
             proof: proofDetails.proof,
-            action: WORLD_ID_ACTION_ID || proofDetails.action, 
-            signal: proofDetails.signal || '', 
+            action: WORLD_ID_ACTION_ID |
+ proofDetails.action,
+            signal: proofDetails.signal |
+ '',
         };
         console.log('Sending payload to World ID verify API:', verificationApiPayload);
+        // Use node-fetch or Axios if running Node.js 16 or lower
+        // For Node.js 18+, native fetch is available
+        const fetch = require('node-fetch'); // Add 'node-fetch' to layer dependencies if needed
         const verificationResponse = await fetch(verifyUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(verificationApiPayload) });
         const verifyResult = await verificationResponse.json();
         console.log('World ID verify API response:', { status: verificationResponse.status, body: verifyResult });
-        if (!verificationResponse.ok || !verifyResult.success) {
+        if (!verificationResponse.ok ||!verifyResult.success) {
             console.error('World ID Cloud Verification failed:', verifyResult);
-            return createResponse(400, { message: `World ID verification failed: ${verifyResult.detail || verifyResult.code || 'Unknown reason'}`, details: verifyResult });
+            return createResponse(400, { message: `World ID verification failed: ${verifyResult.detail |
+ verifyResult.code |
+ 'Unknown reason'}`, details: verifyResult });
         }
         console.log('World ID Cloud Verification successful for nullifier:', verifyResult.nullifier_hash);
 
         // --- Placeholder: Update User in DynamoDB ---
-        const userWalletAddress = decodedToken.walletAddress; 
+        const userWalletAddress = decodedToken.walletAddress;
         console.log(`Placeholder: Update user ${userWalletAddress} in DB with verified status and nullifier ${verifyResult.nullifier_hash}`);
         // --- End Placeholder ---
 
@@ -259,21 +311,19 @@ exports.handler = async (event) => {
 
     } catch (error) {
         console.error('Error verifying World ID proof:', error);
-        const message = (error instanceof SyntaxError) ? 'Invalid JSON in request body' 
-                      : (error instanceof Error ? error.message 
-                      : 'Internal server error during World ID verification');
-        const statusCode = (error instanceof SyntaxError) ? 400 
-                       : (error?.message?.includes('JWT secret')) ? 500 
-                       : 500;
+        const message = (error instanceof SyntaxError)? 'Invalid JSON in request body'
+                        : (error instanceof Error? error.message
+                        : 'Internal server error during World ID verification');
+        const statusCode = (error instanceof SyntaxError)? 400
+                          : (error?.message?.includes('JWT secret'))? 500
+                          : 500;
          if (error instanceof Error && statusCode === 500) { console.error(`Error Type: ${error.name}`); }
         return createResponse(statusCode, { message });
     }
   }
 
+
   // --- Default Route (Not Found) ---
   console.log(`Unhandled path: ${httpMethod} ${path}`);
   return createResponse(404, { message: `Not Found: ${httpMethod} ${path}` });
 };
-
-// --- Placeholder DB Functions ---
-// ... 
