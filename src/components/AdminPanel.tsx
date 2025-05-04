@@ -2,116 +2,213 @@
 
 /// <reference types="vite/client" />
 
+// Define ImportMetaEnv and ImportMeta interfaces for Vite environment variables
 interface ImportMetaEnv {
   MODE: string
   BASE_URL: string
   PROD: boolean
   DEV: boolean
+  // Add other env variables used here if necessary
 }
 
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
-import React from 'react';
-import { userStore, UserData } from './services/UserStore';
+
+import React, { useState, useCallback } from 'react';
+// Removed import for userStore and UserData as they are not used / implemented with backend
+
+// Define a placeholder type for user data if needed later
+// interface UserData {
+//   walletAddress: string; // Assuming walletAddress is the ID from DynamoDB
+//   isWorldIdVerified?: boolean;
+//   worldIdNullifier?: string | null;
+//   worldIdVerifiedAt?: string | null;
+//   createdAt?: string;
+//   lastLoginAt?: string;
+// }
 
 const AdminPanel: React.FunctionComponent = () => {
-  const [users, setUsers] = React.useState([] as UserData[]);
-  const [isOpen, setIsOpen] = React.useState(false);
+  // State to manage if the panel is open or closed
+  const [isOpen, setIsOpen] = useState(false);
+  // Placeholder state for users - currently empty and not populated
+  // const [users, setUsers] = useState<UserData[]>([]); // Keep if planning to fetch real data later
+  const [isLoading, setIsLoading] = useState(false); // Example loading state
+  const [error, setError] = useState<string | null>(null); // Example error state
 
-  const refreshUsers = React.useCallback(() => {
-    setUsers(userStore.getAllUsers());
+  // Placeholder function for refreshing users - needs backend integration
+  const refreshUsers = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    console.log('[AdminPanel] Refresh Users clicked - Backend API call needed here.');
+    // TODO: Implement API call to fetch users from the backend (e.g., GET /admin/users)
+    // Example structure:
+    // try {
+    //   // const fetchedUsers = await adminService.getUsers(); // Assuming an adminService exists
+    //   // setUsers(fetchedUsers);
+    // } catch (err: any) {
+    //   setError(err.message || 'Failed to fetch users');
+    // } finally {
+    //   setIsLoading(false);
+    // }
+    setIsLoading(false); // Remove this line once API call is implemented
+    alert('Refresh functionality not implemented yet.'); // Placeholder alert
   }, []);
 
-  React.useEffect(() => {
-    if (isOpen) {
-      refreshUsers();
+  // Placeholder function for clearing users - needs backend integration
+  const clearAllUsers = useCallback(async () => {
+    if (window.confirm('Are you sure you want to clear all users? This requires backend implementation.')) {
+      console.log('[AdminPanel] Clear All Users clicked - Backend API call needed here.');
+      // TODO: Implement API call to delete all users (e.g., DELETE /admin/users)
+      // await adminService.deleteAllUsers();
+      // refreshUsers(); // Refresh after clearing
+      alert('Clear All functionality not implemented yet.'); // Placeholder alert
     }
-  }, [isOpen, refreshUsers]);
+  }, []); // Removed dependency on local 'users' state
 
-  const clearAllUsers = React.useCallback(() => {
-    if (window.confirm('Are you sure you want to clear all users?')) {
-      users.forEach(user => userStore.removeUser(user.id));
-      refreshUsers();
+  // Placeholder function for removing a single user - needs backend integration
+  const removeUser = useCallback(async (userId: string) => {
+    // Note: User ID here should likely be the walletAddress from DynamoDB
+    if (window.confirm(`Remove user ${userId.substring(0, 8)}...? This requires backend implementation.`)) {
+      console.log(`[AdminPanel] Remove User ${userId} clicked - Backend API call needed here.`);
+      // TODO: Implement API call to delete a specific user (e.g., DELETE /admin/users/${userId})
+      // await adminService.deleteUser(userId);
+      // refreshUsers(); // Refresh after removing
+      alert(`Remove user ${userId.substring(0,8)} functionality not implemented yet.`); // Placeholder alert
     }
-  }, [users, refreshUsers]);
+  }, []); // Removed dependency on refreshUsers for now
 
-  const removeUser = React.useCallback((userId: string) => {
-    if (window.confirm(`Remove user ${userId.substring(0, 8)}?`)) {
-      userStore.removeUser(userId);
-      refreshUsers();
-    }
-  }, [refreshUsers]);
+  // Only render the panel in development mode
+  if (import.meta.env.MODE !== 'development') {
+    return null;
+  }
 
- // Only show in development
-if (import.meta.env.MODE !== 'development') {
-  return null;
-}
-
+  // Render the Admin Panel UI
   return (
-    <div className="admin-panel">
-      <button 
+    <div style={styles.adminPanel}>
+      <button
         type="button"
-        className="toggle-button"
+        style={styles.toggleButton}
         onClick={() => setIsOpen(prev => !prev)}
       >
         {isOpen ? 'Hide' : 'Show'} Admin Panel
       </button>
-      
+
       {isOpen && (
-        <div className="panel-content">
-          <div className="panel-header">
-            <h3>User Management</h3>
-            <div className="panel-actions">
-              <button 
+        <div style={styles.panelContent}>
+          <div style={styles.panelHeader}>
+            <h3>User Management (Placeholder)</h3>
+            <div style={styles.panelActions}>
+              <button
                 type="button"
-                className="refresh-button"
+                style={styles.actionButton}
                 onClick={refreshUsers}
+                disabled={isLoading} // Disable button while loading
               >
-                Refresh
+                {isLoading ? 'Refreshing...' : 'Refresh'}
               </button>
-              <button 
+              <button
                 type="button"
-                className="clear-button"
+                style={{ ...styles.actionButton, ...styles.clearButton }} // Example of combining styles
                 onClick={clearAllUsers}
+                disabled={isLoading} // Disable button while loading
               >
                 Clear All
               </button>
             </div>
           </div>
-          
-          <div className="users-list">
-            {users.length === 0 ? (
-              <div className="no-users">No verified users found</div>
-            ) : (
-              users.map(user => (
-                <div key={user.id} className="user-item">
-                  <div className="user-details">
-                    <div className="user-id">ID: {user.id.substring(0, 8)}...</div>
-                    <div className="user-level">
-                      <span className={`level-badge ${user.verificationLevel.toLowerCase()}`}>
-                        {user.verificationLevel}
-                      </span>
-                    </div>
-                    <div className="user-verified-at">
-                      Verified: {new Date(user.verifiedAt).toLocaleString()}
-                    </div>
+
+          {error && <div style={styles.errorText}>Error: {error}</div>}
+
+          <div style={styles.usersList}>
+            {/* Replace user list with placeholder text */}
+            <div style={styles.placeholderText}>
+              User list display requires backend integration.
+              {/* Example of how list might look later: */}
+              {/* {users.length === 0 && !isLoading ? (
+                <div>No users found.</div>
+              ) : (
+                users.map(user => (
+                  <div key={user.walletAddress} style={styles.userItem}>
+                    <span>ID: {user.walletAddress.substring(0, 8)}...</span>
+                    <button onClick={() => removeUser(user.walletAddress)}>Remove</button>
                   </div>
-                  <button 
-                    type="button"
-                    className="remove-button"
-                    onClick={() => removeUser(user.id)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))
-            )}
+                ))
+              )} */}
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 };
+
+// Basic inline styles for demonstration - consider moving to CSS modules or Tailwind
+const styles: { [key: string]: React.CSSProperties } = {
+  adminPanel: {
+    position: 'fixed',
+    bottom: '10px',
+    right: '10px',
+    zIndex: 1000,
+    backgroundColor: 'rgba(240, 240, 240, 0.9)',
+    border: '1px solid #ccc',
+    borderRadius: '5px',
+    boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+    maxWidth: '400px',
+  },
+  toggleButton: {
+    padding: '5px 10px',
+    border: 'none',
+    borderBottom: '1px solid #ccc',
+    width: '100%',
+    textAlign: 'left',
+    cursor: 'pointer',
+    backgroundColor: '#eee',
+    borderTopLeftRadius: '5px',
+    borderTopRightRadius: '5px',
+  },
+  panelContent: {
+    padding: '10px',
+    maxHeight: '300px',
+    overflowY: 'auto',
+  },
+  panelHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '10px',
+    borderBottom: '1px solid #ddd',
+    paddingBottom: '5px',
+  },
+  panelActions: {
+    display: 'flex',
+    gap: '5px',
+  },
+  actionButton: {
+    padding: '3px 8px',
+    fontSize: '0.8em',
+    cursor: 'pointer',
+    border: '1px solid #ccc',
+    borderRadius: '3px',
+  },
+  clearButton: {
+    backgroundColor: '#fdd',
+    borderColor: '#f99',
+  },
+  usersList: {
+    marginTop: '10px',
+  },
+  placeholderText: {
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: '0.9em',
+    marginBottom: '10px',
+  },
+  // Add styles for userItem, userDetails etc. if implementing the list later
+};
+
 
 export default AdminPanel;
