@@ -13,7 +13,7 @@ interface ImportMeta {
   readonly env: ImportMetaEnv
 }
 import React from 'react';
-import { userStore, UserData } from '../services/UserStore';
+import { userStore, UserData } from './services/UserStore';
 
 const AdminPanel: React.FunctionComponent = () => {
   const [users, setUsers] = React.useState([] as UserData[]);
