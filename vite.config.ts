@@ -12,6 +12,28 @@ export default defineConfig({
     alias: { '@': path.resolve(__dirname, './src') }
   },
   build: {
-    sourcemap: true   // ← make sure this is here
+    sourcemap: true,
+    // Split vendor chunks
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'worldcoin': ['@worldcoin/minikit-js', '@worldcoin/idkit-core'],
+          'aws': ['@aws-sdk/client-lambda'],
+          'ui': ['@radix-ui/react-dialog', '@radix-ui/react-slot'],
+          'utils': ['clsx', 'tailwind-merge', 'class-variance-authority']
+        }
+      }
+    },
+    // Increase chunk size warning limit slightly
+    chunkSizeWarningLimit: 600,
+    // Enable minification
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true
+      }
+    }
   }
 })
