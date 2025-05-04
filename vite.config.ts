@@ -19,7 +19,6 @@ export default defineConfig({
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'worldcoin': ['@worldcoin/minikit-js', '@worldcoin/idkit-core'],
-          'aws': ['@aws-sdk/client-lambda'],
           'ui': ['@radix-ui/react-dialog', '@radix-ui/react-slot'],
           'utils': ['clsx', 'tailwind-merge', 'class-variance-authority']
         }
