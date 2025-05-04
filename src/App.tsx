@@ -1,20 +1,28 @@
 // src/App.tsx
-import React from 'react';
+import React, { Suspense } from 'react';
 import {
+  BrowserRouter,
   Routes,
   Route,
   Navigate,
-  useNavigate,
 } from 'react-router-dom';
 
 // Import the AuthProvider and useAuth hook
 import { AuthProvider, useAuth } from './components/AuthContext'; 
 
-// Import pages and components
-import LandingPage from './pages/LandingPage'; 
-import TipJar from './pages/TipJar';
-import { CreateCampaignForm } from './components/CreateCampaignForm';
-import { Dashboard } from './pages/Dashboard'; // New import
+// Lazy load all pages and components
+const LandingPage = React.lazy(() => import('./pages/LandingPage'));
+const TipJar = React.lazy(() => import('./pages/TipJar'));
+const CreateCampaignForm = React.lazy(() => 
+  import('./components/CreateCampaignForm').then(module => ({
+    default: module.CreateCampaignForm
+  }))
+);
+const Dashboard = React.lazy(() => 
+  import('./pages/Dashboard').then(module => ({
+    default: module.Dashboard
+  }))
+);
 
 /** Debug Utility – Can be kept or removed */
 const debug = (message: string, data?: any) => {
@@ -29,6 +37,19 @@ const debug = (message: string, data?: any) => {
   }
 };
 
+// Loading component
+const LoadingFallback = () => (
+  <div style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    fontFamily: 'sans-serif',
+  }}>
+    Loading...
+  </div>
+);
+
 /**
  * ProtectedRoute Component
  * Ensures that a route can only be accessed by authenticated users.
@@ -42,23 +63,12 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   // Display loading indicator while the context is initializing or checking session
   if (isLoading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        fontFamily: 'sans-serif',
-      }}>
-        Loading Session… 
-      </div>
-    );
+    return <LoadingFallback />;
   }
 
   // Render children if authenticated, otherwise redirect to landing page
   return isAuthenticated
-    ? <>{children}</>
-    // Redirect to landing page if not authenticated
+    ? <Suspense fallback={<LoadingFallback />}>{children}</Suspense>
     : <Navigate to="/landing" replace />; 
 };
 
@@ -85,63 +95,79 @@ const App: React.FC = () => {
   );
 
   return (
-    // Wrap the entire application or just the Routes with AuthProvider
-    <AuthProvider> 
-      <> 
-        {/* --- Application Routes --- */}
-        <Routes>
-          {/* Redirect base path to landing page */}
-          <Route path="/" element={<Navigate to="/landing" replace />} />
+    // Wrap with BrowserRouter first, then AuthProvider
+    <BrowserRouter>
+      <AuthProvider> 
+        <> 
+          {/* --- Application Routes --- */}
+          <Routes>
+            {/* Redirect base path to landing page */}
+            <Route path="/" element={<Navigate to="/landing" replace />} />
 
-          {/* Public Routes */}
-          <Route path="/landing" element={<LandingPage />} />
-          
-          {/* Public campaign detail view */}
-          <Route path="/campaigns/:id" element={<div>Campaign Detail - Coming Soon</div>} />
+            {/* Public Routes with Suspense */}
+            <Route 
+              path="/landing" 
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <LandingPage />
+                </Suspense>
+              } 
+            />
+            
+            {/* Public campaign detail view */}
+            <Route 
+              path="/campaigns/:id" 
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <div>Campaign Detail - Coming Soon</div>
+                </Suspense>
+              } 
+            />
 
-          {/* Protected Routes - Now protected by AuthContext state */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/tip-jar"
-            element={
-              <ProtectedRoute>
-                <TipJar />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/new-campaign"
-            element={
-              <ProtectedRoute> 
-                <CreateCampaignForm />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/campaigns/:id/edit"
-            element={
-              <ProtectedRoute>
-                <div>Edit Campaign - Coming Soon</div>
-              </ProtectedRoute>
-            }
-          />
+            {/* Protected Routes - Now protected by AuthContext state */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tip-jar"
+              element={
+                <ProtectedRoute>
+                  <TipJar />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/new-campaign"
+              element={
+                <ProtectedRoute> 
+                  <CreateCampaignForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/campaigns/:id/edit"
+              element={
+                <ProtectedRoute>
+                  <div>Edit Campaign - Coming Soon</div>
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Fallback route: Redirect any unmatched paths to landing */}
-          <Route path="*" element={<Navigate to="/landing" replace />} />
-        </Routes>
-        {/* --- End Routes --- */}
+            {/* Fallback route: Redirect any unmatched paths to landing */}
+            <Route path="*" element={<Navigate to="/landing" replace />} />
+          </Routes>
+          {/* --- End Routes --- */}
 
-        {/* Render debug output panel */}
-        {debugOutput}
-      </>
-    </AuthProvider> 
+          {/* Render debug output panel */}
+          {debugOutput}
+        </>
+      </AuthProvider>
+    </BrowserRouter>
   );
 };
 
