@@ -7,19 +7,18 @@ import React, {
   useCallback,
   useEffect
 } from 'react';
-import { useNavigate } from 'react-router-dom'; // Ensure useNavigate is imported
+import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/AuthService';
 import { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
 
 // --- Type Definitions ---
-
 interface AuthState {
   isAuthenticated: boolean;
   walletAddress: string | null;
   sessionToken: string | null;
   isLoading: boolean;
   error: string | null;
-  nonce: string | null; // Keep nonce if needed elsewhere, otherwise can remove
+  nonce: string | null;
 }
 
 interface AuthContextType extends AuthState {
@@ -29,45 +28,49 @@ interface AuthContextType extends AuthState {
 }
 
 // --- Context Creation ---
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // --- Provider Component ---
-
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const navigate = useNavigate(); // Use navigate hook
+  const navigate = useNavigate();
 
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
     walletAddress: null,
     sessionToken: null,
-    isLoading: true, // Start as loading
+    isLoading: true,
     error: null,
     nonce: null,
   });
 
   // Login function: Updates state and navigates to dashboard
   const login = useCallback((token: string, address: string) => {
+    console.log('[AuthContext] Login called with:', { token: !!token, address });
+    console.log('[AuthContext] Current pathname:', window.location.pathname);
+    
+    // Update state and immediately set isAuthenticated to true
     setAuthState({
       isAuthenticated: true,
       walletAddress: address,
       sessionToken: token,
       isLoading: false,
       error: null,
-      nonce: null, // Clear nonce after successful login
+      nonce: null,
     });
-    console.log('[AuthContext] User logged in:', { walletAddress: address });
-
-    // Navigate to dashboard after successful login
-    // Check if already on dashboard? Optional, but can prevent redundant navigates
-    // if (window.location.pathname !== '/dashboard') {
-      navigate('/dashboard', { replace: true }); // Use replace to avoid back button going to login page
-    // }
-  }, [navigate]); // Add navigate to dependency array
+    
+    console.log('[AuthContext] State updated, scheduling navigation...');
+    
+    // Force React to flush state updates before navigation
+    Promise.resolve().then(() => {
+      console.log('[AuthContext] Executing navigation to dashboard');
+      navigate('/dashboard', { replace: true });
+      console.log('[AuthContext] Navigation completed');
+    });
+  }, [navigate]);
 
   // Login with wallet function: Handles the complete wallet auth flow
   const loginWithWallet = useCallback(async (authResult: MiniAppWalletAuthSuccessPayload) => {
@@ -86,10 +89,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Verify signature
       console.log('[AuthContext] Verifying signature with nonce:', nonceResult.nonce);
       const verifyResult = await authService.verifyWalletSignature(authResult, nonceResult.nonce);
-      console.log('[AuthContext] Verification result:', verifyResult); // Log the result
+      console.log('[AuthContext] Verification result:', verifyResult);
 
       if (verifyResult.success && verifyResult.walletAddress && verifyResult.token) {
-        // Use the login function which handles state update and navigation
         console.log('[AuthContext] Verification successful, calling login...');
         login(verifyResult.token, verifyResult.walletAddress);
       } else {
@@ -103,7 +105,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         error: error.message || 'Login failed',
       }));
     }
-  }, [login]); // login already includes navigate in its dependencies
+  }, [login]);
 
   // Logout function
   const logout = useCallback(async () => {
@@ -111,10 +113,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setAuthState(prevState => ({ ...prevState, isLoading: true }));
 
     try {
-      // Clear any local session info FIRST
-      await authService.logout(); // Assuming this clears localStorage/sessionStorage
-
-      // Reset state
+      await authService.logout();
+      
       setAuthState({
         isAuthenticated: false,
         walletAddress: null,
@@ -125,9 +125,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       console.log('[AuthContext] User logged out successfully.');
-
-      // Navigate to landing page after logout
-      navigate('/landing', { replace: true }); // Use replace to avoid back button issues
+      navigate('/landing', { replace: true });
     } catch (error: any) {
       console.error('[AuthContext] Logout failed:', error);
       setAuthState(prevState => ({
@@ -136,13 +134,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         error: error.message || 'Logout failed'
       }));
     }
-  }, [navigate]); // Add navigate to dependency array
+  }, [navigate]);
 
   // Check session on mount
   const checkSession = useCallback(async () => {
     console.log('[AuthContext] Checking session...');
-    // Keep isLoading true until check is complete
-    // setAuthState(prevState => ({ ...prevState, isLoading: true, error: null })); // Already starts as true
 
     try {
       const { isAuthenticated, token } = await authService.checkAuthStatus();
@@ -152,7 +148,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       let restoredAddress: string | null = null;
 
       if (isAuthenticated && token) {
-        // Decode JWT to get wallet address
         try {
           const tokenParts = token.split('.');
           const payload = tokenParts[1];
@@ -169,43 +164,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 error: null,
                 nonce: null,
               });
-              sessionRestored = true; // Mark session as successfully restored
+              sessionRestored = true;
               console.log('[AuthContext] Session restored for wallet:', restoredAddress);
-            } else {
-               console.warn('[AuthContext] Token decoded but walletAddress missing in payload.');
             }
-          } else {
-             console.warn('[AuthContext] Invalid token format found during session check.');
           }
         } catch (e) {
           console.error('[AuthContext] Failed to decode token during session check:', e);
-          // Treat as unauthenticated if token is invalid
-           await authService.logout(); // Clear potentially bad token
+          await authService.logout();
         }
       }
 
-      // If session was not restored (or token was invalid), ensure state is unauthenticated
       if (!sessionRestored) {
-         setAuthState({
-           isAuthenticated: false,
-           walletAddress: null,
-           sessionToken: null,
-           isLoading: false, // Finished loading check
-           error: null,
-           nonce: null,
-         });
-         console.log('[AuthContext] No valid session found or restored.');
-      }
-      // --- *** ADD NAVIGATION AFTER SESSION RESTORATION *** ---
-      else {
-        // Only navigate if we successfully restored the session
+        setAuthState({
+          isAuthenticated: false,
+          walletAddress: null,
+          sessionToken: null,
+          isLoading: false,
+          error: null,
+          nonce: null,
+        });
+        console.log('[AuthContext] No valid session found or restored.');
+      } else {
         console.log('[AuthContext] Session restored, navigating to dashboard...');
-        // Check if already on dashboard? Optional.
-        // if (window.location.pathname !== '/dashboard') {
-           navigate('/dashboard', { replace: true });
-        // }
+        // Use Promise.resolve() for consistency
+        Promise.resolve().then(() => {
+          navigate('/dashboard', { replace: true });
+        });
       }
-      // --- *** END NAVIGATION CHANGE *** ---
 
     } catch (error: any) {
       console.error('[AuthContext] Error checking session:', error);
@@ -218,12 +203,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         nonce: null,
       });
     }
-  }, [navigate]); // Add navigate to dependency array
+  }, [navigate]);
 
   // Run checkSession on mount
   useEffect(() => {
     checkSession();
-  }, [checkSession]); // checkSession dependency is correct
+  }, [checkSession]);
 
   // Context value
   const value: AuthContextType = {

@@ -1,7 +1,6 @@
 // src/App.tsx
 import React, { Suspense } from 'react';
 import {
-  // BrowserRouter, // <-- REMOVED BrowserRouter import
   Routes,
   Route,
   Navigate,
@@ -59,17 +58,30 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   // Get authentication state and loading status from the context
   const { isAuthenticated, isLoading } = useAuth();
 
+  console.log('[ProtectedRoute] Current state:', {
+    isAuthenticated,
+    isLoading,
+    path: window.location.pathname,
+    timestamp: new Date().toISOString()
+  });
+
   debug('ProtectedRoute: Checking context auth status...', { isAuthenticated, isLoading });
 
   // Display loading indicator while the context is initializing or checking session
   if (isLoading) {
+    console.log('[ProtectedRoute] isLoading=true, showing LoadingFallback');
     return <LoadingFallback />;
   }
 
-  // Render children if authenticated, otherwise redirect to landing page
-  return isAuthenticated
-    ? <Suspense fallback={<LoadingFallback />}>{children}</Suspense>
-    : <Navigate to="/landing" replace />;
+  // If not authenticated, redirect to landing page
+  if (!isAuthenticated) {
+    console.log('[ProtectedRoute] isAuthenticated=false, redirecting to /landing');
+    return <Navigate to="/landing" replace />;
+  }
+
+  // Render children if authenticated
+  console.log('[ProtectedRoute] isAuthenticated=true, rendering protected content');
+  return <Suspense fallback={<LoadingFallback />}>{children}</Suspense>;
 };
 
 /**
@@ -77,6 +89,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
  * Renders the application routes. Assumes AuthProvider and BrowserRouter are wrapping it higher up.
  */
 const App: React.FC = () => {
+  console.log('[App] Component mounted');
   debug('App component mounted');
 
   // Debug output panel (optional)
