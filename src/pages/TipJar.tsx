@@ -1,4 +1,4 @@
-// src/pages/TipJar.tsx 
+// src/pages/TipJar.tsx  
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IDKitWidget, VerificationLevel } from '@worldcoin/idkit';
