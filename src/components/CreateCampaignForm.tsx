@@ -1,28 +1,24 @@
 // src/components/CreateCampaignForm.tsx
 
 import React, { useState, ChangeEvent, FormEvent } from "react";
-import { createCampaign, CampaignPayload } from "../services/CampaignService";
+import { useNavigate } from "react-router-dom";
+import { campaignService, CampaignPayload } from "../services/CampaignService";
 
 export function CreateCampaignForm() {
+  const navigate = useNavigate();
+  
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<CampaignPayload>({
     title: "",
     goal: 0,
-    ownerId: "",
     description: "",
     image: "",
-    verified: false,
-    status: "draft",
   });
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  const onChange = (e: ChangeEvent<
-    HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-  >) => {
+  const onChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    setForm((f) => ({
-      ...f,
+    setForm(prev => ({
+      ...prev,
       [name]: type === "number" ? Number(value) : value,
     }));
   };
@@ -30,109 +26,93 @@ export function CreateCampaignForm() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
-    setResult(null);
+
     try {
-      const resp = await createCampaign(form);
-      setResult(`Created with ID ${resp.id}`);
-      setForm({
-        title: "",
-        goal: 0,
-        ownerId: "",
-        description: "",
-        image: "",
-        verified: false,
-        status: "draft",
-      });
-    } catch (err: any) {
-      setError(err.message);
+      const result = await campaignService.createCampaign(form);
+      
+      if (result.success && result.id) {
+        navigate(`/campaigns/${result.id}`);
+      } else {
+        throw new Error(result.error || 'Failed to create campaign');
+      }
+    } catch (error: any) {
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="p-4 border rounded max-w-md mx-auto space-y-4"
-    >
-      <div>
-        <label className="block">Title</label>
+    <form onSubmit={onSubmit} className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-6">Create New Campaign</h2>
+      
+      <div className="mb-4">
+        <label className="block text-gray-700 text-sm font-bold mb-2">
+          Campaign Title
+        </label>
         <input
+          type="text"
           name="title"
           value={form.title}
           onChange={onChange}
           required
-          className="w-full"
+          className="w-full px-3 py-2 border rounded-md"
+          placeholder="Give your campaign a title"
         />
       </div>
 
-      <div>
-        <label className="block">Goal</label>
+      <div className="mb-4">
+        <label className="block text-gray-700 text-sm font-bold mb-2">
+          Funding Goal (WLD)
+        </label>
         <input
-          name="goal"
           type="number"
-          value={form.goal}
+          name="goal"
+          value={form.goal || ''}
           onChange={onChange}
           required
-          className="w-full"
+          min="1"
+          step="0.01"
+          className="w-full px-3 py-2 border rounded-md"
+          placeholder="How much WLD do you need?"
         />
       </div>
 
-      <div>
-        <label className="block">Owner ID</label>
-        <input
-          name="ownerId"
-          value={form.ownerId}
-          onChange={onChange}
-          required
-          className="w-full"
-        />
-      </div>
-
-      <div>
-        <label className="block">Description</label>
+      <div className="mb-4">
+        <label className="block text-gray-700 text-sm font-bold mb-2">
+          Description
+        </label>
         <textarea
           name="description"
           value={form.description}
           onChange={onChange}
-          className="w-full"
+          rows={4}
+          className="w-full px-3 py-2 border rounded-md"
+          placeholder="Tell people about your campaign"
         />
       </div>
 
-      <div>
-        <label className="block">Image URL</label>
+      <div className="mb-6">
+        <label className="block text-gray-700 text-sm font-bold mb-2">
+          Image URL (optional)
+        </label>
         <input
+          type="url"
           name="image"
           value={form.image}
           onChange={onChange}
-          className="w-full"
+          className="w-full px-3 py-2 border rounded-md"
+          placeholder="https://example.com/image.jpg"
         />
-      </div>
-
-      <div>
-        <label className="block">Status</label>
-        <select
-          name="status"
-          value={form.status}
-          onChange={onChange}
-          className="w-full"
-        >
-          <option value="draft">Draft</option>
-          <option value="active">Active</option>
-        </select>
       </div>
 
       <button
         type="submit"
         disabled={loading}
-        className="px-4 py-2 bg-blue-600 text-white rounded"
+        className={`w-full py-2 px-4 rounded-md text-white font-bold
+          ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
       >
-        {loading ? "Creating…" : "Create Campaign"}
+        {loading ? 'Creating...' : 'Create Campaign'}
       </button>
-
-      {result && <p className="text-green-600">{result}</p>}
-      {error && <p className="text-red-600">{error}</p>}
     </form>
   );
 }
