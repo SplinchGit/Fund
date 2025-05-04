@@ -2,7 +2,7 @@
 
 /**
  * 🛠️ IMPORTANT SETUP:
- * 1. Wrap <MiniKitProvider> with <AuthProvider> for correct context access.
+ * 1. Wrap <AuthProvider> AND <MiniKitProvider> with <BrowserRouter> for correct context access.
  * 2. Global error listeners print full, source-mapped stack traces.
  * 3. Ensure VITE_WORLD_APP_ID is injected into window.__ENV__ before render.
  */
@@ -17,14 +17,14 @@ window.addEventListener('unhandledrejection', (event) => {
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom'; // Import BrowserRouter here
 import App from './App';
 import './index.css';
 import { configureAmplify } from './aws-config';      // AWS Amplify setup (Keep if used for backend)
 import ErudaProvider from './debug/ErudaProvider';   // In-app debug console
 import MiniKitProvider from './MiniKitProvider';     // Official World ID MiniKit provider
 // Import the AuthProvider
-import { AuthProvider } from './components/AuthContext'; 
+import { AuthProvider } from './components/AuthContext';
 
 // Extend window typing for injected env vars (No changes needed)
 declare global {
@@ -76,17 +76,17 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
       return (
         <div style={{
           padding: '20px', margin: '0 auto', maxWidth: '500px', textAlign: 'center',
-          color: '#e53e3e', backgroundColor: '#fff', borderRadius: '5px', 
+          color: '#e53e3e', backgroundColor: '#fff', borderRadius: '5px',
           boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
         }}>
           <h1>Something went wrong</h1>
           <p>Please try reloading the page.</p>
           <pre style={{
-            textAlign: 'left', backgroundColor: '#f7fafc', padding: '10px', 
+            textAlign: 'left', backgroundColor: '#f7fafc', padding: '10px',
             borderRadius: '5px', overflow: 'auto', fontSize: '12px'
           }}>
             {/* Display the specific error message that caused the boundary */}
-            {this.state.error?.message || this.state.error?.toString()} 
+            {this.state.error?.message || this.state.error?.toString()}
           </pre>
           <button
             onClick={() => window.location.reload()}
@@ -113,16 +113,17 @@ ReactDOM.createRoot(rootEl).render(
     {/* In-app debug console via Eruda */}
     <ErudaProvider />
 
-    {/* Wrap everything that needs auth context inside AuthProvider */}
-    <AuthProvider> 
-      <BrowserRouter>
+    {/* BrowserRouter should wrap everything needing routing context */}
+    <BrowserRouter>
+      {/* AuthProvider now has access to routing context */}
+      <AuthProvider>
         <ErrorBoundary>
-           {/* MiniKitProvider now has access to AuthContext */}
-          <MiniKitProvider> 
-            <App />
+          {/* MiniKitProvider also has access */}
+          <MiniKitProvider>
+            <App /> {/* App component itself no longer needs BrowserRouter */}
           </MiniKitProvider>
         </ErrorBoundary>
-      </BrowserRouter>
-    </AuthProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </React.StrictMode>
 );

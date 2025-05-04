@@ -1,24 +1,24 @@
 // src/App.tsx
 import React, { Suspense } from 'react';
 import {
-  BrowserRouter,
+  // BrowserRouter, // <-- REMOVED BrowserRouter import
   Routes,
   Route,
   Navigate,
 } from 'react-router-dom';
 
 // Import the AuthProvider and useAuth hook
-import { AuthProvider, useAuth } from './components/AuthContext'; 
+import { AuthProvider, useAuth } from './components/AuthContext';
 
 // Lazy load all pages and components
 const LandingPage = React.lazy(() => import('./pages/LandingPage'));
 const TipJar = React.lazy(() => import('./pages/TipJar'));
-const CreateCampaignForm = React.lazy(() => 
+const CreateCampaignForm = React.lazy(() =>
   import('./components/CreateCampaignForm').then(module => ({
     default: module.CreateCampaignForm
   }))
 );
-const Dashboard = React.lazy(() => 
+const Dashboard = React.lazy(() =>
   import('./pages/Dashboard').then(module => ({
     default: module.Dashboard
   }))
@@ -57,7 +57,7 @@ const LoadingFallback = () => (
  */
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Get authentication state and loading status from the context
-  const { isAuthenticated, isLoading } = useAuth(); 
+  const { isAuthenticated, isLoading } = useAuth();
 
   debug('ProtectedRoute: Checking context auth status...', { isAuthenticated, isLoading });
 
@@ -69,12 +69,12 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   // Render children if authenticated, otherwise redirect to landing page
   return isAuthenticated
     ? <Suspense fallback={<LoadingFallback />}>{children}</Suspense>
-    : <Navigate to="/landing" replace />; 
+    : <Navigate to="/landing" replace />;
 };
 
 /**
  * App Component
- * Wraps the application routes with AuthProvider.
+ * Renders the application routes. Assumes AuthProvider and BrowserRouter are wrapping it higher up.
  */
 const App: React.FC = () => {
   debug('App component mounted');
@@ -86,88 +86,84 @@ const App: React.FC = () => {
       style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         maxHeight: '150px', overflowY: 'auto',
-        backgroundColor: 'rgba(0,0,0,0.75)', color: '#e0e0e0', 
-        padding: '8px 12px', fontSize: '11px', fontFamily: 'monospace', 
-        zIndex: 9999, borderTop: '1px solid #444', 
-        display: process.env.NODE_ENV === 'development' ? 'block' : 'none', 
+        backgroundColor: 'rgba(0,0,0,0.75)', color: '#e0e0e0',
+        padding: '8px 12px', fontSize: '11px', fontFamily: 'monospace',
+        zIndex: 9999, borderTop: '1px solid #444',
+        display: process.env.NODE_ENV === 'development' ? 'block' : 'none',
       }}
     />
   );
 
+  // No longer needs BrowserRouter or AuthProvider here
   return (
-    // Wrap with BrowserRouter first, then AuthProvider
-    <BrowserRouter>
-      <AuthProvider> 
-        <> 
-          {/* --- Application Routes --- */}
-          <Routes>
-            {/* Redirect base path to landing page */}
-            <Route path="/" element={<Navigate to="/landing" replace />} />
+    <>
+      {/* --- Application Routes --- */}
+      <Routes>
+        {/* Redirect base path to landing page */}
+        <Route path="/" element={<Navigate to="/landing" replace />} />
 
-            {/* Public Routes with Suspense */}
-            <Route 
-              path="/landing" 
-              element={
-                <Suspense fallback={<LoadingFallback />}>
-                  <LandingPage />
-                </Suspense>
-              } 
-            />
-            
-            {/* Public campaign detail view */}
-            <Route 
-              path="/campaigns/:id" 
-              element={
-                <Suspense fallback={<LoadingFallback />}>
-                  <div>Campaign Detail - Coming Soon</div>
-                </Suspense>
-              } 
-            />
+        {/* Public Routes with Suspense */}
+        <Route
+          path="/landing"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <LandingPage />
+            </Suspense>
+          }
+        />
 
-            {/* Protected Routes - Now protected by AuthContext state */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tip-jar"
-              element={
-                <ProtectedRoute>
-                  <TipJar />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/new-campaign"
-              element={
-                <ProtectedRoute> 
-                  <CreateCampaignForm />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/campaigns/:id/edit"
-              element={
-                <ProtectedRoute>
-                  <div>Edit Campaign - Coming Soon</div>
-                </ProtectedRoute>
-              }
-            />
+        {/* Public campaign detail view */}
+        <Route
+          path="/campaigns/:id"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <div>Campaign Detail - Coming Soon</div>
+            </Suspense>
+          }
+        />
 
-            {/* Fallback route: Redirect any unmatched paths to landing */}
-            <Route path="*" element={<Navigate to="/landing" replace />} />
-          </Routes>
-          {/* --- End Routes --- */}
+        {/* Protected Routes - Now protected by AuthContext state */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tip-jar"
+          element={
+            <ProtectedRoute>
+              <TipJar />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/new-campaign"
+          element={
+            <ProtectedRoute>
+              <CreateCampaignForm />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/campaigns/:id/edit"
+          element={
+            <ProtectedRoute>
+              <div>Edit Campaign - Coming Soon</div>
+            </ProtectedRoute>
+          }
+        />
 
-          {/* Render debug output panel */}
-          {debugOutput}
-        </>
-      </AuthProvider>
-    </BrowserRouter>
+        {/* Fallback route: Redirect any unmatched paths to landing */}
+        <Route path="*" element={<Navigate to="/landing" replace />} />
+      </Routes>
+      {/* --- End Routes --- */}
+
+      {/* Render debug output panel */}
+      {debugOutput}
+    </>
   );
 };
 
