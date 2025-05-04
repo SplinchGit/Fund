@@ -13,7 +13,8 @@
     },
     "categories": {
       "storage": {
-        "Splinch": {}
+        "Splinch": {},
+        "Users": {}
       },
       "auth": {
         "0worldfunddebugd1266f95": {}

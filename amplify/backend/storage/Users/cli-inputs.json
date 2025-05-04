@@ -1,0 +1,10 @@
+{
+  "resourceName": "Users",
+  "tableName": "Users",
+  "partitionKey": {
+    "fieldName": "walletAddress",
+    "fieldType": "string"
+  },
+  "gsi": [],
+  "triggerFunctions": []
+}
