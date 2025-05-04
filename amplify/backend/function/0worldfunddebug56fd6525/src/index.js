@@ -27,124 +27,160 @@ const ddbDocClient = DynamoDBDocumentClient.from(dynamodbClient);
 // --- Global variable to cache the JWT secret ---
 let cachedJwtSecret = null;
 
-// --- Helper Functions ---
+// amplify/backend/function/0worldfunddebug56fd6525/src/index.js
 
-// Fetches the JWT secret from AWS Secrets Manager (with caching)
-const getJwtSecret = async () => {
-  if (cachedJwtSecret) {
-    console.log("Using cached JWT secret.");
-    return cachedJwtSecret;
-  }
-  if (!JWT_SECRET_ARN) {
-    console.error("JWT_SECRET_ARN environment variable is not set.");
-    throw new Error("Server configuration error: JWT secret ARN missing.");
-  }
-  try {
-    console.log("Fetching JWT secret from Secrets Manager using ARN:", JWT_SECRET_ARN);
-    const command = new GetSecretValueCommand({ SecretId: JWT_SECRET_ARN });
-    const data = await secretsClient.send(command);
-
-    if (data.SecretString) {
-      let secretValue = null;
-      try {
-        const secretObject = JSON.parse(data.SecretString);
-        if (secretObject && typeof secretObject === 'object' && 'jwtSecret' in secretObject) {
-          secretValue = secretObject.jwtSecret;
-          console.log("Successfully parsed secret from JSON object key 'jwtSecret'.");
-        } else {
-          console.warn("Secret parsed as JSON but missing 'jwtSecret' key. Treating raw string as secret.");
-          secretValue = data.SecretString;
-        }
-      } catch (parseError) {
-        console.log("Failed to parse secret as JSON, assuming plain text value.");
-        secretValue = data.SecretString;
-      }
-
-      if (!secretValue || typeof secretValue !== 'string' || secretValue.trim() === '') {
-        console.error("Extracted secret value is empty or not a string. Value:", secretValue);
-        throw new Error("Could not extract a valid secret value from Secrets Manager.");
-      }
-
-      cachedJwtSecret = secretValue;
-      console.log("JWT secret fetched and cached successfully.");
-      return cachedJwtSecret;
-
-    } else if (data.SecretBinary) {
-      console.error("JWT Secret is stored as binary, expected string.");
-      throw new Error("Server configuration error: Invalid JWT secret format.");
-    } else {
-      throw new Error("Secret value not found in Secrets Manager response.");
-    }
-  } catch (error) {
-    console.error("Failed to fetch/process JWT secret from Secrets Manager:", error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new Error(`Server configuration error: Could not retrieve JWT secret. Details: ${errorMessage}`);
-  }
-};
-
-// Generates a secure random nonce
-const generateNonce = () => {
-  return crypto.randomBytes(16).toString('hex');
-};
-
-// Creates a standard API Gateway response with CORS headers
-const createResponse = (statusCode, body, origin = ALLOWED_ORIGIN) => {
-  return {
-    statusCode: statusCode,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Headers': 'Content-Type,Authorization,x-api-key',
-      'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
-    },
-    body: typeof body === 'string' ? body : JSON.stringify(body),
-  };
-};
-
-// Verify JWT token
-const verifyJWT = async (authHeader) => {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error('Missing or invalid Authorization header');
-  }
-  
-  const token = authHeader.split(' ')[1];
-  const jwtSecret = await getJwtSecret();
-  
-  try {
-    const decoded = jwt.verify(token, jwtSecret);
-    if (!decoded || !decoded.walletAddress) {
-      throw new Error('Invalid token payload');
-    }
-    return decoded;
-  } catch (error) {
-    console.error('JWT verification failed:', error);
-    throw new Error('Invalid or expired token');
-  }
-};
+// ... (keep all imports and helper functions as they are)
 
 // --- Main Handler ---
 exports.handler = async (event) => {
-  console.log('Received event:', JSON.stringify(event, null, 2));
-
-  // Check essential configuration early
-  if (!USERS_TABLE_NAME || !CAMPAIGNS_TABLE_NAME) {
-    console.error("Table names not configured");
-    return createResponse(500, { message: "Server configuration error: Missing table names." });
-  }
-
-  const httpMethod = event.httpMethod;
-  const path = event.requestContext?.http?.path || event.path;
-  console.log(`Handling request: ${httpMethod} ${path}`);
-
-  // Handle CORS preflight OPTIONS requests globally
-  if (httpMethod === 'OPTIONS') {
-    console.log('Handling OPTIONS preflight request');
-    return createResponse(200, {});
-  }
-
-  // --- Existing Auth Routes ---
-  // ... (keep all existing auth routes: /auth/nonce, /auth/verify-signature, /verify-worldid)
-
+    console.log('Received event:', JSON.stringify(event, null, 2));
+  
+    // Check essential configuration early  
+    if (!USERS_TABLE_NAME || !CAMPAIGNS_TABLE_NAME) {
+      console.error("Table names not configured");
+      return createResponse(500, { message: "Server configuration error: Missing table names." });
+    }
+  
+    const httpMethod = event.httpMethod;
+    const path = event.requestContext?.http?.path || event.path;
+    console.log(`Handling request: ${httpMethod} ${path}`);
+  
+    // Handle CORS preflight OPTIONS requests globally
+    if (httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS preflight request');
+      return createResponse(200, {});
+    }
+  
+    // --- Auth Routes ---
+    
+    // Generate nonce
+    if (httpMethod === 'GET' && path === '/auth/nonce') {
+      console.log('[GET /auth/nonce] Generating nonce...');
+      try {
+        const nonce = generateNonce();
+        return createResponse(200, { nonce });
+      } catch (error) {
+        console.error('[GET /auth/nonce] Error:', error);
+        return createResponse(500, { message: 'Failed to generate nonce' });
+      }
+    }
+  
+    // Verify wallet signature
+    if (httpMethod === 'POST' && path === '/auth/verify-signature') {
+      console.log('[POST /auth/verify-signature] Handler triggered');
+      
+      if (!event.body) {
+        return createResponse(400, { message: 'Missing request body' });
+      }
+  
+      try {
+        const { payload, nonce } = JSON.parse(event.body);
+        
+        if (!payload || !nonce) {
+          return createResponse(400, { message: 'Missing payload or nonce' });
+        }
+  
+        // Verify SIWE message
+        const siweMessage = new SiweMessage(payload.message);
+        const fields = await siweMessage.verify({ signature: payload.signature });
+        
+        if (!fields.success) {
+          return createResponse(401, { message: 'Invalid signature' });
+        }
+  
+        const walletAddress = siweMessage.address;
+        const now = new Date().toISOString();
+  
+        // Create/update user
+        try {
+          await ddbDocClient.send(new PutCommand({
+            TableName: USERS_TABLE_NAME,
+            Item: {
+              walletAddress,
+              createdAt: now,
+              lastLoginAt: now,
+              isWorldIdVerified: false
+            },
+            ConditionExpression: 'attribute_not_exists(walletAddress)'
+          }));
+        } catch (err) {
+          if (err.name === 'ConditionalCheckFailedException') {
+            // User exists, update last login
+            await ddbDocClient.send(new UpdateCommand({
+              TableName: USERS_TABLE_NAME,
+              Key: { walletAddress },
+              UpdateExpression: 'SET lastLoginAt = :now',
+              ExpressionAttributeValues: { ':now': now }
+            }));
+          } else {
+            throw err;
+          }
+        }
+  
+        // Generate JWT
+        const jwtSecret = await getJwtSecret();
+        const token = jwt.sign(
+          { walletAddress },
+          jwtSecret,
+          { expiresIn: JWT_EXPIRY }
+        );
+  
+        return createResponse(200, {
+          success: true,
+          token,
+          walletAddress
+        });
+  
+      } catch (error) {
+        console.error('[POST /auth/verify-signature] Error:', error);
+        return createResponse(500, { 
+          message: 'Failed to verify signature',
+          error: error.message 
+        });
+      }
+    }
+  
+    // Verify World ID
+    if (httpMethod === 'POST' && path === '/verify-worldid') {
+      console.log('[POST /verify-worldid] Handler triggered');
+      
+      try {
+        const authHeader = event.headers?.Authorization || event.headers?.authorization;
+        const decodedToken = await verifyJWT(authHeader);
+        const walletAddress = decodedToken.walletAddress;
+  
+        if (!event.body) {
+          return createResponse(400, { message: 'Missing request body' });
+        }
+  
+        const worldIdProof = JSON.parse(event.body);
+        
+        // TODO: Verify World ID proof with World ID API
+        // For now, just update user record
+        
+        const now = new Date().toISOString();
+        await ddbDocClient.send(new UpdateCommand({
+          TableName: USERS_TABLE_NAME,
+          Key: { walletAddress },
+          UpdateExpression: 'SET isWorldIdVerified = :true, worldIdVerifiedAt = :now, worldIdNullifier = :nullifier',
+          ExpressionAttributeValues: {
+            ':true': true,
+            ':now': now,
+            ':nullifier': worldIdProof.nullifier_hash || 'unknown'
+          }
+        }));
+  
+        return createResponse(200, { success: true });
+  
+      } catch (error) {
+        console.error('[POST /verify-worldid] Error:', error);
+        return createResponse(500, { 
+          message: 'Failed to verify World ID',
+          error: error.message 
+        });
+      }
+    }
+  
   // --- Campaign Routes ---
   
   // Create campaign

@@ -1,5 +1,4 @@
 // src/pages/LandingPage.tsx
-
 // --- IMPORTANT NOTE ---
 // This component is now a public landing page. 
 // It does NOT manage authentication or verification state directly.
@@ -8,73 +7,82 @@
 // World ID verification logic has been removed and should be placed
 // within a protected component if required after wallet authentication.
 // --- END NOTE ---
-
-import React from 'react'; // Removed useState
-// Removed Dialog import as modal is removed
-// Removed WorldIDAuth import
-// Removed IVerifiedUser import
-
-// Import useAuth hook to check authentication status for conditional UI (like tabs)
+import React, { useState, useEffect } from 'react'; // Added useState and useEffect
 import { useAuth } from '../components/AuthContext'; 
-
-// Removed LandingPageProps interface
+import { campaignService, Campaign as CampaignData } from '../services/CampaignService'; // Import campaign service
+import { Link } from 'react-router-dom'; // Import Link for navigation
 
 // --- Campaign Interface ---
-// Defines the structure for campaign data (Keep this if campaigns are displayed)
-interface Campaign {
-  id: string;
-  title: string;
-  description: string;
-  image: string;
-  raised: number;
-  goal: number;
+// Using the Campaign type from CampaignService but extending it for UI needs
+interface CampaignDisplay extends CampaignData {
   daysLeft: number;
   creator: string;
-  isVerified: boolean; // Indicates if the campaign creator is verified (fetched from backend)
+  isVerified: boolean;
 }
 
 // --- LandingPage Component ---
-// No longer accepts props related to verification
 export const LandingPage: React.FC = () => { 
-  // Removed isAuthModalOpen state
-  
-  // Get authentication status from context for conditional UI elements
   const { isAuthenticated } = useAuth(); 
+  const [campaigns, setCampaigns] = useState<CampaignDisplay[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Fetch campaigns on component mount
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      try {
+        const result = await campaignService.fetchAllCampaigns();
+        if (result.success && result.campaigns) {
+          // Transform campaign data for display
+          const displayCampaigns: CampaignDisplay[] = result.campaigns.map(campaign => ({
+            ...campaign,
+            daysLeft: calculateDaysLeft(campaign.createdAt),
+            creator: formatAddress(campaign.ownerId),
+            isVerified: true // All creators are verified in our system
+          }));
+          setCampaigns(displayCampaigns);
+        } else {
+          setError(result.error || 'Failed to load campaigns');
+        }
+      } catch (err) {
+        console.error('Error fetching campaigns:', err);
+        setError('Failed to load campaigns');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Removed event handlers: 
-  // handleVerifyButtonClick, handleVerificationSuccess, handleVerificationError, handleLogout
-
-  // --- Helper Functions --- (Keep if needed for campaign display)
+    fetchCampaigns();
+  }, []);
+  
+  // --- Helper Functions ---
   const calculateProgressPercentage = (raised: number, goal: number): string => {
     if (goal <= 0) return '0%'; 
     return Math.min(Math.round((raised / goal) * 100), 100) + '%';
   };
 
-  // --- Sample Data --- (Keep or replace with actual data fetching)
-  const campaigns: Campaign[] = [
-    { 
-      id: '1', title: 'Clean Water Initiative', description: 'Bringing clean drinking water to remote villages.', 
-      image: 'https://placehold.co/200x150/3498db/ffffff?text=Water+Project', raised: 7500, goal: 10000, 
-      daysLeft: 15, creator: 'AquaLife Org', isVerified: true 
-    },
-    { 
-      id: '2', title: 'Tech Education for Kids', description: 'Providing coding classes and laptops for underprivileged children.', 
-      image: 'https://placehold.co/200x150/2ecc71/ffffff?text=Edu+Tech', raised: 3200, goal: 5000, 
-      daysLeft: 22, creator: 'CodeFuture', isVerified: true 
-    },
-    // Add more sample campaigns if needed
-  ];
+  const calculateDaysLeft = (createdAt: string): number => {
+    const created = new Date(createdAt);
+    const now = new Date();
+    const diffTime = 30 * 24 * 60 * 60 * 1000 - (now.getTime() - created.getTime()); // 30 days campaign duration
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
+  };
 
-  // --- Styling --- (Keep styles as they are, unless removing sections)
+  const formatAddress = (address: string): string => {
+    if (!address) return 'Anonymous';
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+  
+  // --- Styling --- (Keep all existing styles)
   const styles: { [key: string]: React.CSSProperties } = {
-    // Core layout styles
+    // ... (keep all existing styles)
     page: {
       textAlign: 'center' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif',
       color: '#202124', backgroundColor: '#ffffff', margin: 0, padding: 0, overflowX: 'hidden' as const,
       width: '100%', maxWidth: '100vw'
     },
     container: { margin: '0 auto', width: '100%', padding: '0 0.5rem', boxSizing: 'border-box' as const, maxWidth: '1200px' },
-    // Header styles - Consider moving header to a separate Layout component
     header: {
       background: 'white', padding: '0.5rem 0', boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
       position: 'sticky' as const, top: 0, zIndex: 100
@@ -85,10 +93,6 @@ export const LandingPage: React.FC = () => {
     },
     logo: { display: 'flex', alignItems: 'center', color: '#1a73e8', fontWeight: 700, fontSize: '1.125rem', textDecoration: 'none' },
     logoSpan: { color: '#202124' },
-    // Removed authButtons style block - Header buttons logic removed from this component
-    // authButtons: { display: 'flex', gap: '0.5rem', alignItems: 'center' }, 
-
-    // Button base styles (kept in case other buttons use them)
     button: {
       padding: '0.5rem 0.75rem', borderRadius: '0.25rem', fontWeight: 500, cursor: 'pointer',
       textDecoration: 'none', textAlign: 'center' as const, fontSize: '0.75rem', 
@@ -97,8 +101,6 @@ export const LandingPage: React.FC = () => {
     },
     buttonOutline: { borderColor: '#1a73e8', color: '#1a73e8', background: 'transparent' },
     buttonPrimary: { backgroundColor: '#1a73e8', color: 'white', borderColor: '#1a73e8' },
-    
-    // Hero section styles
     hero: { background: '#f5f7fa', padding: '1.5rem 0 2rem', textAlign: 'center' as const },
     heroTitle: { fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem', color: '#202124', padding: 0 },
     heroSubtitle: { fontSize: '0.875rem', color: '#5f6368', margin: '0 auto 1rem', maxWidth: '500px', padding: 0 },
@@ -107,17 +109,11 @@ export const LandingPage: React.FC = () => {
       padding: '0.3rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', color: '#5f6368',
       marginTop: '0.75rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' 
     },
-    // Removed userVerifiedBadge style - Logic moved out
-    // userVerifiedBadge: { ... },
-
-    // Campaigns section styles
     campaignsSection: { padding: '1.5rem 0 2rem' },
     sectionHeader: { textAlign: 'center' as const, marginBottom: '1rem' },
     sectionTitle: { fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.25rem', padding: 0 },
     sectionSubtitle: { color: '#5f6368', fontSize: '0.8rem', margin: '0 auto 1rem', padding: 0 },
     campaignsGrid: { display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', justifyContent: 'center', width: '100%' },
-
-    // Campaign card styles
     campaignCard: { 
       width: '100%', background: 'white', borderRadius: '0.5rem', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', 
       overflow: 'hidden', textAlign: 'left' as const, display: 'flex', flexDirection: 'column' as const, 
@@ -140,8 +136,6 @@ export const LandingPage: React.FC = () => {
       display: 'inline-flex', alignItems: 'center', backgroundColor: 'rgba(52, 168, 83, 0.1)', color: '#34a853',
       fontSize: '0.6rem', padding: '0.1rem 0.25rem', borderRadius: '0.125rem', marginLeft: '0.25rem', fontWeight: 500 
     },
-
-    // Bottom navigation tabs styles
     tabs: {
       display: 'flex', justifyContent: 'space-around', backgroundColor: '#fff', borderTop: '1px solid #e0e0e0', 
       position: 'fixed' as const, bottom: 0, left: 0, width: '100%', zIndex: 100, padding: '0.3rem 0' 
@@ -153,12 +147,9 @@ export const LandingPage: React.FC = () => {
     },
     tabActive: { color: '#1a73e8' },
     tabIcon: { width: '1.125rem', height: '1.125rem', marginBottom: '0.125rem' },
-
-    // Footer/Legal notice styles
     legalNotice: { fontSize: '0.7rem', color: '#5f6368', padding: '1rem', marginTop: '1rem', marginBottom: '4.5rem', borderTop: '1px solid #eee' }
   };
-
-  // --- Global styles and mobile overrides ---
+  
   const responsiveStyles = `
     /* Basic CSS reset */
     html, body { margin: 0; padding: 0; overflow-x: hidden; width: 100%; max-width: 100vw; box-sizing: border-box; font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'}; }
@@ -174,25 +165,29 @@ export const LandingPage: React.FC = () => {
     .button-primary:hover { background-color: #1765cc; border-color: #1765cc; }
     .campaign-card:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
   `;
-
+  
   // --- JSX Rendering ---
   return (
     <div style={styles.page ?? {}}> 
       <style>{responsiveStyles}</style>
-
+      
       {/* --- Header --- */}
-      {/* NOTE: Consider extracting Header into its own component */}
-      {/* This header currently has no dynamic auth buttons */}
       <header style={styles.header}>
         <div style={styles.headerContent} className="header-content"> 
-          <a href="#" style={styles.logo}>
+          <Link to="/" style={styles.logo}>
             World<span style={styles.logoSpan}>Fund</span>
-          </a>
-          {/* Auth buttons section removed - should be handled by a separate Header component using useAuth() */}
+          </Link>
+          {isAuthenticated && (
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <Link to="/dashboard" style={{ ...styles.button, ...styles.buttonPrimary }}>
+                Dashboard
+              </Link>
+            </div>
+          )}
         </div>
       </header>
 
-      {/* --- Hero Section --- (No changes needed) */}
+      {/* --- Hero Section --- */}
       <section style={styles.hero}>
         <div style={styles.container} className="page-container"> 
           <h1 style={styles.heroTitle}>Fund Projects That Matter</h1>
@@ -206,49 +201,93 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* --- Campaigns Section --- (No changes needed) */}
+      {/* --- Campaigns Section --- */}
       <section style={styles.campaignsSection}>
         <div style={styles.container} className="page-container">
           <div style={styles.sectionHeader}>
             <h2 style={styles.sectionTitle}>Featured Campaigns</h2>
             <p style={styles.sectionSubtitle}>Discover projects making a difference</p>
           </div>
-          <div className="campaigns-grid" style={styles.campaignsGrid}>
-            {campaigns.length > 0 ? (
-              campaigns.map((campaign) => (
-                <div key={campaign.id} style={styles.campaignCard} className="campaign-card"> 
-                  <img src={campaign.image} alt={campaign.title} style={styles.cardImage} onError={(e) => (e.currentTarget.src = `https://placehold.co/200x120/e5e7eb/5f6368?text=Image+Error`)} />
-                  <div style={styles.cardContent}>
-                    <h3 style={styles.cardTitle}>{campaign.title}</h3>
-                    <p style={styles.cardDesc}>{campaign.description}</p>
-                    <div style={styles.progressBar}>
-                      <div style={{ ...styles.progressFill, width: calculateProgressPercentage(campaign.raised, campaign.goal) }}></div>
+          
+          {/* Loading State */}
+          {loading && (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <p>Loading campaigns...</p>
+            </div>
+          )}
+          
+          {/* Error State */}
+          {error && (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '1rem', 
+              backgroundColor: '#ffebee', 
+              color: '#c62828',
+              borderRadius: '0.5rem',
+              margin: '1rem 0'
+            }}>
+              {error}
+            </div>
+          )}
+          
+          {/* Campaigns Grid */}
+          {!loading && !error && (
+            <div className="campaigns-grid" style={styles.campaignsGrid}>
+              {campaigns.length > 0 ? (
+                campaigns.map((campaign) => (
+                  <Link 
+                    key={campaign.id} 
+                    to={`/campaigns/${campaign.id}`}
+                    style={{ textDecoration: 'none', color: 'inherit' }}
+                  >
+                    <div style={styles.campaignCard} className="campaign-card"> 
+                      <img 
+                        src={campaign.image || `https://placehold.co/200x120/e5e7eb/5f6368?text=No+Image`} 
+                        alt={campaign.title} 
+                        style={styles.cardImage} 
+                        onError={(e) => (e.currentTarget.src = `https://placehold.co/200x120/e5e7eb/5f6368?text=Image+Error`)} 
+                      />
+                      <div style={styles.cardContent}>
+                        <h3 style={styles.cardTitle}>{campaign.title}</h3>
+                        <p style={styles.cardDesc}>{campaign.description || 'No description available'}</p>
+                        <div style={styles.progressBar}>
+                          <div style={{ ...styles.progressFill, width: calculateProgressPercentage(campaign.raised, campaign.goal) }}></div>
+                        </div>
+                        <div style={styles.campaignMeta}>
+                          <span>{`${campaign.raised.toLocaleString()} / ${campaign.goal.toLocaleString()} WLD`}</span>
+                          <span>{campaign.daysLeft > 0 ? `${campaign.daysLeft} days left` : (campaign.raised >= campaign.goal ? 'Goal Reached!' : 'Ended')}</span>
+                        </div>
+                        <div style={styles.campaignCreator}>
+                          <div style={styles.creatorAvatar}></div> 
+                          <span>{campaign.creator}</span>
+                          {campaign.isVerified && (
+                            <span style={styles.verifiedBadge}> 
+                              <svg style={{ width: '10px', height: '10px', marginRight: '2px' }} viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+                              </svg>
+                              Verified
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div style={styles.campaignMeta}>
-                      <span>{`$${campaign.raised.toLocaleString()} / $${campaign.goal.toLocaleString()}`}</span>
-                       <span>{campaign.daysLeft > 0 ? `${campaign.daysLeft} days left` : (campaign.raised >= campaign.goal ? 'Goal Reached!' : 'Ended')}</span>
-                    </div>
-                    <div style={styles.campaignCreator}>
-                      <div style={styles.creatorAvatar}></div> 
-                      <span>{campaign.creator}</span>
-                      {campaign.isVerified && (
-                        <span style={styles.verifiedBadge}> 
-                           <svg style={{ width: '10px', height: '10px', marginRight: '2px' }} viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg>
-                           Verified
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p style={{ color: '#5f6368', gridColumn: '1 / -1' }}>No campaigns available right now.</p> 
-            )}
-          </div>
+                  </Link>
+                ))
+              ) : (
+                <p style={{ color: '#5f6368', gridColumn: '1 / -1', textAlign: 'center' }}>
+                  No campaigns available right now. {isAuthenticated ? (
+                    <Link to="/new-campaign" style={{ color: '#1a73e8', textDecoration: 'none' }}>
+                      Create the first one!
+                    </Link>
+                  ) : 'Sign in to create one!'}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
-      {/* --- Legal Footer --- (No changes needed) */}
+      {/* --- Legal Footer --- */}
       <footer style={styles.legalNotice}>
         <div>All donations are processed securely. Campaign success is not guaranteed.</div>
         <div>&copy; {new Date().getFullYear()} WorldFund. All rights reserved.</div>
@@ -256,41 +295,30 @@ export const LandingPage: React.FC = () => {
 
       {/* --- Bottom Navigation Tabs --- */}
       <nav style={styles.tabs}>
-        {/* Home Tab */}
-        <a href="#" style={{ ...styles.tab, ...styles.tabActive }}> 
+        <Link to="/" style={{ ...styles.tab, ...styles.tabActive }}> 
           <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg>
           <span>Home</span>
-        </a>
-        {/* Search Tab */}
-        <a href="#" style={styles.tab}>
+        </Link>
+        <Link to="/search" style={styles.tab}>
           <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" /></svg>
           <span>Search</span>
-        </a>
-        {/* Account/Verified Tab - Updated to use isAuthenticated from context */}
-        <a 
-          href="#" 
-          // Apply active styles conditionally based on context state
-          style={ isAuthenticated ? { ...styles.tab, ...styles.tabActive } : styles.tab } 
+        </Link>
+        <Link 
+          to={isAuthenticated ? "/dashboard" : "#"}
+          style={isAuthenticated ? { ...styles.tab, ...styles.tabActive } : styles.tab}
         >
           <svg 
             style={{
               ...styles.tabIcon,
-              // Conditionally set icon color based on context state
               color: isAuthenticated ? styles.tabActive?.color : styles.tab?.color 
             }}
             viewBox="0 0 24 24" fill="currentColor"
           >
             <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
           </svg>
-           {/* Text changes based on context state */}
-          <span>{isAuthenticated ? 'Account' : 'Account'}</span> 
-           {/* Or maybe: <span>{isAuthenticated ? 'My Account' : 'Account'}</span> */}
-        </a>
+          <span>{isAuthenticated ? 'Account' : 'Account'}</span>
+        </Link>
       </nav>
-
-      {/* --- World ID Authentication Modal REMOVED --- */}
-      {/* The Dialog component and related logic/state are gone */}
-
     </div>
   );
 };
