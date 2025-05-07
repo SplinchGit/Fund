@@ -1,4 +1,4 @@
-// src/App.tsx
+// src/App.tsx (Fixed)
 import React, { Suspense } from 'react';
 import {
   Routes,
@@ -9,17 +9,22 @@ import {
 // Import the AuthProvider and useAuth hook
 import { AuthProvider, useAuth } from './components/AuthContext';
 
-// Lazy load all pages and components
+// Lazy load all pages and components - using consistent import pattern
 const LandingPage = React.lazy(() => import('./pages/LandingPage'));
 const TipJar = React.lazy(() => import('./pages/TipJar'));
+const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+const CampaignsPage = React.lazy(() => import('./pages/CampaignsPage'));
+const CampaignDetailPage = React.lazy(() =>
+  import('./pages/CampaignDetailPage').then(module => ({
+    default: module.CampaignDetail
+  }))
+);
+const EditCampaignPage = React.lazy(() => import('./pages/EditCampaignPage'));
+
+// Special case for component that doesn't have a default export
 const CreateCampaignForm = React.lazy(() =>
   import('./components/CreateCampaignForm').then(module => ({
     default: module.CreateCampaignForm
-  }))
-);
-const Dashboard = React.lazy(() =>
-  import('./pages/Dashboard').then(module => ({
-    default: module.Dashboard
   }))
 );
 
@@ -125,12 +130,21 @@ const App: React.FC = () => {
           }
         />
 
-        {/* Public campaign detail view */}
+        {/* Public campaign routes */}
+        <Route
+          path="/campaigns"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CampaignsPage />
+            </Suspense>
+          }
+        />
+
         <Route
           path="/campaigns/:id"
           element={
             <Suspense fallback={<LoadingFallback />}>
-              <div>Campaign Detail - Coming Soon</div>
+              <CampaignDetailPage id="" />
             </Suspense>
           }
         />
@@ -164,7 +178,7 @@ const App: React.FC = () => {
           path="/campaigns/:id/edit"
           element={
             <ProtectedRoute>
-              <div>Edit Campaign - Coming Soon</div>
+              <EditCampaignPage />
             </ProtectedRoute>
           }
         />
