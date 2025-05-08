@@ -31,7 +31,7 @@ const WorldIDAuth: React.FC<WorldIDAuthProps> = ({
   className,
   action, // Destructure required props
   app_id,
-  verification_level = VerificationLevel.Orb // Default to Orb verification
+  verification_level = VerificationLevel.Device // Device set temporarily as default for MVP
 }) => {
   // Removed local verification state
   // const [verification, setVerification] = useState<IVerifiedUser | null>(null);
