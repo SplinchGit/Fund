@@ -81,32 +81,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     error: null,
     nonce: null,
   });
-
-  // Login function: Updates state and stores session data
-  const login = useCallback((token: string, address: string) => {
-    console.log('[AuthContext] Login called with:', { hasToken: !!token, address });
-    
-    // First store the session data in localStorage
-    storeSessionData(token, address);
-    
-    // Then update state
-    setAuthState({
-      isAuthenticated: true,
-      walletAddress: address,
-      sessionToken: token,
-      isLoading: false,
-      error: null,
-      nonce: null,
-    });
-    
-    console.log('[AuthContext] Auth state updated, user is now authenticated');
-    
-    // Force a navigation to dashboard after login
-    setTimeout(() => {
-      console.log('[AuthContext] Navigating to dashboard after login');
-      navigate('/dashboard', { replace: true });
-    }, 100);
-  }, [navigate]);
+// Login function: Updates state and stores session data
+const login = useCallback((token: string, address: string) => {
+  console.log('[AuthContext] Login called with:', { hasToken: !!token, address });
+  
+  // First store the session data in localStorage
+  storeSessionData(token, address);
+  
+  // Then update state
+  setAuthState({
+    isAuthenticated: true,
+    walletAddress: address,
+    sessionToken: token,
+    isLoading: false,
+    error: null,
+    nonce: null,
+  });
+  
+  console.log('[AuthContext] Auth state updated, user is now authenticated');
+  
+  // Force a navigation to dashboard after login with a slightly longer delay
+  // to ensure state is fully updated before navigation
+  setTimeout(() => {
+    console.log('[AuthContext] Navigating to dashboard after login');
+    navigate('/dashboard', { replace: true });
+  }, 200);  // Increased timeout for more reliability
+}, [navigate]);
 
   // Login with wallet function: Handles the complete wallet auth flow
   const loginWithWallet = useCallback(async (authResult: MiniAppWalletAuthSuccessPayload) => {

@@ -123,20 +123,21 @@ export const LandingPage: React.FC = () => {
     }
   };
   
-  // Navigation handler for Account tab
-  const handleAccountTabClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    console.log('[LandingPage] Account tab clicked');
-    
-    if (isAuthenticated) {
-      console.log('[LandingPage] User already authenticated, navigating to dashboard');
-      navigate('/dashboard');
-    } else {
-      console.log('[LandingPage] User not authenticated, starting wallet connection');
-      handleConnectWallet();
-    }
-  };
+// Navigation handler for Account tab
+const handleAccountTabClick = (e: React.MouseEvent) => {
+  e.preventDefault(); // Prevent default anchor behavior
+  console.log('[LandingPage] Account tab clicked');
   
+  if (isAuthenticated) {
+    console.log('[LandingPage] User already authenticated, navigating to dashboard');
+    // Use replace: true to ensure proper history handling
+    navigate('/dashboard', { replace: true });
+  } else {
+    console.log('[LandingPage] User not authenticated, starting wallet connection');
+    handleConnectWallet();
+  }
+};
+
   // --- Helper Functions ---
   const calculateProgressPercentage = (raised: number, goal: number): string => {
     if (goal <= 0) return '0%'; 
