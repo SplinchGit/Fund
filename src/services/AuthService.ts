@@ -1,93 +1,30 @@
 // src/services/AuthService.ts
-
-// --- IMPORTANT NOTE ---
-// Reads environment variables directly inside functions where needed
-// to mitigate potential timing issues in certain environments.
-// --- END NOTE ---
+// Service for handling authentication with the backend
 
 import type { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
 import type { ISuccessResult as IDKitSuccessResult } from '@worldcoin/idkit';
 
-/// -----------------------------------------------------------------------------
-/// ENV VARS EXPECTED FROM AMPLIFY BUILD SETTINGS:
-///    VITE_AMPLIFY_API       ← Your backend API base URL
-///    VITE_WORLD_APP_API     ← Your backend API key (if required)
-/// -----------------------------------------------------------------------------
+// Constants
+const SESSION_TOKEN_KEY = 'worldfund_session_token';
+const WALLET_ADDRESS_KEY = 'worldfund_wallet_address';
 
-// --- Custom Error Class ---
-export class AuthServiceError extends Error {
-  constructor(
-    message: string,
-    public code: 'NETWORK' | 'CONFIG' | 'AUTH' | 'PARSE' | 'UNKNOWN',
-    public userMessage: string = message // What user should see
-  ) {
-    super(message);
-    this.name = 'AuthServiceError';
-  }
-}
-
-// --- Session Token Storage (Using localStorage) ---
-const SESSION_TOKEN_KEY = 'app_session_token';
-
-const getStoredSessionToken = (): string | null => {
-  try {
-    return localStorage.getItem(SESSION_TOKEN_KEY);
-  } catch (error) {
-    console.error("Error getting session token from localStorage:", error);
-    return null;
-  }
-};
-
-const storeSessionToken = (token: string): void => {
-  try {
-    localStorage.setItem(SESSION_TOKEN_KEY, token);
-  } catch (error) {
-    console.error("Error storing session token in localStorage:", error);
-  }
-};
-
-const clearStoredSessionToken = (): void => {
-  try {
-    localStorage.removeItem(SESSION_TOKEN_KEY);
-  } catch (error) {
-    console.error("Error clearing session token from localStorage:", error);
-  }
-};
-// --- End Session Token Storage ---
-
-// --- Type for Backend Verification Result ---
-export interface IVerifiedWorldIdResult {
-  success: boolean;
-  error?: string;
-  // Add any other relevant details returned by your backend /verify-worldid endpoint
-  // e.g., message?: string; verificationLevel?: string;
-}
-// --- End Type ---
-
-// --- Service Class ---
+// Class for authentication service
 class AuthService {
   private static instance: AuthService;
+  private API_BASE: string;
+  private API_KEY?: string;
 
   private constructor() {
-    this.validateConfig();
-  }
-
-  private validateConfig(): void {
-    const apiBase = import.meta.env.VITE_AMPLIFY_API;
-    const apiKey = import.meta.env.VITE_WORLD_APP_API;
+    // Get API base URL from environment or use a default
+    this.API_BASE = import.meta.env.VITE_AMPLIFY_API || import.meta.env.VITE_APP_BACKEND_API_URL || '';
+    this.API_KEY = import.meta.env.VITE_WORLD_APP_API || import.meta.env.VITE_APP_BACKEND_API_KEY;
     
-    console.log('[AuthService] Configuration check:', {
-      hasApiBase: !!apiBase,
-      hasApiKey: !!apiKey
-    });
-    
-    if (!apiBase) {
-      console.error('[AuthService] CRITICAL: VITE_AMPLIFY_API is not configured');
+    if (!this.API_BASE) {
+      console.warn('[AuthService] No API base URL configured. Using fallback: /api');
+      this.API_BASE = '/api'; // Fallback to relative path
     }
     
-    if (!apiKey) {
-      console.warn('[AuthService] Warning: VITE_WORLD_APP_API is not configured');
-    }
+    console.log('[AuthService] Initialized with API base:', this.API_BASE);
   }
 
   /** Get singleton instance */
@@ -98,286 +35,313 @@ class AuthService {
     return AuthService.instance;
   }
 
+  /** Generate headers with authorization if available */
+  private getHeaders(includeAuth: boolean = true): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (this.API_KEY) {
+      headers['x-api-key'] = this.API_KEY;
+    }
+    
+    if (includeAuth) {
+      const token = localStorage.getItem(SESSION_TOKEN_KEY);
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+    
+    return headers;
+  }
+
   /** Fetches a unique nonce from the backend. */
   public async getNonce(): Promise<{ success: boolean; nonce?: string; error?: string }> {
     console.log('[AuthService] Fetching nonce...');
-    let responseText = '';
-
+    
     try {
-      const apiBase = import.meta.env.VITE_AMPLIFY_API;
-      const apiKey = import.meta.env.VITE_WORLD_APP_API;
-
-      if (!apiBase) {
-        throw new AuthServiceError(
-          'Backend API URL is not configured',
-          'CONFIG',
-          'Unable to connect to server. Please check your configuration.'
-        );
-      }
-
-      const headers: Record<string, string> = {};
-      if (apiKey) headers['x-api-key'] = apiKey;
-
-      const requestUrl = `${apiBase}/auth/nonce`;
-      console.log(`[AuthService] Requesting nonce from URL: ${requestUrl}`);
-
-      const res = await fetch(requestUrl, {
+      const headers = this.getHeaders(false); // Don't include auth token for nonce
+      
+      const res = await fetch(`${this.API_BASE}/auth/nonce`, {
         method: 'GET',
         headers,
       });
-
-      console.log(`[AuthService] Nonce response status: ${res.status}`);
-      responseText = await res.clone().text();
-
+      
       if (!res.ok) {
-        throw new AuthServiceError(
-          `Failed to fetch nonce (Status: ${res.status})`,
-          'NETWORK',
-          'Unable to reach authentication server. Please try again.'
-        );
-      }
-
-      let body;
-      try {
-        body = await res.json();
-      } catch (parseError) {
-        throw new AuthServiceError(
-          'Failed to parse nonce response as JSON',
-          'PARSE',
-          'Server returned invalid response format.'
-        );
-      }
-
-      if (!body.nonce) {
-        throw new AuthServiceError(
-          'Nonce key not found in backend response',
-          'AUTH',
-          'Authentication initialization failed. Please try again.'
-        );
-      }
-
-      console.log('[AuthService] Nonce received successfully.');
-      return { success: true, nonce: body.nonce };
-
-    } catch (error) {
-      if (error instanceof AuthServiceError) {
-        console.error(`[AuthService] ${error.code} error:`, error.message);
-        return { success: false, error: error.userMessage };
+        const errorBody = await res.json().catch(() => ({}));
+        console.error('[AuthService] Nonce fetch failed:', errorBody);
+        return { 
+          success: false, 
+          error: errorBody.message || `Failed to fetch nonce (${res.status})` 
+        };
       }
       
-      console.error('[AuthService] Unexpected error during nonce fetch:', error);
+      const data = await res.json();
+      
+      if (!data.nonce) {
+        return { success: false, error: 'Nonce not found in response' };
+      }
+      
+      console.log('[AuthService] Nonce received successfully');
+      return { success: true, nonce: data.nonce };
+    } catch (error: any) {
+      console.error('[AuthService] Error fetching nonce:', error);
       return { 
         success: false, 
-        error: 'An unexpected error occurred. Please try again.' 
+        error: error.message || 'Network error while fetching nonce' 
       };
     }
   }
 
-  /** Sends the signed SIWE message payload to the backend for verification. */
+  /** Verifies a wallet signature with the backend */
   public async verifyWalletSignature(
     payload: MiniAppWalletAuthSuccessPayload,
     nonce: string
-  ): Promise<{ success: boolean; error?: string; token?: string; walletAddress?: string }> {
+  ): Promise<{ 
+    success: boolean; 
+    error?: string; 
+    token?: string; 
+    walletAddress?: string 
+  }> {
     console.log('[AuthService] Verifying wallet signature...');
-    let responseText = '';
-
+    
     try {
-      const apiBase = import.meta.env.VITE_AMPLIFY_API;
-      const apiKey = import.meta.env.VITE_WORLD_APP_API;
-
-      if (!apiBase) {
-        throw new AuthServiceError(
-          'Backend API URL is not configured',
-          'CONFIG',
-          'Unable to connect to server. Please check your configuration.'
-        );
-      }
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (apiKey) headers['x-api-key'] = apiKey;
-
-      const requestUrl = `${apiBase}/auth/verify-signature`;
-      console.log(`[AuthService] Verifying signature at URL: ${requestUrl}`);
-
-      const res = await fetch(requestUrl, {
+      const headers = this.getHeaders(false); // Don't include auth token for verification
+      
+      const res = await fetch(`${this.API_BASE}/auth/verify-signature`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ payload, nonce }),
       });
-
-      console.log(`[AuthService] Verify signature response status: ${res.status}`);
-      responseText = await res.clone().text();
-
+      
       if (!res.ok) {
-        let errorMsg = 'Wallet signature verification failed';
-        try { 
-          const errorBody = JSON.parse(responseText); 
-          errorMsg = errorBody.message || errorMsg; 
-        } catch (_) { /* Ignore parse error */ }
-        
-        throw new AuthServiceError(
-          errorMsg,
-          'AUTH',
-          'Unable to verify your wallet. Please try again.'
-        );
+        const errorBody = await res.json().catch(() => ({}));
+        console.error('[AuthService] Signature verification failed:', errorBody);
+        return { 
+          success: false, 
+          error: errorBody.message || `Verification failed (${res.status})` 
+        };
       }
-
-      let body;
-      try {
-        body = await res.json();
-      } catch (parseError) {
-        throw new AuthServiceError(
-          'Failed to parse signature verification response as JSON',
-          'PARSE',
-          'Server returned invalid response format.'
-        );
+      
+      const data = await res.json();
+      
+      if (!data.token || !data.walletAddress) {
+        return { 
+          success: false, 
+          error: 'Token or wallet address missing from response' 
+        };
       }
-
-      if (!body.token || !body.walletAddress) {
-        throw new AuthServiceError(
-          'Session token or wallet address missing in backend response',
-          'AUTH',
-          'Authentication incomplete. Please try again.'
-        );
-      }
-
-      storeSessionToken(body.token);
-      console.log('[AuthService] Signature verified, session token stored.');
+      
+      // Store session data in localStorage
+      localStorage.setItem(SESSION_TOKEN_KEY, data.token);
+      localStorage.setItem(WALLET_ADDRESS_KEY, data.walletAddress);
+      
+      console.log('[AuthService] Signature verified successfully');
       return { 
         success: true, 
-        token: body.token, 
-        walletAddress: body.walletAddress 
+        token: data.token, 
+        walletAddress: data.walletAddress 
       };
-
-    } catch (error) {
-      if (error instanceof AuthServiceError) {
-        console.error(`[AuthService] ${error.code} error:`, error.message);
-        return { success: false, error: error.userMessage };
-      }
-      
-      console.error('[AuthService] Unexpected error during signature verification:', error);
+    } catch (error: any) {
+      console.error('[AuthService] Error verifying signature:', error);
       return { 
         success: false, 
-        error: 'Failed to verify wallet signature. Please try again.' 
+        error: error.message || 'Network error during verification' 
       };
     }
   }
 
-  /** Sends World ID proof details (e.g., from IDKit) to the backend */
-  public async verifyWorldIdProof(details: IDKitSuccessResult): Promise<IVerifiedWorldIdResult> {
+  /** Verifies World ID proof with the backend */
+  public async verifyWorldIdProof(
+    proof: IDKitSuccessResult
+  ): Promise<{ success: boolean; error?: string }> {
     console.log('[AuthService] Verifying World ID proof...');
-    const token = getStoredSessionToken();
     
-    if (!token) {
-      console.error('[AuthService] Cannot verify World ID proof: User not authenticated.');
-      return { 
-        success: false, 
-        error: 'Please sign in with your wallet first.' 
-      };
-    }
-
-    let responseText = '';
     try {
-      const apiBase = import.meta.env.VITE_AMPLIFY_API;
-      const apiKey = import.meta.env.VITE_WORLD_APP_API;
-
-      if (!apiBase) {
-        throw new AuthServiceError(
-          'Backend API URL is not configured',
-          'CONFIG',
-          'Unable to connect to server. Please check your configuration.'
-        );
-      }
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      };
-      if (apiKey) headers['x-api-key'] = apiKey;
-
-      const requestUrl = `${apiBase}/verify-worldid`;
-      console.log(`[AuthService] Verifying World ID proof at URL: ${requestUrl}`);
-
-      const res = await fetch(requestUrl, {
+      const headers = this.getHeaders(true); // Include auth token
+      
+      const res = await fetch(`${this.API_BASE}/verify-worldid`, {
         method: 'POST',
         headers,
-        body: JSON.stringify(details),
+        body: JSON.stringify(proof),
       });
       
-      responseText = await res.clone().text();
-
       if (!res.ok) {
-        let errorMsg = 'Backend World ID verification failed';
-        try {
-          const errorBody = JSON.parse(responseText);
-          errorMsg = errorBody.message || errorMsg;
-        } catch (_) { /* Ignore parse error */ }
-        
-        throw new AuthServiceError(
-          errorMsg,
-          'AUTH',
-          'World ID verification failed. Please try again.'
-        );
-      }
-
-      let body;
-      try {
-        body = await res.json();
-      } catch (parseError) {
-        throw new AuthServiceError(
-          'Failed to parse World ID verification response as JSON',
-          'PARSE',
-          'Server returned invalid response format.'
-        );
-      }
-
-      console.log('[AuthService] Backend World ID verification successful:', body);
-      return body as IVerifiedWorldIdResult;
-
-    } catch (error) {
-      if (error instanceof AuthServiceError) {
-        console.error(`[AuthService] ${error.code} error:`, error.message);
-        return { success: false, error: error.userMessage };
+        const errorBody = await res.json().catch(() => ({}));
+        console.error('[AuthService] World ID verification failed:', errorBody);
+        return { 
+          success: false, 
+          error: errorBody.message || `Verification failed (${res.status})` 
+        };
       }
       
-      console.error('[AuthService] Unexpected error during World ID verification:', error);
-      return { 
-        success: false, 
-        error: 'Failed to verify World ID. Please try again.' 
-      };
-    }
-  }
-
-  /** Clears the stored application session token. */
-  public async logout(): Promise<{ success: boolean; error?: string }> {
-    console.log('[AuthService] Logging out, clearing session token...');
-    try {
-      clearStoredSessionToken();
-      console.log('[AuthService] Session token cleared.');
+      const data = await res.json();
+      console.log('[AuthService] World ID proof verified successfully');
+      
       return { success: true };
-    } catch (e: any) {
-      console.error('[AuthService] Logout failed:', e);
+    } catch (error: any) {
+      console.error('[AuthService] Error verifying World ID proof:', error);
       return { 
         success: false, 
-        error: 'Failed to log out. Please try again.' 
+        error: error.message || 'Network error during verification' 
       };
     }
   }
 
-  /** Checks if a user session token exists locally and returns it. */
-  public async checkAuthStatus(): Promise<{ isAuthenticated: boolean; token: string | null }> {
+  /** Logs the user out */
+  public async logout(): Promise<{ success: boolean; error?: string }> {
+    console.log('[AuthService] Logging out...');
+    
     try {
-      const token = getStoredSessionToken();
-      if (token) {
-        return { isAuthenticated: true, token: token };
+      // Clear local storage first (in case backend call fails)
+      localStorage.removeItem(SESSION_TOKEN_KEY);
+      localStorage.removeItem(WALLET_ADDRESS_KEY);
+      
+      try {
+        // Optional: Call backend logout endpoint
+        // const headers = this.getHeaders(true);
+        // await fetch(`${this.API_BASE}/auth/logout`, {
+        //   method: 'POST',
+        //   headers,
+        // });
+      } catch (backendError) {
+        console.warn('[AuthService] Backend logout failed, but local logout succeeded');
+        // Continue with local logout even if backend logout fails
       }
-      return { isAuthenticated: false, token: null };
+      
+      console.log('[AuthService] Logout successful');
+      return { success: true };
+    } catch (error: any) {
+      console.error('[AuthService] Error during logout:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Logout failed' 
+      };
+    }
+  }
+
+  /** Checks if the user is authenticated */
+  public async checkAuthStatus(): Promise<{ 
+    isAuthenticated: boolean; 
+    token: string | null;
+    walletAddress: string | null;
+  }> {
+    console.log('[AuthService] Checking auth status...');
+    
+    try {
+      const token = localStorage.getItem(SESSION_TOKEN_KEY);
+      const walletAddress = localStorage.getItem(WALLET_ADDRESS_KEY);
+      
+      if (token && walletAddress) {
+        console.log('[AuthService] Found valid session data');
+        return { 
+          isAuthenticated: true, 
+          token, 
+          walletAddress 
+        };
+      }
+      
+      console.log('[AuthService] No valid session found');
+      return { 
+        isAuthenticated: false, 
+        token: null, 
+        walletAddress: null 
+      };
     } catch (error) {
-      console.error("[AuthService] Error checking auth status:", error);
-      clearStoredSessionToken();
-      return { isAuthenticated: false, token: null };
+      console.error('[AuthService] Error checking auth status:', error);
+      // Clear potentially corrupted data
+      localStorage.removeItem(SESSION_TOKEN_KEY);
+      localStorage.removeItem(WALLET_ADDRESS_KEY);
+      
+      return { 
+        isAuthenticated: false, 
+        token: null, 
+        walletAddress: null 
+      };
+    }
+  }
+
+  /** Verifies that a token is valid (optional backend call) */
+  public async verifyToken(token: string): Promise<{ 
+    isValid: boolean; 
+    error?: string;
+    walletAddress?: string;
+  }> {
+    console.log('[AuthService] Verifying token validity...');
+    
+    try {
+      // Option 1: Simple client-side validation by decoding JWT
+      try {
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+          return { isValid: false, error: 'Invalid token format' };
+        }
+        
+        // Make sure the payload part exists and is a string before calling atob
+        const payloadPart = parts[1];
+        if (!payloadPart) {
+          return { isValid: false, error: 'Invalid token format: missing payload' };
+        }
+        
+        // Now payloadPart is guaranteed to be a string
+        const payload = JSON.parse(atob(payloadPart));
+        
+        // Check token expiry
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          return { isValid: false, error: 'Token expired' };
+        }
+        
+        // Check if payload contains wallet address
+        if (!payload.walletAddress) {
+          return { isValid: false, error: 'Token missing wallet address' };
+        }
+        
+        return { 
+          isValid: true, 
+          walletAddress: payload.walletAddress 
+        };
+      } catch (decodeError) {
+        console.error('[AuthService] Error decoding token:', decodeError);
+        return { isValid: false, error: 'Invalid token format' };
+      }
+      
+      // Option 2: Verify with backend (commented out for now)
+      /*
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+      
+      if (this.API_KEY) {
+        headers['x-api-key'] = this.API_KEY;
+      }
+      
+      const res = await fetch(`${this.API_BASE}/auth/verify-token`, {
+        method: 'GET',
+        headers,
+      });
+      
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => ({}));
+        return { 
+          isValid: false, 
+          error: errorBody.message || `Token validation failed (${res.status})` 
+        };
+      }
+      
+      const data = await res.json();
+      
+      return { 
+        isValid: true, 
+        walletAddress: data.walletAddress 
+      };
+      */
+    } catch (error: any) {
+      console.error('[AuthService] Error verifying token:', error);
+      return { 
+        isValid: false, 
+        error: error.message || 'Network error during token validation' 
+      };
     }
   }
 }

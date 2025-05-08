@@ -7,7 +7,7 @@
 // World ID verification logic has been removed and should be placed
 // within a protected component if required after wallet authentication.
 // --- END NOTE ---
-import React, { useState, useEffect } from 'react'; 
+import React, { useState, useEffect, useRef } from 'react'; 
 import { useAuth } from '../components/AuthContext'; 
 import { campaignService, Campaign as CampaignData } from '../services/CampaignService';
 import { Link, useNavigate } from 'react-router-dom';
@@ -24,12 +24,31 @@ interface CampaignDisplay extends CampaignData {
 
 // --- LandingPage Component ---
 export const LandingPage: React.FC = () => { 
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, walletAddress } = useAuth();
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<CampaignDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isConnectingWallet, setIsConnectingWallet] = useState(false);
+  
+  // Flag to track if navigation happened
+  const hasNavigated = useRef(false);
+  
+  // Check authentication status and navigate if needed
+  useEffect(() => {
+    // This effect needs to trigger when isAuthenticated changes
+    console.log('[LandingPage] Authentication status changed:', isAuthenticated);
+    
+    if (isAuthenticated && !hasNavigated.current) {
+      console.log('[LandingPage] User is authenticated, redirecting to dashboard');
+      hasNavigated.current = true; // Prevent multiple navigations
+      
+      // Navigate to dashboard with a slight delay to ensure context is fully updated
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 100);
+    }
+  }, [isAuthenticated, navigate]);
   
   // Fetch campaigns on component mount
   useEffect(() => {
@@ -63,11 +82,11 @@ export const LandingPage: React.FC = () => {
   const handleConnectWallet = async () => {
     if (isConnectingWallet) return; // Prevent multiple clicks
 
+    console.log('[LandingPage] Starting wallet connection flow...');
     setIsConnectingWallet(true);
+    setError(null); // Clear any existing errors
     
     try {
-      console.log("[LandingPage] Starting wallet connection flow...");
-      
       // Try window.__triggerWalletAuth first if available (for debug)
       if (window.__triggerWalletAuth) {
         console.log("[LandingPage] Using window.__triggerWalletAuth");
@@ -79,9 +98,15 @@ export const LandingPage: React.FC = () => {
         const authResult = await triggerMiniKitWalletAuth();
         console.log("[LandingPage] Auth result:", authResult);
       }
+      
+      // Note: We don't need to manually navigate here anymore
+      // The useEffect will handle navigation once isAuthenticated changes
+      
     } catch (error) {
       console.error("[LandingPage] Wallet connection error:", error);
+      setError("Failed to connect wallet. Please try again.");
     } finally {
+      // Even if there's an error, we must reset the connecting state
       setIsConnectingWallet(false);
     }
   };
@@ -105,15 +130,30 @@ export const LandingPage: React.FC = () => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
   
-  // --- Styling --- (Keep all existing styles)
+  // --- Styling --- (Updated for viewport layout)
   const styles: { [key: string]: React.CSSProperties } = {
-    // ... (keeping all existing styles)
     page: {
-      textAlign: 'center' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif',
-      color: '#202124', backgroundColor: '#ffffff', margin: 0, padding: 0, overflowX: 'hidden' as const,
-      width: '100%', maxWidth: '100vw'
+      textAlign: 'center' as const, 
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif',
+      color: '#202124', 
+      backgroundColor: '#ffffff', 
+      margin: 0, 
+      padding: 0, 
+      overflowX: 'hidden' as const,
+      width: '100%', 
+      maxWidth: '100vw',
+      minHeight: '100vh', // Ensure minimum height is full viewport
+      display: 'flex',    
+      flexDirection: 'column' as const 
     },
-    container: { margin: '0 auto', width: '100%', padding: '0 0.5rem', boxSizing: 'border-box' as const, maxWidth: '1200px' },
+    container: { 
+      margin: '0 auto', 
+      width: '100%', 
+      padding: '0 0.5rem', 
+      boxSizing: 'border-box' as const, 
+      maxWidth: '1200px',
+      flexGrow: 1 // Make container fill available space
+    },
     header: {
       background: 'white', padding: '0.5rem 0', boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
       position: 'sticky' as const, top: 0, zIndex: 100
@@ -169,7 +209,9 @@ export const LandingPage: React.FC = () => {
     },
     tabs: {
       display: 'flex', justifyContent: 'space-around', backgroundColor: '#fff', borderTop: '1px solid #e0e0e0', 
-      position: 'fixed' as const, bottom: 0, left: 0, width: '100%', zIndex: 100, padding: '0.3rem 0' 
+      position: 'fixed' as const, bottom: 0, left: 0, width: '100%', zIndex: 100, 
+      padding: '0.5rem 0', // Increased padding for better touch targets
+      boxShadow: '0 -1px 3px rgba(0,0,0,0.1)' // Add shadow for better visibility
     },
     tab: { 
       display: 'flex', flexDirection: 'column' as const, alignItems: 'center', fontSize: '0.65rem', 
@@ -181,20 +223,41 @@ export const LandingPage: React.FC = () => {
     legalNotice: { fontSize: '0.7rem', color: '#5f6368', padding: '1rem', marginTop: '1rem', marginBottom: '4.5rem', borderTop: '1px solid #eee' }
   };
   
+  // Updated to include proper viewport height handling
   const responsiveStyles = `
     /* Basic CSS reset */
-    html, body { margin: 0; padding: 0; overflow-x: hidden; width: 100%; max-width: 100vw; box-sizing: border-box; font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'}; }
+    html, body { margin: 0; padding: 0; overflow-x: hidden; width: 100%; max-width: 100vw; height: 100%; box-sizing: border-box; font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'}; }
+    body { min-height: 100vh; /* Use viewport height */ background-color: var(--bg-default); }
+    #root { min-height: 100vh; display: flex; flex-direction: column; }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
     /* Responsive Grid */
     @media (min-width: 640px) { .campaigns-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (min-width: 1024px) { .campaigns-grid { grid-template-columns: repeat(3, 1fr); } .page-container, .header-content { padding: 0 1rem; } }
+    
     /* Focus styles */
     button:focus-visible, a:focus-visible { outline: 2px solid #1a73e8; outline-offset: 2px; border-radius: 2px; }
     button:focus, a:focus { outline: none; }
+    
     /* Hover effects */
     .button-outline:hover { background-color: rgba(26, 115, 232, 0.05); border-color: #1a73e8; }
     .button-primary:hover { background-color: #1765cc; border-color: #1765cc; }
     .campaign-card:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+    
+    /* Mobile tab button styles */
+    .bottom-tab-button {
+      border: none;
+      background: transparent;
+      font: inherit;
+      cursor: pointer;
+      color: inherit;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
   `;
   
   // --- JSX Rendering ---
@@ -344,13 +407,19 @@ export const LandingPage: React.FC = () => {
           <span>Search</span>
         </Link>
         
-        {/* Updated Account tab with active wallet connection trigger */}
+        {/* Fixed Account tab with improved handling */}
         {isAuthenticated ? (
-          <Link to="/dashboard" style={{ ...styles.tab, ...styles.tabActive }}>
+          <Link 
+            to="/dashboard" 
+            style={{ 
+              ...styles.tab, 
+              color: styles.tabActive?.color 
+            }}
+          >
             <svg 
               style={{
                 ...styles.tabIcon,
-                color: styles.tabActive?.color
+                color: 'inherit'
               }}
               viewBox="0 0 24 24" fill="currentColor"
             >
@@ -360,12 +429,23 @@ export const LandingPage: React.FC = () => {
           </Link>
         ) : (
           <button 
-            onClick={handleConnectWallet}
+            onClick={(e) => {
+              e.preventDefault();
+              handleConnectWallet();
+            }}
+            className="bottom-tab-button"
+            style={{
+              ...styles.tab,
+              cursor: 'pointer',
+              color: isConnectingWallet ? styles.tabActive?.color : undefined
+            }}
             disabled={isConnectingWallet}
-            style={styles.tab}
           >
             <svg 
-              style={styles.tabIcon}
+              style={{
+                ...styles.tabIcon,
+                color: isConnectingWallet ? styles.tabActive?.color : undefined
+              }}
               viewBox="0 0 24 24" fill="currentColor"
             >
               <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />

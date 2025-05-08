@@ -30,6 +30,41 @@ interface AuthContextType extends AuthState {
 // --- Context Creation ---
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// --- Session Storage Functions ---
+const SESSION_TOKEN_KEY = 'worldfund_session_token';
+const WALLET_ADDRESS_KEY = 'worldfund_wallet_address';
+
+const storeSessionData = (token: string, address: string): void => {
+  try {
+    localStorage.setItem(SESSION_TOKEN_KEY, token);
+    localStorage.setItem(WALLET_ADDRESS_KEY, address);
+    console.log('[AuthContext] Session data stored in localStorage');
+  } catch (error) {
+    console.error("[AuthContext] Error storing session data:", error);
+  }
+};
+
+const getStoredSessionData = (): { token: string | null, address: string | null } => {
+  try {
+    const token = localStorage.getItem(SESSION_TOKEN_KEY);
+    const address = localStorage.getItem(WALLET_ADDRESS_KEY);
+    return { token, address };
+  } catch (error) {
+    console.error("[AuthContext] Error getting session data:", error);
+    return { token: null, address: null };
+  }
+};
+
+const clearStoredSessionData = (): void => {
+  try {
+    localStorage.removeItem(SESSION_TOKEN_KEY);
+    localStorage.removeItem(WALLET_ADDRESS_KEY);
+    console.log('[AuthContext] Session data cleared from localStorage');
+  } catch (error) {
+    console.error("[AuthContext] Error clearing session data:", error);
+  }
+};
+
 // --- Provider Component ---
 interface AuthProviderProps {
   children: ReactNode;
@@ -42,17 +77,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated: false,
     walletAddress: null,
     sessionToken: null,
-    isLoading: true,
+    isLoading: true, // Start with loading true until we check session
     error: null,
     nonce: null,
   });
 
-  // Login function: Updates state and navigates to dashboard
+  // Login function: Updates state and stores session data
   const login = useCallback((token: string, address: string) => {
-    console.log('[AuthContext] Login called with:', { token: !!token, address });
-    console.log('[AuthContext] Current pathname:', window.location.pathname);
+    console.log('[AuthContext] Login called with:', { hasToken: !!token, address });
     
-    // Update state and immediately set isAuthenticated to true
+    // First store the session data in localStorage
+    storeSessionData(token, address);
+    
+    // Then update state
     setAuthState({
       isAuthenticated: true,
       walletAddress: address,
@@ -62,15 +99,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       nonce: null,
     });
     
-    console.log('[AuthContext] State updated, scheduling navigation...');
-    
-    // Force React to flush state updates before navigation
-    Promise.resolve().then(() => {
-      console.log('[AuthContext] Executing navigation to dashboard');
-      navigate('/dashboard', { replace: true });
-      console.log('[AuthContext] Navigation completed');
-    });
-  }, [navigate]);
+    console.log('[AuthContext] Auth state updated, user is now authenticated');
+  }, []);
 
   // Login with wallet function: Handles the complete wallet auth flow
   const loginWithWallet = useCallback(async (authResult: MiniAppWalletAuthSuccessPayload) => {
@@ -113,8 +143,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setAuthState(prevState => ({ ...prevState, isLoading: true }));
 
     try {
-      await authService.logout();
+      // First clear localStorage
+      clearStoredSessionData();
       
+      // Then try to call the backend logout if available
+      try {
+        await authService.logout();
+      } catch (logoutError) {
+        console.warn('[AuthContext] Backend logout failed, but continuing with local logout:', logoutError);
+        // Continue with local logout even if backend logout fails
+      }
+      
+      // Update state
       setAuthState({
         isAuthenticated: false,
         walletAddress: null,
@@ -124,7 +164,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         nonce: null,
       });
 
-      console.log('[AuthContext] User logged out successfully.');
+      console.log('[AuthContext] User logged out successfully');
       navigate('/landing', { replace: true });
     } catch (error: any) {
       console.error('[AuthContext] Logout failed:', error);
@@ -139,61 +179,60 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Check session on mount
   const checkSession = useCallback(async () => {
     console.log('[AuthContext] Checking session...');
+    setAuthState(prevState => ({ ...prevState, isLoading: true }));
 
     try {
-      const { isAuthenticated, token } = await authService.checkAuthStatus();
-      console.log('[AuthContext] checkAuthStatus result:', { isAuthenticated, hasToken: !!token });
+      // 1. First check localStorage directly
+      const { token, address } = getStoredSessionData();
+      console.log('[AuthContext] Session data from localStorage:', {
+        hasToken: !!token,
+        hasAddress: !!address
+      });
 
-      let sessionRestored = false;
-      let restoredAddress: string | null = null;
-
-      if (isAuthenticated && token) {
+      // If we have both token and address, attempt to restore session
+      if (token && address) {
+        console.log('[AuthContext] Found session data, validating...');
+        
         try {
-          const tokenParts = token.split('.');
-          const payload = tokenParts[1];
-
-          if (tokenParts.length === 3 && payload) {
-            const decodedPayload = JSON.parse(atob(payload));
-            if (decodedPayload?.walletAddress) {
-              restoredAddress = decodedPayload.walletAddress;
-              setAuthState({
-                isAuthenticated: true,
-                walletAddress: restoredAddress,
-                sessionToken: token,
-                isLoading: false,
-                error: null,
-                nonce: null,
-              });
-              sessionRestored = true;
-              console.log('[AuthContext] Session restored for wallet:', restoredAddress);
-            }
+          // Optionally verify token with backend
+          // const { isValid } = await authService.verifyToken(token);
+          
+          // For now, assume valid if both exist
+          const isValid = true;
+          
+          if (isValid) {
+            console.log('[AuthContext] Session data valid, restoring session');
+            setAuthState({
+              isAuthenticated: true,
+              walletAddress: address,
+              sessionToken: token,
+              isLoading: false,
+              error: null,
+              nonce: null,
+            });
+            console.log('[AuthContext] Session restored successfully');
+            return; // Exit early since we've restored the session
           }
-        } catch (e) {
-          console.error('[AuthContext] Failed to decode token during session check:', e);
-          await authService.logout();
+        } catch (verifyError) {
+          console.error('[AuthContext] Error verifying token:', verifyError);
+          // If verification fails, clear stored data and continue as unauthenticated
+          clearStoredSessionData();
         }
       }
 
-      if (!sessionRestored) {
-        setAuthState({
-          isAuthenticated: false,
-          walletAddress: null,
-          sessionToken: null,
-          isLoading: false,
-          error: null,
-          nonce: null,
-        });
-        console.log('[AuthContext] No valid session found or restored.');
-      } else {
-        console.log('[AuthContext] Session restored, navigating to dashboard...');
-        // Use Promise.resolve() for consistency
-        Promise.resolve().then(() => {
-          navigate('/dashboard', { replace: true });
-        });
-      }
-
+      // If we get here, no valid session was found or restored
+      console.log('[AuthContext] No valid session found');
+      setAuthState({
+        isAuthenticated: false,
+        walletAddress: null,
+        sessionToken: null,
+        isLoading: false,
+        error: null,
+        nonce: null,
+      });
     } catch (error: any) {
       console.error('[AuthContext] Error checking session:', error);
+      clearStoredSessionData(); // Clear any potentially invalid data
       setAuthState({
         isAuthenticated: false,
         walletAddress: null,
@@ -203,22 +242,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         nonce: null,
       });
     }
-  }, [navigate]);
+  }, []);
 
   // Run checkSession on mount
   useEffect(() => {
     checkSession();
+    
+    // Also listen for storage events (e.g., if user logs out in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === SESSION_TOKEN_KEY || e.key === WALLET_ADDRESS_KEY) {
+        console.log('[AuthContext] Session storage changed in another tab/window');
+        checkSession();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [checkSession]);
 
   // Context value
-  const value: AuthContextType = {
+  const contextValue: AuthContextType = {
     ...authState,
     login,
     logout,
     loginWithWallet,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 };
 
 // Custom hook

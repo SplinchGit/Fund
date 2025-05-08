@@ -16,7 +16,6 @@ interface ImportMeta {
 import type { ReactNode } from 'react'
 import React, { useEffect, useState, useCallback } from 'react'
 // Import MiniKit and necessary types
-// *** REMOVED MiniAppPayload from import as it's not exported ***
 import { MiniKit, MiniAppWalletAuthSuccessPayload, WalletAuthInput } from '@worldcoin/minikit-js'
 // Import the useAuth hook to access the login function and auth state
 import { useAuth } from './components/AuthContext';
@@ -32,14 +31,36 @@ interface MiniKitProviderProps {
 export const triggerMiniKitWalletAuth = async (): Promise<any> => {
   console.log('[triggerMiniKitWalletAuth] Function called');
   
+  // Check if MiniKit is available
   if (typeof MiniKit === 'undefined') {
     console.error('[triggerMiniKitWalletAuth] MiniKit is undefined');
     throw new Error('MiniKit is not available');
   }
   
-  if (!MiniKit.isInstalled || !MiniKit.isInstalled()) {
-    console.error('[triggerMiniKitWalletAuth] MiniKit not installed');
-    throw new Error('MiniKit not installed');
+  // Ensure MiniKit is installed
+  let isInstalled = false;
+  try {
+    isInstalled = MiniKit.isInstalled && MiniKit.isInstalled();
+    console.log(`[triggerMiniKitWalletAuth] MiniKit.isInstalled() check returned: ${isInstalled}`);
+  } catch (err) {
+    console.error('[triggerMiniKitWalletAuth] Error checking if MiniKit is installed:', err);
+  }
+  
+  // If not installed, try to install it
+  if (!isInstalled) {
+    try {
+      const appId = import.meta.env.VITE_WORLD_APP_ID || 
+                    import.meta.env.VITE_WORLD_ID_APP_ID || 
+                    window.__ENV__?.WORLD_APP_ID ||
+                    'app_0de9312869c4818fc1a1ec64306551b69'; // Default App ID
+      
+      console.log('[triggerMiniKitWalletAuth] Installing MiniKit with appId:', appId);
+      await MiniKit.install(String(appId));
+      console.log('[triggerMiniKitWalletAuth] MiniKit installed successfully');
+    } catch (err) {
+      console.error('[triggerMiniKitWalletAuth] Failed to install MiniKit:', err);
+      throw new Error('Failed to initialize MiniKit: ' + (err instanceof Error ? err.message : String(err)));
+    }
   }
   
   // Get nonce from backend first
@@ -52,9 +73,38 @@ export const triggerMiniKitWalletAuth = async (): Promise<any> => {
     
     console.log('[triggerMiniKitWalletAuth] Nonce received:', nonceResult.nonce);
     
+    // Ensure MiniKit commands are available
+    if (!MiniKit.commandsAsync || !MiniKit.commandsAsync.walletAuth) {
+      console.error('[triggerMiniKitWalletAuth] MiniKit commands not available');
+      throw new Error('MiniKit wallet auth commands not available');
+    }
+    
     // Trigger the wallet auth
     console.log('[triggerMiniKitWalletAuth] Calling MiniKit.commandsAsync.walletAuth');
-    return await MiniKit.commandsAsync.walletAuth({ nonce: nonceResult.nonce });
+    const result = await MiniKit.commandsAsync.walletAuth({ nonce: nonceResult.nonce });
+    console.log('[triggerMiniKitWalletAuth] Wallet auth result:', result);
+    
+    if (!result || !result.finalPayload) {
+      throw new Error('Invalid response from MiniKit wallet auth');
+    }
+    
+    // Process the auth result
+    const { finalPayload } = result;
+    
+    // Handle error status
+    if (finalPayload.status !== 'success') {
+      throw new Error(`MiniKit auth failed: ${finalPayload.error_code || 'unknown error'}`);
+    }
+    
+    // Verify with backend
+    console.log('[triggerMiniKitWalletAuth] Verifying with backend');
+    const verifyResult = await authService.verifyWalletSignature(finalPayload, nonceResult.nonce);
+    
+    if (!verifyResult.success) {
+      throw new Error(verifyResult.error || 'Backend verification failed');
+    }
+    
+    return verifyResult;
   } catch (error) {
     console.error('[triggerMiniKitWalletAuth] Error:', error);
     throw error;
@@ -68,20 +118,19 @@ export default function MiniKitProvider({
   const [appIdToUse, setAppIdToUse] = useState<string | undefined>(appId);
   const [isMiniKitInitialized, setIsMiniKitInitialized] = useState(false);
   const [isAttemptingAuth, setIsAttemptingAuth] = useState(false);
-  const [authAttemptError, setAuthAttemptError] = useState(false);
-
+  
   // Get login function and auth state from context
-  const { login, isAuthenticated, isLoading: isAuthLoading, error: authError } = useAuth();
+  const { login, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   // --- Step 1: Determine the App ID ---
   useEffect(() => {
-    // (Logic seems sound)
     try {
       if (appId) {
         console.log('[MiniKitProvider] Using World App ID from props:', appId);
         setAppIdToUse(appId);
         return;
       }
+      
       const envAppId = import.meta.env.VITE_WORLD_APP_ID ||
                        import.meta.env.VITE_WORLD_ID_APP_ID ||
                        import.meta.env.WORLD_APP_ID;
@@ -98,10 +147,10 @@ export default function MiniKitProvider({
         console.log('[MiniKitProvider] Using World App ID from environment variables:', envAppId);
         determinedAppId = envAppId;
       } else {
-         console.warn('[MiniKitProvider] No World App ID found in environment variables or props, using default.');
+        console.warn('[MiniKitProvider] No World App ID found in environment variables or props, using default.');
       }
-       setAppIdToUse(determinedAppId);
-
+      
+      setAppIdToUse(determinedAppId);
     } catch (error) {
       console.error('[MiniKitProvider] Error setting up MiniKit App ID:', error);
     }
@@ -109,7 +158,6 @@ export default function MiniKitProvider({
 
   // --- Step 2: Initialize MiniKit ---
   useEffect(() => {
-    // (Logic seems sound)
     if (!appIdToUse) {
       console.error('[MiniKitProvider] Cannot initialize MiniKit: No App ID available');
       return;
@@ -125,8 +173,13 @@ export default function MiniKitProvider({
           return;
         }
 
-        const isInstalled = MiniKit.isInstalled && MiniKit.isInstalled();
-        console.log(`[MiniKitProvider] MiniKit.isInstalled() check returned: ${isInstalled}`);
+        let isInstalled = false;
+        try {
+          isInstalled = MiniKit.isInstalled && MiniKit.isInstalled();
+          console.log(`[MiniKitProvider] MiniKit.isInstalled() check returned: ${isInstalled}`);
+        } catch (err) {
+          console.error('[MiniKitProvider] Error checking if MiniKit is installed:', err);
+        }
 
         if (!isInstalled) {
           console.log('[MiniKitProvider] Installing MiniKit...');
@@ -136,7 +189,15 @@ export default function MiniKitProvider({
           console.log('[MiniKitProvider] MiniKit was already installed (according to isInstalled check)');
         }
 
-        if (MiniKit.isInstalled && MiniKit.isInstalled()) {
+        // Verify MiniKit is available after installation attempt
+        let isAvailableNow = false;
+        try {
+          isAvailableNow = MiniKit.isInstalled && MiniKit.isInstalled();
+        } catch (err) {
+          console.error('[MiniKitProvider] Error checking if MiniKit is installed after installation:', err);
+        }
+
+        if (isAvailableNow) {
           console.log('[MiniKitProvider] MiniKit is active and ready');
           if (isMounted) {
             setIsMiniKitInitialized(true);
@@ -159,108 +220,52 @@ export default function MiniKitProvider({
     };
   }, [appIdToUse]);
 
-  // --- Step 3: Trigger Wallet Auth Automatically ---
-  const attemptWalletAuth = useCallback(async () => {
-    if (isAttemptingAuth) {
-        console.log('[MiniKitProvider] Skipping Wallet Auth: Auth attempt already in progress.');
-        return;
+  // --- Step 3: Process successful authentication ---
+  const processAuthResult = useCallback((result: any) => {
+    if (result && result.success && result.token && result.walletAddress) {
+      console.log('[MiniKitProvider] Auth result is valid, logging in user');
+      
+      // Call login function from AuthContext
+      login(result.token, result.walletAddress);
+      return true;
+    } else {
+      console.error('[MiniKitProvider] Auth result is invalid:', result);
+      return false;
     }
+  }, [login]);
 
-    console.log('[MiniKitProvider] Conditions met, attempting Wallet Auth...');
-    setIsAttemptingAuth(true);
-    setAuthAttemptError(false);
-
-    let currentNonce: string | null = null;
-
-    try {
-      // 1. Get Nonce
-      console.log('[MiniKitProvider] Fetching nonce via authService...');
-      const nonceResult = await authService.getNonce();
-      if (!nonceResult.success || !nonceResult.nonce) {
-        throw new Error(nonceResult.error || 'Failed to fetch nonce from backend');
-      }
-      currentNonce = nonceResult.nonce;
-      console.log('[MiniKitProvider] Nonce received:', currentNonce);
-
-      // 2. Trigger MiniKit Wallet Auth
-      console.log('[MiniKitProvider] Triggering MiniKit.commandsAsync.walletAuth with nonce:', currentNonce);
-      const walletAuthInput: WalletAuthInput = { nonce: currentNonce };
-      // *** Use 'any' for the result type initially, then check status ***
-      const { finalPayload }: { finalPayload: any } = await MiniKit.commandsAsync.walletAuth(walletAuthInput);
-
-      console.log('[MiniKitProvider] Received finalPayload:', JSON.stringify(finalPayload, null, 2));
-
-      // Check finalPayload structure and status before proceeding
-      if (!finalPayload || typeof finalPayload !== 'object' || finalPayload.status !== 'success') {
-         // Attempt to access error_code safely
-         const errorCode = finalPayload && typeof finalPayload === 'object' && 'error_code' in finalPayload
-                           ? finalPayload.error_code
-                           : 'unknown';
-         const errorMessage = `MiniKit Wallet Auth failed with status: ${finalPayload?.status ?? 'undefined'}, code: ${errorCode}`;
-         console.error(`[MiniKitProvider] ${errorMessage}`, finalPayload);
-         throw new Error(errorMessage);
-      }
-
-      // Now we know status is 'success', cast to the success payload type
-      const successPayload = finalPayload as MiniAppWalletAuthSuccessPayload;
-      console.log('[MiniKitProvider] MiniKit walletAuth successful.');
-
-      // 3. Verify Signature with backend
-      console.log('[MiniKitProvider] Calling authService.verifyWalletSignature with payload and nonce:', currentNonce);
-      // Ensure authService sends the correct fields (message, signature) from successPayload
-      const verifyResult = await authService.verifyWalletSignature(successPayload, currentNonce);
-      console.log('[MiniKitProvider] Backend verification result:', verifyResult);
-
-      // 4. Update Auth Context state ONLY on successful verification
-      if (verifyResult.success && verifyResult.token && verifyResult.walletAddress) {
-        console.log('[MiniKitProvider] Backend verification successful. Calling login function...');
-        login(verifyResult.token, verifyResult.walletAddress);
-        console.log('[MiniKitProvider] AuthContext updated with login state.');
-      } else {
-        console.error('[MiniKitProvider] Backend signature verification failed:', verifyResult.error);
-        setAuthAttemptError(true);
-        throw new Error(verifyResult.error || 'Backend signature verification failed.');
-      }
-
-    } catch (error: any) {
-      console.error('[MiniKitProvider] Wallet Auth flow failed:', error);
-      setAuthAttemptError(true);
-    } finally {
-      setIsAttemptingAuth(false);
-      console.log('[MiniKitProvider] Wallet Auth attempt finished.');
-    }
-  // *** Removed authService from dependency array as it's likely stable ***
-  // *** If authService itself changes based on props/state, add it back ***
-  }, [isAttemptingAuth, login]);
-
-  // Expose the wallet auth function to the window for debugging/direct access
+  // --- Step 4: Expose authentication trigger to window object ---
   useEffect(() => {
-    if (isMiniKitInitialized && !window.__triggerWalletAuth) {
+    if (isMiniKitInitialized) {
       window.__triggerWalletAuth = async () => {
         console.log('[window.__triggerWalletAuth] Direct wallet auth trigger called');
-        await attemptWalletAuth();
-        return true;
+        
+        if (isAttemptingAuth) {
+          console.log('[window.__triggerWalletAuth] Auth already in progress, skipping');
+          return false;
+        }
+        
+        setIsAttemptingAuth(true);
+        
+        try {
+          // Call the exported function
+          const authResult = await triggerMiniKitWalletAuth();
+          console.log('[window.__triggerWalletAuth] Auth result:', authResult);
+          
+          // Process the result
+          const success = processAuthResult(authResult);
+          setIsAttemptingAuth(false);
+          return success;
+        } catch (error) {
+          console.error('[window.__triggerWalletAuth] Error during auth:', error);
+          setIsAttemptingAuth(false);
+          return false;
+        }
       };
+      
       console.log('[MiniKitProvider] Exposed wallet auth function to window.__triggerWalletAuth');
     }
-  }, [isMiniKitInitialized, attemptWalletAuth]);
-
-  // Effect to trigger the automatic auth attempt
-  useEffect(() => {
-    const shouldAttemptAuth = isMiniKitInitialized && !isAuthenticated && !isAuthLoading && !isAttemptingAuth && !authAttemptError;
-
-    if (shouldAttemptAuth) {
-      attemptWalletAuth();
-    } else {
-      // Log why it's skipping
-      if (!isMiniKitInitialized) console.log('[MiniKitProvider] Skipping Wallet Auth: MiniKit not initialized.');
-      if (isAuthenticated) console.log('[MiniKitProvider] Skipping Wallet Auth: Already authenticated.');
-      if (isAuthLoading) console.log('[MiniKitProvider] Skipping Wallet Auth: AuthContext is loading.');
-      if (isAttemptingAuth) console.log('[MiniKitProvider] Skipping Wallet Auth: Auth attempt already in progress.');
-      if (authAttemptError) console.log('[MiniKitProvider] Skipping Wallet Auth: Previous attempt failed.');
-    }
-
-  }, [isMiniKitInitialized, isAuthenticated, isAuthLoading, isAttemptingAuth, authAttemptError, attemptWalletAuth]);
+  }, [isMiniKitInitialized, isAttemptingAuth, processAuthResult]);
 
   return <>{children}</>;
 }
