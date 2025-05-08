@@ -10,7 +10,9 @@
 import React, { useState, useEffect } from 'react'; 
 import { useAuth } from '../components/AuthContext'; 
 import { campaignService, Campaign as CampaignData } from '../services/CampaignService';
-import { Link, useNavigate } from 'react-router-dom'; // Added useNavigate
+import { Link, useNavigate } from 'react-router-dom';
+// Import the wallet auth trigger
+import { triggerMiniKitWalletAuth } from '../MiniKitProvider';
 
 // --- Campaign Interface ---
 // Using the Campaign type from CampaignService but extending it for UI needs
@@ -23,10 +25,11 @@ interface CampaignDisplay extends CampaignData {
 // --- LandingPage Component ---
 export const LandingPage: React.FC = () => { 
   const { isAuthenticated } = useAuth();
-  const navigate = useNavigate(); // Add this for programmatic navigation if needed
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<CampaignDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isConnectingWallet, setIsConnectingWallet] = useState(false);
   
   // Fetch campaigns on component mount
   useEffect(() => {
@@ -55,6 +58,33 @@ export const LandingPage: React.FC = () => {
 
     fetchCampaigns();
   }, []);
+
+  // Handle wallet connection
+  const handleConnectWallet = async () => {
+    if (isConnectingWallet) return; // Prevent multiple clicks
+
+    setIsConnectingWallet(true);
+    
+    try {
+      console.log("[LandingPage] Starting wallet connection flow...");
+      
+      // Try window.__triggerWalletAuth first if available (for debug)
+      if (window.__triggerWalletAuth) {
+        console.log("[LandingPage] Using window.__triggerWalletAuth");
+        await window.__triggerWalletAuth();
+      } 
+      // Otherwise use the exported function
+      else {
+        console.log("[LandingPage] Using triggerMiniKitWalletAuth");
+        const authResult = await triggerMiniKitWalletAuth();
+        console.log("[LandingPage] Auth result:", authResult);
+      }
+    } catch (error) {
+      console.error("[LandingPage] Wallet connection error:", error);
+    } finally {
+      setIsConnectingWallet(false);
+    }
+  };
   
   // --- Helper Functions ---
   const calculateProgressPercentage = (raised: number, goal: number): string => {
@@ -178,12 +208,20 @@ export const LandingPage: React.FC = () => {
           <Link to="/" style={styles.logo}>
             World<span style={styles.logoSpan}>Fund</span>
           </Link>
-          {isAuthenticated && (
+          {isAuthenticated ? (
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <Link to="/dashboard" style={{ ...styles.button, ...styles.buttonPrimary }}>
                 Dashboard
               </Link>
             </div>
+          ) : (
+            <button 
+              onClick={handleConnectWallet}
+              disabled={isConnectingWallet}
+              style={{ ...styles.button, ...styles.buttonPrimary }}
+            >
+              {isConnectingWallet ? 'Connecting...' : 'Connect Wallet'}
+            </button>
           )}
         </div>
       </header>
@@ -306,29 +344,35 @@ export const LandingPage: React.FC = () => {
           <span>Search</span>
         </Link>
         
-        {/* Updated Account tab with proper click handler */}
-        <Link 
-          to={isAuthenticated ? "/dashboard" : "#"}
-          style={isAuthenticated ? { ...styles.tab, ...styles.tabActive } : styles.tab}
-          onClick={(e) => {
-            if (!isAuthenticated) {
-              e.preventDefault();
-              // Show a prompt to connect wallet
-              alert("Please connect your wallet to access your dashboard");
-            }
-          }}
-        >
-          <svg 
-            style={{
-              ...styles.tabIcon,
-              color: isAuthenticated ? styles.tabActive?.color : styles.tab?.color 
-            }}
-            viewBox="0 0 24 24" fill="currentColor"
+        {/* Updated Account tab with active wallet connection trigger */}
+        {isAuthenticated ? (
+          <Link to="/dashboard" style={{ ...styles.tab, ...styles.tabActive }}>
+            <svg 
+              style={{
+                ...styles.tabIcon,
+                color: styles.tabActive?.color
+              }}
+              viewBox="0 0 24 24" fill="currentColor"
+            >
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+            </svg>
+            <span>Dashboard</span>
+          </Link>
+        ) : (
+          <button 
+            onClick={handleConnectWallet}
+            disabled={isConnectingWallet}
+            style={styles.tab}
           >
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-          </svg>
-          <span>{isAuthenticated ? 'Dashboard' : 'Account'}</span>
-        </Link>
+            <svg 
+              style={styles.tabIcon}
+              viewBox="0 0 24 24" fill="currentColor"
+            >
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+            </svg>
+            <span>{isConnectingWallet ? 'Connecting...' : 'Account'}</span>
+          </button>
+        )}
       </nav>
     </div>
   );

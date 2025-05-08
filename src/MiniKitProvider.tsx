@@ -28,6 +28,39 @@ interface MiniKitProviderProps {
   appId?: string; // Allow passing App ID via prop as fallback
 }
 
+// Export a function to manually trigger wallet auth from anywhere in the app
+export const triggerMiniKitWalletAuth = async (): Promise<any> => {
+  console.log('[triggerMiniKitWalletAuth] Function called');
+  
+  if (typeof MiniKit === 'undefined') {
+    console.error('[triggerMiniKitWalletAuth] MiniKit is undefined');
+    throw new Error('MiniKit is not available');
+  }
+  
+  if (!MiniKit.isInstalled || !MiniKit.isInstalled()) {
+    console.error('[triggerMiniKitWalletAuth] MiniKit not installed');
+    throw new Error('MiniKit not installed');
+  }
+  
+  // Get nonce from backend first
+  try {
+    console.log('[triggerMiniKitWalletAuth] Fetching nonce');
+    const nonceResult = await authService.getNonce();
+    if (!nonceResult.success || !nonceResult.nonce) {
+      throw new Error(nonceResult.error || 'Failed to fetch nonce');
+    }
+    
+    console.log('[triggerMiniKitWalletAuth] Nonce received:', nonceResult.nonce);
+    
+    // Trigger the wallet auth
+    console.log('[triggerMiniKitWalletAuth] Calling MiniKit.commandsAsync.walletAuth');
+    return await MiniKit.commandsAsync.walletAuth({ nonce: nonceResult.nonce });
+  } catch (error) {
+    console.error('[triggerMiniKitWalletAuth] Error:', error);
+    throw error;
+  }
+};
+
 export default function MiniKitProvider({
   children,
   appId
@@ -200,6 +233,18 @@ export default function MiniKitProvider({
   // *** If authService itself changes based on props/state, add it back ***
   }, [isAttemptingAuth, login]);
 
+  // Expose the wallet auth function to the window for debugging/direct access
+  useEffect(() => {
+    if (isMiniKitInitialized && !window.__triggerWalletAuth) {
+      window.__triggerWalletAuth = async () => {
+        console.log('[window.__triggerWalletAuth] Direct wallet auth trigger called');
+        await attemptWalletAuth();
+        return true;
+      };
+      console.log('[MiniKitProvider] Exposed wallet auth function to window.__triggerWalletAuth');
+    }
+  }, [isMiniKitInitialized, attemptWalletAuth]);
+
   // Effect to trigger the automatic auth attempt
   useEffect(() => {
     const shouldAttemptAuth = isMiniKitInitialized && !isAuthenticated && !isAuthLoading && !isAttemptingAuth && !authAttemptError;
@@ -218,4 +263,12 @@ export default function MiniKitProvider({
   }, [isMiniKitInitialized, isAuthenticated, isAuthLoading, isAttemptingAuth, authAttemptError, attemptWalletAuth]);
 
   return <>{children}</>;
+}
+
+// Add TypeScript declaration to avoid errors
+declare global {
+  interface Window {
+    __triggerWalletAuth?: () => Promise<boolean>;
+    __ENV__?: Record<string, string>;
+  }
 }
