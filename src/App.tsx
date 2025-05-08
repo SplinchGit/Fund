@@ -1,9 +1,8 @@
 // src/App.tsx
 import React, { Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 
-// Authentication context and protected-route wrapper
-import { AuthProvider } from './components/AuthContext';
+// ProtectedRoute wrapper for authenticated routes
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Lazy-loaded pages
@@ -27,88 +26,63 @@ const CreateCampaignForm = React.lazy(() =>
 );
 const EditCampaignPage = React.lazy(() => import('./pages/EditCampaignPage'));
 
-// Loading fallback
+// Loading fallback component
 const LoadingFallback: React.FC = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
     Loading...
   </div>
 );
 
-/**
- * App Component
- */
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Navigate to="/landing" replace />} />
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        {/* Redirect base path */}
+        <Route path="/" element={<Navigate to="/landing" replace />} />
 
-          {/* Public Routes */}
-          <Route
-            path="/landing"
-            element={
-              <Suspense fallback={<LoadingFallback />}>
-                <LandingPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/campaigns"
-            element={
-              <Suspense fallback={<LoadingFallback />}>
-                <CampaignsPage />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/campaigns/:id"
-            element={
-              <Suspense fallback={<LoadingFallback />}>
-                <CampaignDetailWrapper />
-              </Suspense>
-            }
-          />
+        {/* Public Routes */}
+        <Route path="/landing" element={<LandingPage />} />
+        <Route path="/campaigns" element={<CampaignsPage />} />
+        <Route path="/campaigns/:id" element={<CampaignDetailWrapper />} />
 
-          {/* Protected Routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/tip-jar"
-            element={
-              <ProtectedRoute>
-                <TipJar />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/new-campaign"
-            element={
-              <ProtectedRoute>
-                <CreateCampaignForm />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/campaigns/:id/edit"
-            element={
-              <ProtectedRoute>
-                <EditCampaignPage />
-              </ProtectedRoute>
-            }
-          />
+        {/* Protected Routes */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/tip-jar"
+          element={
+            <ProtectedRoute>
+              <TipJar />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/new-campaign"
+          element={
+            <ProtectedRoute>
+              <CreateCampaignForm />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/campaigns/:id/edit"
+          element={
+            <ProtectedRoute>
+              <EditCampaignPage />
+            </ProtectedRoute>
+          }
+        />
 
-          {/* Catch-all redirect */}
-          <Route path="*" element={<Navigate to="/landing" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+        {/* Catch-all redirect */}
+        <Route path="*" element={<Navigate to="/landing" replace />} />
+      </Routes>
+    </Suspense>
   );
 };
 
