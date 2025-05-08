@@ -1,5 +1,4 @@
-// src/components/CreateCampaignForm.tsx
-
+// Fixed CreateCampaignForm.tsx
 import React, { useState, ChangeEvent, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { campaignService, CampaignPayload } from "../services/CampaignService";
@@ -8,6 +7,7 @@ export function CreateCampaignForm() {
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<CampaignPayload>({
     title: "",
     goal: 0,
@@ -15,8 +15,17 @@ export function CreateCampaignForm() {
     image: "",
   });
 
+  // Define character limits
+  const MAX_TITLE_LENGTH = 70;
+  const MAX_DESCRIPTION_LENGTH = 750;
+
   const onChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
+    
+    // Skip if max length is reached for title and description
+    if (name === 'title' && value.length > MAX_TITLE_LENGTH) return;
+    if (name === 'description' && value.length > MAX_DESCRIPTION_LENGTH) return;
+    
     setForm(prev => ({
       ...prev,
       [name]: type === "number" ? Number(value) : value,
@@ -25,9 +34,19 @@ export function CreateCampaignForm() {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setError(null);
     setLoading(true);
 
     try {
+      // Validate form
+      if (!form.title) {
+        throw new Error('Campaign title is required');
+      }
+      
+      if (form.goal <= 0) {
+        throw new Error('Funding goal must be greater than 0');
+      }
+
       const result = await campaignService.createCampaign(form);
       
       if (result.success && result.id) {
@@ -36,6 +55,9 @@ export function CreateCampaignForm() {
         throw new Error(result.error || 'Failed to create campaign');
       }
     } catch (error: any) {
+      // Fix: Properly handle errors
+      console.error('Failed to create campaign:', error);
+      setError(error.message || 'An error occurred while creating the campaign');
     } finally {
       setLoading(false);
     }
@@ -44,6 +66,13 @@ export function CreateCampaignForm() {
   return (
     <form onSubmit={onSubmit} className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-6">Create New Campaign</h2>
+      
+      {/* Display error if any */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
+          {error}
+        </div>
+      )}
       
       <div className="mb-4">
         <label className="block text-gray-700 text-sm font-bold mb-2">
@@ -58,6 +87,9 @@ export function CreateCampaignForm() {
           className="w-full px-3 py-2 border rounded-md"
           placeholder="Give your campaign a title"
         />
+        <div className="text-xs text-gray-500 mt-1">
+          {form.title.length}/{MAX_TITLE_LENGTH} characters
+        </div>
       </div>
 
       <div className="mb-4">
@@ -83,12 +115,15 @@ export function CreateCampaignForm() {
         </label>
         <textarea
           name="description"
-          value={form.description}
+          value={form.description || ''}
           onChange={onChange}
           rows={4}
           className="w-full px-3 py-2 border rounded-md"
           placeholder="Tell people about your campaign"
         />
+        <div className="text-xs text-gray-500 mt-1">
+          {(form.description?.length || 0)}/{MAX_DESCRIPTION_LENGTH} characters
+        </div>
       </div>
 
       <div className="mb-6">
@@ -98,7 +133,7 @@ export function CreateCampaignForm() {
         <input
           type="url"
           name="image"
-          value={form.image}
+          value={form.image || ''}
           onChange={onChange}
           className="w-full px-3 py-2 border rounded-md"
           placeholder="https://example.com/image.jpg"

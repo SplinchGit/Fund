@@ -4,28 +4,37 @@ import {
   Routes,
   Route,
   Navigate,
+  useParams,
 } from 'react-router-dom';
 
 // Import the AuthProvider and useAuth hook
 import { AuthProvider, useAuth } from './components/AuthContext';
 
-// Lazy load all pages and components - using consistent import pattern
+// Lazy load all pages and components with consistent import pattern
 const LandingPage = React.lazy(() => import('./pages/LandingPage'));
 const TipJar = React.lazy(() => import('./pages/TipJar'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const CampaignsPage = React.lazy(() => import('./pages/CampaignsPage'));
-const CampaignDetailPage = React.lazy(() =>
-  import('./pages/CampaignDetailPage').then(module => ({
-    default: module.CampaignDetail
-  }))
-);
 const EditCampaignPage = React.lazy(() => import('./pages/EditCampaignPage'));
 
-// Special case for component that doesn't have a default export
+// Special cases for components with named exports
 const CreateCampaignForm = React.lazy(() =>
   import('./components/CreateCampaignForm').then(module => ({
     default: module.CreateCampaignForm
   }))
+);
+
+// Wrapper for campaign detail to handle params
+const CampaignDetailWrapper = React.lazy(() =>
+  import('./pages/CampaignDetailPage').then(module => {
+    const Component = module.CampaignDetail;
+    return {
+      default: () => {
+        const { id } = useParams();
+        return <Component id={id || ''} />;
+      }
+    };
+  })
 );
 
 /** Debug Utility – Can be kept or removed */
@@ -112,7 +121,6 @@ const App: React.FC = () => {
     />
   );
 
-  // No longer needs BrowserRouter or AuthProvider here
   return (
     <>
       {/* --- Application Routes --- */}
@@ -144,7 +152,7 @@ const App: React.FC = () => {
           path="/campaigns/:id"
           element={
             <Suspense fallback={<LoadingFallback />}>
-              <CampaignDetailPage id="" />
+              <CampaignDetailWrapper />
             </Suspense>
           }
         />
