@@ -81,6 +81,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     error: null,
     nonce: null,
   });
+  
 // Login function: Updates state and stores session data
 const login = useCallback((token: string, address: string) => {
   console.log('[AuthContext] Login called with:', { hasToken: !!token, address });
