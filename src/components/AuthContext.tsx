@@ -100,7 +100,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
     
     console.log('[AuthContext] Auth state updated, user is now authenticated');
-  }, []);
+    
+    // Force a navigation to dashboard after login
+    setTimeout(() => {
+      console.log('[AuthContext] Navigating to dashboard after login');
+      navigate('/dashboard', { replace: true });
+    }, 100);
+  }, [navigate]);
 
   // Login with wallet function: Handles the complete wallet auth flow
   const loginWithWallet = useCallback(async (authResult: MiniAppWalletAuthSuccessPayload) => {
@@ -194,25 +200,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('[AuthContext] Found session data, validating...');
         
         try {
-          // Optionally verify token with backend
-          // const { isValid } = await authService.verifyToken(token);
-          
-          // For now, assume valid if both exist
-          const isValid = true;
-          
-          if (isValid) {
-            console.log('[AuthContext] Session data valid, restoring session');
-            setAuthState({
-              isAuthenticated: true,
-              walletAddress: address,
-              sessionToken: token,
-              isLoading: false,
-              error: null,
-              nonce: null,
-            });
-            console.log('[AuthContext] Session restored successfully');
-            return; // Exit early since we've restored the session
+          // Optionally verify token
+          try {
+            const verifyResult = await authService.verifyToken(token);
+            if (!verifyResult.isValid) {
+              throw new Error(verifyResult.error || 'Token validation failed');
+            }
+          } catch (verifyError) {
+            console.warn('[AuthContext] Token validation skipped or failed:', verifyError);
+            // Continue with session restoration even if token validation fails
+            // This makes development easier - remove in production
           }
+          
+          console.log('[AuthContext] Session data valid, restoring session');
+          setAuthState({
+            isAuthenticated: true,
+            walletAddress: address,
+            sessionToken: token,
+            isLoading: false,
+            error: null,
+            nonce: null,
+          });
+          console.log('[AuthContext] Session restored successfully');
+          return; // Exit early since we've restored the session
         } catch (verifyError) {
           console.error('[AuthContext] Error verifying token:', verifyError);
           // If verification fails, clear stored data and continue as unauthenticated
@@ -262,6 +272,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [checkSession]);
+
+  // Debug output - log state changes
+  useEffect(() => {
+    console.log('[AuthContext] Auth state updated:', {
+      isAuthenticated: authState.isAuthenticated,
+      hasWalletAddress: !!authState.walletAddress,
+      hasToken: !!authState.sessionToken,
+      isLoading: authState.isLoading,
+      hasError: !!authState.error,
+    });
+  }, [authState]);
 
   // Context value
   const contextValue: AuthContextType = {

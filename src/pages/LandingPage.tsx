@@ -10,7 +10,7 @@
 import React, { useState, useEffect, useRef } from 'react'; 
 import { useAuth } from '../components/AuthContext'; 
 import { campaignService, Campaign as CampaignData } from '../services/CampaignService';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 // Import the wallet auth trigger
 import { triggerMiniKitWalletAuth } from '../MiniKitProvider';
 
@@ -26,6 +26,7 @@ interface CampaignDisplay extends CampaignData {
 export const LandingPage: React.FC = () => { 
   const { isAuthenticated, walletAddress } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [campaigns, setCampaigns] = useState<CampaignDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +50,13 @@ export const LandingPage: React.FC = () => {
       }, 100);
     }
   }, [isAuthenticated, navigate]);
+  
+  // Reset navigation flag when component unmounts or path changes
+  useEffect(() => {
+    return () => {
+      hasNavigated.current = false;
+    };
+  }, [location.pathname]);
   
   // Fetch campaigns on component mount
   useEffect(() => {
@@ -97,17 +105,35 @@ export const LandingPage: React.FC = () => {
         console.log("[LandingPage] Using triggerMiniKitWalletAuth");
         const authResult = await triggerMiniKitWalletAuth();
         console.log("[LandingPage] Auth result:", authResult);
+        
+        // Directly check auth status after a delay
+        setTimeout(() => {
+          if (isAuthenticated) {
+            console.log("[LandingPage] User authenticated after wallet connection, navigating");
+            navigate('/dashboard');
+          }
+        }, 500);
       }
-      
-      // Note: We don't need to manually navigate here anymore
-      // The useEffect will handle navigation once isAuthenticated changes
-      
     } catch (error) {
       console.error("[LandingPage] Wallet connection error:", error);
       setError("Failed to connect wallet. Please try again.");
     } finally {
       // Even if there's an error, we must reset the connecting state
       setIsConnectingWallet(false);
+    }
+  };
+  
+  // Navigation handler for Account tab
+  const handleAccountTabClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    console.log('[LandingPage] Account tab clicked');
+    
+    if (isAuthenticated) {
+      console.log('[LandingPage] User already authenticated, navigating to dashboard');
+      navigate('/dashboard');
+    } else {
+      console.log('[LandingPage] User not authenticated, starting wallet connection');
+      handleConnectWallet();
     }
   };
   
@@ -128,6 +154,13 @@ export const LandingPage: React.FC = () => {
   const formatAddress = (address: string): string => {
     if (!address) return 'Anonymous';
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+  
+  // Check if current path should have active tab styling
+  const isActivePath = (path: string): boolean => {
+    return location.pathname === path || 
+           (path === '/' && location.pathname === '/landing') ||
+           (path === '/campaigns' && location.pathname.startsWith('/campaigns/'));
   };
   
   // --- Styling --- (Updated for viewport layout)
@@ -210,7 +243,7 @@ export const LandingPage: React.FC = () => {
     tabs: {
       display: 'flex', justifyContent: 'space-around', backgroundColor: '#fff', borderTop: '1px solid #e0e0e0', 
       position: 'fixed' as const, bottom: 0, left: 0, width: '100%', zIndex: 100, 
-      padding: '0.5rem 0', // Increased padding for better touch targets
+      padding: '0.75rem 0', // Increased padding for better touch targets
       boxShadow: '0 -1px 3px rgba(0,0,0,0.1)' // Add shadow for better visibility
     },
     tab: { 
@@ -258,6 +291,26 @@ export const LandingPage: React.FC = () => {
       align-items: center;
       width: 100%;
     }
+    
+    /* Debug - Add a highlight to see when elements are clicked */
+    .debug-click {
+      position: relative;
+    }
+    .debug-click::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255, 255, 0, 0.2);
+      pointer-events: none;
+      animation: highlight-fade 0.5s forwards;
+    }
+    @keyframes highlight-fade {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
   `;
   
   // --- JSX Rendering ---
@@ -273,7 +326,16 @@ export const LandingPage: React.FC = () => {
           </Link>
           {isAuthenticated ? (
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <Link to="/dashboard" style={{ ...styles.button, ...styles.buttonPrimary }}>
+              <Link 
+                to="/dashboard" 
+                style={{ ...styles.button, ...styles.buttonPrimary }}
+                onClick={(e) => {
+                  console.log('[LandingPage] Dashboard button clicked');
+                  // Explicit navigation for more reliability
+                  e.preventDefault();
+                  navigate('/dashboard');
+                }}
+              >
                 Dashboard
               </Link>
             </div>
@@ -397,61 +459,93 @@ export const LandingPage: React.FC = () => {
 
       {/* --- Bottom Navigation Tabs --- */}
       <nav style={styles.tabs}>
-        <Link to="/" style={{ ...styles.tab, ...styles.tabActive }}> 
-          <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg>
+        <Link 
+          to="/" 
+          style={{ 
+            ...styles.tab, 
+            ...(isActivePath('/') ? styles.tabActive : {})
+          }}
+        > 
+          <svg 
+            style={{
+              ...styles.tabIcon,
+              color: isActivePath('/') ? styles.tabActive?.color : 'inherit'
+            }} 
+            viewBox="0 0 24 24" 
+            fill="currentColor"
+          >
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+          </svg>
           <span>Home</span>
         </Link>
         
-        <Link to="/campaigns" style={styles.tab}>
-          <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" /></svg>
-          <span>Search</span>
+        <Link 
+          to="/campaigns" 
+          style={{ 
+            ...styles.tab, 
+            ...(isActivePath('/campaigns') ? styles.tabActive : {})
+          }}
+        >
+          <svg 
+            style={{
+              ...styles.tabIcon,
+              color: isActivePath('/campaigns') ? styles.tabActive?.color : 'inherit'
+            }} 
+            viewBox="0 0 24 24" 
+            fill="currentColor"
+          >
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+          </svg>
+          <span>Explore</span>
         </Link>
         
         {/* Fixed Account tab with improved handling */}
         {isAuthenticated ? (
-          <Link 
-            to="/dashboard" 
+          <a 
+            href="#"
+            onClick={handleAccountTabClick}
             style={{ 
               ...styles.tab, 
-              color: styles.tabActive?.color 
+              ...(location.pathname === '/dashboard' ? styles.tabActive : {}),
+              color: location.pathname === '/dashboard' ? styles.tabActive?.color : undefined
             }}
+            className="debug-click" // For debugging - adds highlight when clicked
           >
             <svg 
               style={{
                 ...styles.tabIcon,
-                color: 'inherit'
+                color: location.pathname === '/dashboard' ? styles.tabActive?.color : 'inherit'
               }}
-              viewBox="0 0 24 24" fill="currentColor"
+              viewBox="0 0 24 24" 
+              fill="currentColor"
             >
               <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
             </svg>
-            <span>Dashboard</span>
-          </Link>
+            <span>Account</span>
+          </a>
         ) : (
-          <button 
-            onClick={(e) => {
-              e.preventDefault();
-              handleConnectWallet();
-            }}
-            className="bottom-tab-button"
+          <a
+            href="#"
+            onClick={handleAccountTabClick}
+            className="bottom-tab-button debug-click" // For debugging - adds highlight when clicked
             style={{
               ...styles.tab,
               cursor: 'pointer',
               color: isConnectingWallet ? styles.tabActive?.color : undefined
             }}
-            disabled={isConnectingWallet}
           >
             <svg 
               style={{
                 ...styles.tabIcon,
                 color: isConnectingWallet ? styles.tabActive?.color : undefined
               }}
-              viewBox="0 0 24 24" fill="currentColor"
+              viewBox="0 0 24 24" 
+              fill="currentColor"
             >
               <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
             </svg>
             <span>{isConnectingWallet ? 'Connecting...' : 'Account'}</span>
-          </button>
+          </a>
         )}
       </nav>
     </div>
