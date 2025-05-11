@@ -3,12 +3,13 @@
 // This component is a public landing page. It does NOT manage authentication
 // or verification logic itself – that lives in AuthContext / ProtectedRoute.
 // --- END NOTE ---
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../components/AuthContext';
 import { campaignService, Campaign as CampaignData } from '../services/CampaignService';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-// Import the wallet auth trigger
+// Import the wallet auth trigger (which now expects a nonce)
 import { triggerMiniKitWalletAuth } from '../MiniKitProvider';
+import { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js'; // Import for type clarity
 
 // --- Campaign Interface ---
 interface CampaignDisplay extends CampaignData {
@@ -18,7 +19,8 @@ interface CampaignDisplay extends CampaignData {
 }
 
 const LandingPage: React.FC = () => {
-  const { isAuthenticated, walletAddress } = useAuth();
+  // Add getNonceForMiniKit to the destructured useAuth hook
+  const { isAuthenticated, walletAddress, loginWithWallet, getNonceForMiniKit } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -27,29 +29,10 @@ const LandingPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isConnectingWallet, setIsConnectingWallet] = useState(false);
 
-  // Flag to track if navigation happened
-  const hasNavigated = useRef(false);
-
-  // Check authentication status and navigate if needed
+  // Simplified authentication status logging
   useEffect(() => {
-    console.log('[LandingPage] Authentication status changed:', isAuthenticated);
-    if (isAuthenticated && !hasNavigated.current) {
-      console.log('[LandingPage] User is authenticated, redirecting to dashboard');
-      hasNavigated.current = true; // Prevent multiple navigations
-
-      // Navigate to dashboard with a slight delay to ensure context is fully updated
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 100);
-    }
-  }, [isAuthenticated, navigate]);
-
-  // Reset navigation flag when component unmounts or path changes
-  useEffect(() => {
-    return () => {
-      hasNavigated.current = false;
-    };
-  }, [location.pathname]);
+    console.log('[LandingPage] Auth status changed:', { isAuthenticated, walletAddress });
+  }, [isAuthenticated, walletAddress]);
 
   // Fetch campaigns on component mount
   useEffect(() => {
@@ -57,12 +40,11 @@ const LandingPage: React.FC = () => {
       try {
         const result = await campaignService.fetchAllCampaigns();
         if (result.success && result.campaigns) {
-          // Transform campaign data for display
           const displayCampaigns: CampaignDisplay[] = result.campaigns.map(campaign => ({
             ...campaign,
             daysLeft: calculateDaysLeft(campaign.createdAt),
             creator: formatAddress(campaign.ownerId),
-            isVerified: true // All creators are verified in our system
+            isVerified: true // Assuming all creators are verified
           }));
           setCampaigns(displayCampaigns);
         } else {
@@ -75,59 +57,79 @@ const LandingPage: React.FC = () => {
         setLoading(false);
       }
     };
-
     fetchCampaigns();
   }, []);
 
   // Handle wallet connection
   const handleConnectWallet = async () => {
-    if (isConnectingWallet) return; // Prevent multiple clicks
+    if (isConnectingWallet) return;
 
-    console.log('[LandingPage] Starting wallet connection flow...');
+    console.log('[LandingPage] handleConnectWallet: Starting wallet connection flow...');
     setIsConnectingWallet(true);
-    setError(null); // Clear any existing errors
+    setError(null);
 
     try {
-      // Try window.__triggerWalletAuth first if available (for debug)
-      if ((window as any).__triggerWalletAuth) {
-        console.log("[LandingPage] Using window.__triggerWalletAuth");
-        await (window as any).__triggerWalletAuth();
+      // Debug path using window.__triggerWalletAuth (already handles its own nonce fetching)
+      // Conditionally enable for development if needed
+      if (import.meta.env.DEV && (window as any).__triggerWalletAuth) {
+        console.log("[LandingPage] handleConnectWallet: Using window.__triggerWalletAuth (debug mode)");
+        const success = await (window as any).__triggerWalletAuth();
+        if (!success) {
+          // Error is likely already logged by window.__triggerWalletAuth
+          throw new Error('Wallet authentication via debug trigger failed. Check console.');
+        }
+        // If window.__triggerWalletAuth is successful, loginWithWallet was already called internally.
+        // The AuthContext state will update and any necessary navigation will occur.
       }
-      // Otherwise use the exported function
+      // Standard production flow
       else {
-        console.log("[LandingPage] Using triggerMiniKitWalletAuth");
-        const authResult = await triggerMiniKitWalletAuth();
-        console.log("[LandingPage] Auth result:", authResult);
+        console.log("[LandingPage] handleConnectWallet: Fetching nonce for MiniKit auth...");
+        const serverNonce = await getNonceForMiniKit(); // <-- STEP 1: Fetch nonce
+        console.log("[LandingPage] handleConnectWallet: Nonce received:", serverNonce);
 
-        // Directly check auth status after a delay
-        setTimeout(() => {
-          if (isAuthenticated) {
-            console.log("[LandingPage] User authenticated after wallet connection, navigating");
-            navigate('/dashboard');
-          }
-        }, 500);
+        console.log("[LandingPage] handleConnectWallet: Calling triggerMiniKitWalletAuth with fetched nonce...");
+        // triggerMiniKitWalletAuth now expects a nonce and should return MiniAppWalletAuthSuccessPayload or throw
+        const authPayload: MiniAppWalletAuthSuccessPayload = await triggerMiniKitWalletAuth(serverNonce); // <-- STEP 2: Pass nonce
+        console.log("[LandingPage] handleConnectWallet: Auth payload received from triggerMiniKitWalletAuth:", authPayload);
+
+        // Since triggerMiniKitWalletAuth now throws an error if finalPayload.status !== 'success',
+        // we can assume authPayload here corresponds to a successful authentication from MiniKit.
+        // The explicit check below is good for defense-in-depth or if triggerMiniKitWalletAuth's behavior changes.
+        if (authPayload && authPayload.status === 'success') {
+          console.log("[LandingPage] handleConnectWallet: MiniKit auth success, calling loginWithWallet from AuthContext.");
+          await loginWithWallet(authPayload); // <-- STEP 3: Pass payload to AuthContext
+          console.log("[LandingPage] handleConnectWallet: AuthContext loginWithWallet process completed.");
+        } else {
+          // This block might be less likely to be hit if triggerMiniKitWalletAuth strictly throws on non-success.
+          // However, it's safe to keep for unexpected cases.
+          const errorMessage = (authPayload as any)?.error_code || (authPayload as any)?.status || 'Wallet authentication did not return a success status.';
+          console.error("[LandingPage] handleConnectWallet: MiniKit auth did not result in a success payload directly:", errorMessage);
+          throw new Error(`MiniKit authentication failed: ${errorMessage}`);
+        }
       }
-    } catch (error) {
-      console.error("[LandingPage] Wallet connection error:", error);
-      setError("Failed to connect wallet. Please try again.");
+      // If all try block steps complete without throwing (including loginWithWallet), then log overall success.
+      console.log("[LandingPage] handleConnectWallet: Wallet connection and login process successfully initiated/completed.");
+    } catch (error) { // Catches errors from getNonceForMiniKit, triggerMiniKitWalletAuth, loginWithWallet, or the debug trigger
+      console.error("[LandingPage] handleConnectWallet: Error during wallet connection/login process:", error);
+      setError(error instanceof Error ? error.message : "An unknown error occurred during wallet connection.");
     } finally {
-      // Even if there's an error, we must reset the connecting state
       setIsConnectingWallet(false);
     }
   };
 
   // Navigation handler for Account tab
-  const handleAccountTabClick = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent default anchor behavior
-    console.log('[LandingPage] Account tab clicked');
+  const handleAccountTabClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    console.log('[LandingPage] Account tab clicked. Current auth state:', isAuthenticated);
 
     if (isAuthenticated) {
-      console.log('[LandingPage] User already authenticated, navigating to dashboard');
-      // Use replace: true to ensure proper history handling
+      console.log('[LandingPage] Already authenticated, navigating to dashboard immediately.');
       navigate('/dashboard', { replace: true });
     } else {
-      console.log('[LandingPage] User not authenticated, starting wallet connection');
-      handleConnectWallet();
+      console.log('[LandingPage] Not authenticated, initiating wallet connection process.');
+      await handleConnectWallet(); // This will now trigger the full flow including nonce
+      // Navigation to dashboard is handled by AuthContext.login -> loginWithWallet on successful auth.
+      console.log('[LandingPage] Wallet connection process initiated (AuthContext will handle navigation on success).');
     }
   };
 
@@ -150,282 +152,56 @@ const LandingPage: React.FC = () => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  // Check if current path should have active tab styling
   const isActivePath = (path: string): boolean => {
     return (
       location.pathname === path ||
-      (path === '/' && location.pathname === '/landing') ||
+      (path === '/' && location.pathname === '/landing') || // Or however your root path is identified
       (path === '/campaigns' && location.pathname.startsWith('/campaigns/'))
     );
   };
 
-  // --- Styling ---
-  const styles: { [key: string]: React.CSSProperties } = {
-    page: {
-      textAlign: 'center' as const,
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif',
-      color: '#202124',
-      backgroundColor: '#ffffff',
-      margin: 0,
-      padding: 0,
-      overflowX: 'hidden' as const,
-      width: '100%',
-      maxWidth: '100vw',
-      minHeight: '100vh', // Ensure minimum height is full viewport
-      display: 'flex',
-      flexDirection: 'column' as const
-    },
-    container: {
-      margin: '0 auto',
-      width: '100%',
-      padding: '0 0.5rem',
-      boxSizing: 'border-box' as const,
-      maxWidth: '1200px',
-      flexGrow: 1 // Make container fill available space
-    },
-    header: {
-      background: 'white',
-      padding: '0.5rem 0',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      position: 'sticky' as const,
-      top: 0,
-      zIndex: 100
-    },
-    headerContent: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      maxWidth: '1200px',
-      margin: '0 auto',
-      padding: '0 0.5rem'
-    },
-    logo: {
-      display: 'flex',
-      alignItems: 'center',
-      color: '#1a73e8',
-      fontWeight: 700,
-      fontSize: '1.125rem',
-      textDecoration: 'none'
-    },
-    logoSpan: {
-      color: '#202124'
-    },
-    button: {
-      padding: '0.5rem 0.75rem',
-      borderRadius: '0.25rem',
-      fontWeight: 500,
-      cursor: 'pointer',
-      textDecoration: 'none',
-      textAlign: 'center' as const,
-      fontSize: '0.75rem',
-      transition: 'background-color 0.2s, border-color 0.2s',
-      border: '1px solid transparent',
-      minHeight: '36px',
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      lineHeight: 1
-    },
-    buttonPrimary: {
-      backgroundColor: '#1a73e8',
-      color: 'white',
-      borderColor: '#1a73e8'
-    },
-    hero: {
-      background: '#f5f7fa',
-      padding: '1.5rem 0 2rem',
-      textAlign: 'center' as const
-    },
-    heroTitle: {
-      fontSize: '1.5rem',
-      fontWeight: 600,
-      marginBottom: '0.5rem',
-      color: '#202124',
-      padding: 0
-    },
-    heroSubtitle: {
-      fontSize: '0.875rem',
-      color: '#5f6368',
-      margin: '0 auto 1rem',
-      maxWidth: '500px',
-      padding: 0
-    },
-    trustBadge: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      backgroundColor: 'rgba(255,255,255,0.8)',
-      padding: '0.3rem 0.6rem',
-      borderRadius: '1rem',
-      fontSize: '0.75rem',
-      color: '#5f6368',
-      marginTop: '0.75rem',
-      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-    },
-    campaignsSection: {
-      padding: '1.5rem 0 2rem'
-    },
-    sectionHeader: {
-      textAlign: 'center' as const,
-      marginBottom: '1rem'
-    },
-    sectionTitle: {
-      fontSize: '1.25rem',
-      fontWeight: 600,
-      marginBottom: '0.25rem',
-      padding: 0
-    },
-    sectionSubtitle: {
-      color: '#5f6368',
-      fontSize: '0.8rem',
-      margin: '0 auto 1rem',
-      padding: 0
-    },
-    campaignsGrid: {
-      display: 'grid',
-      gridTemplateColumns: '1fr',
-      gap: '1rem',
-      justifyContent: 'center',
-      width: '100%'
-    },
-    campaignCard: {
-      width: '100%',
-      background: 'white',
-      borderRadius: '0.5rem',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-      overflow: 'hidden',
-      textAlign: 'left' as const,
-      display: 'flex',
-      flexDirection: 'column' as const,
-      transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-    },
-    cardImage: {
-      height: '120px',
-      width: '100%',
-      objectFit: 'cover' as const
-    },
-    cardContent: {
-      padding: '0.75rem',
-      flexGrow: 1,
-      display: 'flex',
-      flexDirection: 'column' as const
-    },
-    cardTitle: {
-      fontSize: '0.9rem',
-      fontWeight: 600,
-      marginBottom: '0.25rem',
-      color: '#202124',
-      padding: 0,
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis'
-    },
-    cardDesc: {
-      fontSize: '0.75rem',
-      color: '#5f6368',
-      marginBottom: '0.5rem',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      display: '-webkit-box',
-      WebkitLineClamp: 2,
-      WebkitBoxOrient: 'vertical' as const,
-      lineHeight: '1.4',
-      minHeight: 'calc(2 * 1.4 * 0.75rem)',
-      flexGrow: 1,
-      padding: 0
-    },
-    progressBar: {
-      width: '100%',
-      height: '0.375rem',
-      backgroundColor: '#e9ecef',
-      borderRadius: '9999px',
-      overflow: 'hidden',
-      marginBottom: '0.3rem'
-    },
-    progressFill: {
-      height: '100%',
-      backgroundColor: '#28a745',
-      borderRadius: '9999px',
-      transition: 'width 0.4s ease-in-out'
-    },
-    campaignMeta: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      fontSize: '0.7rem',
-      color: '#5f6368',
-      marginBottom: '0.25rem'
-    },
-    campaignCreator: {
-      display: 'flex',
-      alignItems: 'center',
-      marginTop: 'auto',
-      paddingTop: '0.5rem',
-      fontSize: '0.7rem'
-    },
-    creatorAvatar: {
-      width: '1.25rem',
-      height: '1.25rem',
-      borderRadius: '50%',
-      backgroundColor: '#e5e7eb',
-      marginRight: '0.375rem',
-      display: 'inline-block'
-    },
-    verifiedBadge: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      backgroundColor: 'rgba(52, 168, 83, 0.1)',
-      color: '#34a853',
-      fontSize: '0.6rem',
-      padding: '0.1rem 0.25rem',
-      borderRadius: '0.125rem',
-      marginLeft: '0.25rem',
-      fontWeight: 500
-    },
-    tabs: {
-      display: 'flex',
-      justifyContent: 'space-around',
-      backgroundColor: '#fff',
-      borderTop: '1px solid #e0e0e0',
-      position: 'fixed' as const,
-      bottom: 0,
-      left: 0,
-      width: '100%',
-      zIndex: 100,
-      padding: '0.75rem 0',
-      boxShadow: '0 -1px 3px rgba(0,0,0,0.1)'
-    },
-    tab: {
-      display: 'flex',
-      flexDirection: 'column' as const,
-      alignItems: 'center',
-      fontSize: '0.65rem',
-      color: '#5f6368',
-      textDecoration: 'none',
-      padding: '0.1rem 0.5rem',
-      flexGrow: 1,
-      textAlign: 'center' as const,
-      transition: 'color 0.2s'
-    },
+  // --- Styling (styles object as previously provided) ---
+  const styles: { [key: string]: React.CSSProperties } = { /* ... Your existing styles object ... */
+    page: { textAlign: 'center' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif', color: '#202124', backgroundColor: '#ffffff', margin: 0, padding: 0, overflowX: 'hidden' as const, width: '100%', maxWidth: '100vw', minHeight: '100vh', display: 'flex', flexDirection: 'column' as const },
+    container: { margin: '0 auto', width: '100%', padding: '0 0.5rem', boxSizing: 'border-box' as const, maxWidth: '1200px', flexGrow: 1 },
+    header: { background: 'white', padding: '0.5rem 0', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', position: 'sticky' as const, top: 0, zIndex: 100 },
+    headerContent: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px', margin: '0 auto', padding: '0 0.5rem' },
+    logo: { display: 'flex', alignItems: 'center', color: '#1a73e8', fontWeight: 700, fontSize: '1.125rem', textDecoration: 'none' },
+    logoSpan: { color: '#202124' },
+    button: { padding: '0.5rem 0.75rem', borderRadius: '0.25rem', fontWeight: 500, cursor: 'pointer', textDecoration: 'none', textAlign: 'center' as const, fontSize: '0.75rem', transition: 'background-color 0.2s, border-color 0.2s', border: '1px solid transparent', minHeight: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
+    buttonPrimary: { backgroundColor: '#1a73e8', color: 'white', borderColor: '#1a73e8' },
+    hero: { background: '#f5f7fa', padding: '1.5rem 0 2rem', textAlign: 'center' as const },
+    heroTitle: { fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem', color: '#202124', padding: 0 },
+    heroSubtitle: { fontSize: '0.875rem', color: '#5f6368', margin: '0 auto 1rem', maxWidth: '500px', padding: 0 },
+    trustBadge: { display: 'inline-flex', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.8)', padding: '0.3rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', color: '#5f6368', marginTop: '0.75rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
+    campaignsSection: { padding: '1.5rem 0 2rem' },
+    sectionHeader: { textAlign: 'center' as const, marginBottom: '1rem' },
+    sectionTitle: { fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.25rem', padding: 0 },
+    sectionSubtitle: { color: '#5f6368', fontSize: '0.8rem', margin: '0 auto 1rem', padding: 0 },
+    campaignsGrid: { display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', justifyContent: 'center', width: '100%' },
+    campaignCard: { width: '100%', background: 'white', borderRadius: '0.5rem', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', overflow: 'hidden', textAlign: 'left' as const, display: 'flex', flexDirection: 'column' as const, transition: 'transform 0.2s ease, box-shadow 0.2s ease' },
+    cardImage: { height: '120px', width: '100%', objectFit: 'cover' as const },
+    cardContent: { padding: '0.75rem', flexGrow: 1, display: 'flex', flexDirection: 'column' as const },
+    cardTitle: { fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.25rem', color: '#202124', padding: 0, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' },
+    cardDesc: { fontSize: '0.75rem', color: '#5f6368', marginBottom: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, lineHeight: '1.4', minHeight: 'calc(2 * 1.4 * 0.75rem)', flexGrow: 1, padding: 0 },
+    progressBar: { width: '100%', height: '0.375rem', backgroundColor: '#e9ecef', borderRadius: '9999px', overflow: 'hidden', marginBottom: '0.3rem' },
+    progressFill: { height: '100%', backgroundColor: '#28a745', borderRadius: '9999px', transition: 'width 0.4s ease-in-out' },
+    campaignMeta: { display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#5f6368', marginBottom: '0.25rem' },
+    campaignCreator: { display: 'flex', alignItems: 'center', marginTop: 'auto', paddingTop: '0.5rem', fontSize: '0.7rem' },
+    creatorAvatar: { width: '1.25rem', height: '1.25rem', borderRadius: '50%', backgroundColor: '#e5e7eb', marginRight: '0.375rem', display: 'inline-block' },
+    verifiedBadge: { display: 'inline-flex', alignItems: 'center', backgroundColor: 'rgba(52, 168, 83, 0.1)', color: '#34a853', fontSize: '0.6rem', padding: '0.1rem 0.25rem', borderRadius: '0.125rem', marginLeft: '0.25rem', fontWeight: 500 },
+    tabs: { display: 'flex', justifyContent: 'space-around', backgroundColor: '#fff', borderTop: '1px solid #e0e0e0', position: 'fixed' as const, bottom: 0, left: 0, width: '100%', zIndex: 100, padding: '0.75rem 0', boxShadow: '0 -1px 3px rgba(0,0,0,0.1)' },
+    tab: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', fontSize: '0.65rem', color: '#5f6368', textDecoration: 'none', padding: '0.1rem 0.5rem', flexGrow: 1, textAlign: 'center' as const, transition: 'color 0.2s' },
     tabActive: { color: '#1a73e8' },
     tabIcon: { width: '1.125rem', height: '1.125rem', marginBottom: '0.125rem' },
-    legalNotice: {
-      fontSize: '0.7rem',
-      color: '#5f6368',
-      padding: '1rem',
-      marginTop: '1rem',
-      marginBottom: '4.5rem',
-      borderTop: '1px solid #eee'
-    }
+    legalNotice: { fontSize: '0.7rem', color: '#5f6368', padding: '1rem', marginTop: '1rem', marginBottom: '4.5rem', borderTop: '1px solid #eee' }
   };
 
-  // Updated to include proper viewport height handling
   const responsiveStyles = `
-  /* … */
-  html, body { 
-    /* … */ 
-    font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'}; 
-  }
-  /* … */
-`;
+    html, body { 
+      font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'}; 
+    }
+  `;
 
   return (
     <div style={styles.page}>
@@ -534,27 +310,16 @@ const LandingPage: React.FC = () => {
 
       {/* Bottom Navigation Tabs */}
       <nav style={styles.tabs}>
-        {/* Home Tab */}
         <Link to="/" style={{ ...styles.tab, ...(isActivePath('/') ? styles.tabActive : {}) }}>
-          <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor">
-            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-          </svg>
+          <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg>
           <span>Home</span>
         </Link>
-
-        {/* Explore Tab */}
         <Link to="/campaigns" style={{ ...styles.tab, ...(isActivePath('/campaigns') ? styles.tabActive : {}) }}>
-          <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor">
-            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-          </svg>
+          <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" /></svg>
           <span>Explore</span>
         </Link>
-
-        {/* Account Tab */}
         <a href="#" onClick={handleAccountTabClick} style={{ ...styles.tab, ...(isActivePath('/dashboard') ? styles.tabActive : {}) }}>
-          <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-          </svg>
+          <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
           <span>Account</span>
         </a>
       </nav>

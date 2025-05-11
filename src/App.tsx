@@ -14,6 +14,7 @@ const CampaignDetailWrapper = React.lazy(() =>
     return {
       default: () => {
         const { id } = useParams();
+        console.log('[CampaignDetailWrapper] Rendering with ID:', id);
         return <Component id={id ?? ''} />;
       }
     };
@@ -27,13 +28,18 @@ const CreateCampaignForm = React.lazy(() =>
 const EditCampaignPage = React.lazy(() => import('./pages/EditCampaignPage'));
 
 // Loading fallback component
-const LoadingFallback: React.FC = () => (
-  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-    Loading...
-  </div>
-);
+const LoadingFallback: React.FC = () => {
+  console.log('[App] Showing loading fallback');
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      Loading...
+    </div>
+  );
+};
 
 const App: React.FC = () => {
+  console.log('[App] Rendering App component');
+  
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>

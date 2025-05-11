@@ -2,6 +2,15 @@
 
 import { authService } from './AuthService';
 
+export interface Donation {
+  id: string;
+  amount: number;
+  donor: string;
+  txHash: string;
+  createdAt: string;
+  currency: 'WLD';
+}
+
 export interface Campaign {
   id: string;
   title: string;
@@ -17,15 +26,6 @@ export interface Campaign {
   currency: 'WLD';
 }
 
-export interface Donation {
-  id: string;
-  amount: number;
-  donor: string;
-  txHash: string;
-  createdAt: string;
-  currency: 'WLD';
-}
-
 export interface CampaignPayload {
   title: string;
   description?: string;
@@ -35,9 +35,24 @@ export interface CampaignPayload {
 
 class CampaignService {
   private static instance: CampaignService;
-  
-  private constructor() {}
+  private API_BASE: string;
+  private API_KEY?: string;
 
+  private constructor() {
+    // Determine API base URL from env and fallback to /api
+    const envApi = import.meta.env.VITE_AMPLIFY_API || import.meta.env.VITE_APP_BACKEND_API_URL;
+    if (envApi) {
+      this.API_BASE = envApi;
+    } else {
+      console.warn('[CampaignService] No VITE_AMPLIFY_API or VITE_APP_BACKEND_API_URL set; defaulting to /api');
+      this.API_BASE = '/api';
+    }
+    // Optional API key
+    this.API_KEY = import.meta.env.VITE_WORLD_APP_API || import.meta.env.VITE_APP_BACKEND_API_KEY;
+    console.log('[CampaignService] Initialized with API base:', this.API_BASE);
+  }
+
+  /** Get singleton instance */
   public static getInstance(): CampaignService {
     if (!CampaignService.instance) {
       CampaignService.instance = new CampaignService();
@@ -45,200 +60,170 @@ class CampaignService {
     return CampaignService.instance;
   }
 
+  /** Build headers including auth token and API key */
   private async getHeaders(): Promise<HeadersInit> {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
-
+    // auth token
     const { token } = await authService.checkAuthStatus();
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-
-    const apiKey = import.meta.env.VITE_WORLD_APP_API;
-    if (apiKey) {
-      headers['x-api-key'] = apiKey;
+    // api key
+    if (this.API_KEY) {
+      headers['x-api-key'] = this.API_KEY;
     }
-
     return headers;
   }
 
-  private getApiBase(): string {
-    const apiBase = import.meta.env.VITE_AMPLIFY_API;
-    if (!apiBase) {
-      throw new Error('Backend API URL is not configured');
-    }
-    return apiBase;
-  }
-
-  // Create a new campaign
-  public async createCampaign(payload: CampaignPayload): Promise<{ success: boolean; id?: string; error?: string }> {
+  /** Create a new campaign */
+  public async createCampaign(
+    payload: CampaignPayload
+  ): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      const apiBase = this.getApiBase();
       const headers = await this.getHeaders();
-
-      const response = await fetch(`${apiBase}/campaigns`, {
+      const res = await fetch(`${this.API_BASE}/campaigns`, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
       });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to create campaign' }));
-        throw new Error(error.message);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error((body as any).message || `Failed to create campaign (${res.status})`);
       }
-
-      const data = await response.json();
-      return { success: true, id: data.id };
-
+      return { success: true, id: (body as any).id };
     } catch (error: any) {
-      console.error('Failed to create campaign:', error);
+      console.error('[CampaignService] createCampaign error:', error);
       return { success: false, error: error.message || 'Failed to create campaign' };
     }
   }
 
-  // Get all campaigns
+  /** Fetch all campaigns */
   public async fetchAllCampaigns(): Promise<{ success: boolean; campaigns?: Campaign[]; error?: string }> {
     try {
-      const apiBase = this.getApiBase();
       const headers = await this.getHeaders();
-
-      const response = await fetch(`${apiBase}/campaigns`, {
+      const res = await fetch(`${this.API_BASE}/campaigns`, {
         method: 'GET',
         headers,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch campaigns');
+      if (!res.ok) {
+        throw new Error(`Failed to fetch campaigns (${res.status})`);
       }
-
-      const data = await response.json();
+      const data = await res.json();
       return { success: true, campaigns: data.campaigns };
-
     } catch (error: any) {
-      console.error('Failed to fetch campaigns:', error);
+      console.error('[CampaignService] fetchAllCampaigns error:', error);
       return { success: false, error: error.message || 'Failed to fetch campaigns' };
     }
   }
 
-  // Get a single campaign
-  public async fetchCampaign(id: string): Promise<{ success: boolean; campaign?: Campaign; error?: string }> {
+  /** Fetch single campaign by ID */
+  public async fetchCampaign(
+    id: string
+  ): Promise<{ success: boolean; campaign?: Campaign; error?: string }> {
     try {
-      const apiBase = this.getApiBase();
       const headers = await this.getHeaders();
-
-      const response = await fetch(`${apiBase}/campaigns/${id}`, {
+      const res = await fetch(`${this.API_BASE}/campaigns/${id}`, {
         method: 'GET',
         headers,
       });
-
-      if (!response.ok) {
-        throw new Error('Campaign not found');
+      if (!res.ok) {
+        throw new Error(`Campaign not found (${res.status})`);
       }
-
-      const campaign = await response.json();
+      const campaign = await res.json();
       return { success: true, campaign };
-
     } catch (error: any) {
-      console.error('Failed to fetch campaign:', error);
+      console.error('[CampaignService] fetchCampaign error:', error);
       return { success: false, error: error.message || 'Failed to fetch campaign' };
     }
   }
 
-  // Update a campaign
-  public async updateCampaign(id: string, payload: Partial<CampaignPayload>): Promise<{ success: boolean; error?: string }> {
+  /** Update an existing campaign */
+  public async updateCampaign(
+    id: string,
+    payload: Partial<CampaignPayload>
+  ): Promise<{ success: boolean; error?: string }> {
     try {
-      const apiBase = this.getApiBase();
       const headers = await this.getHeaders();
-
-      const response = await fetch(`${apiBase}/campaigns/${id}`, {
+      const res = await fetch(`${this.API_BASE}/campaigns/${id}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(payload),
       });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to update campaign' }));
-        throw new Error(error.message);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error((body as any).message || `Failed to update campaign (${res.status})`);
       }
-
       return { success: true };
-
     } catch (error: any) {
-      console.error('Failed to update campaign:', error);
+      console.error('[CampaignService] updateCampaign error:', error);
       return { success: false, error: error.message || 'Failed to update campaign' };
     }
   }
 
-  // Delete a campaign
-  public async deleteCampaign(id: string): Promise<{ success: boolean; error?: string }> {
+  /** Delete a campaign by ID */
+  public async deleteCampaign(
+    id: string
+  ): Promise<{ success: boolean; error?: string }> {
     try {
-      const apiBase = this.getApiBase();
       const headers = await this.getHeaders();
-
-      const response = await fetch(`${apiBase}/campaigns/${id}`, {
+      const res = await fetch(`${this.API_BASE}/campaigns/${id}`, {
         method: 'DELETE',
         headers,
       });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to delete campaign' }));
-        throw new Error(error.message);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error((body as any).message || `Failed to delete campaign (${res.status})`);
       }
-
       return { success: true };
-
     } catch (error: any) {
-      console.error('Failed to delete campaign:', error);
+      console.error('[CampaignService] deleteCampaign error:', error);
       return { success: false, error: error.message || 'Failed to delete campaign' };
     }
   }
 
-  // Record a donation
-  public async recordDonation(campaignId: string, amount: number, txHash: string): Promise<{ success: boolean; error?: string }> {
+  /** Record a donation for a campaign */
+  public async recordDonation(
+    campaignId: string,
+    amount: number,
+    txHash: string
+  ): Promise<{ success: boolean; error?: string }> {
     try {
-      const apiBase = this.getApiBase();
       const headers = await this.getHeaders();
-
-      const response = await fetch(`${apiBase}/campaigns/${campaignId}/donate`, {
+      const res = await fetch(`${this.API_BASE}/campaigns/${campaignId}/donate`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ amount, txHash }),
       });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Failed to record donation' }));
-        throw new Error(error.message);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error((body as any).message || `Failed to record donation (${res.status})`);
       }
-
       return { success: true };
-
     } catch (error: any) {
-      console.error('Failed to record donation:', error);
+      console.error('[CampaignService] recordDonation error:', error);
       return { success: false, error: error.message || 'Failed to record donation' };
     }
   }
 
-  // Get user's campaigns
-  public async fetchUserCampaigns(walletAddress: string): Promise<{ success: boolean; campaigns?: Campaign[]; error?: string }> {
+  /** Fetch campaigns belonging to a specific user */
+  public async fetchUserCampaigns(
+    walletAddress: string
+  ): Promise<{ success: boolean; campaigns?: Campaign[]; error?: string }> {
     try {
-      const apiBase = this.getApiBase();
       const headers = await this.getHeaders();
-
-      const response = await fetch(`${apiBase}/users/${walletAddress}/campaigns`, {
+      const res = await fetch(`${this.API_BASE}/users/${walletAddress}/campaigns`, {
         method: 'GET',
         headers,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch user campaigns');
+      if (!res.ok) {
+        throw new Error(`Failed to fetch user campaigns (${res.status})`);
       }
-
-      const data = await response.json();
+      const data = await res.json();
       return { success: true, campaigns: data.campaigns };
-
     } catch (error: any) {
-      console.error('Failed to fetch user campaigns:', error);
+      console.error('[CampaignService] fetchUserCampaigns error:', error);
       return { success: false, error: error.message || 'Failed to fetch user campaigns' };
     }
   }
