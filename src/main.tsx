@@ -1,4 +1,5 @@
 // src/main.tsx
+console.log('[main.tsx] SCRIPT EXECUTION STARTED - TOP OF FILE'); // <-- ADD THIS VERY FIRST LINE
 
 /**
  * 🛠️ IMPORTANT SETUP:
@@ -42,17 +43,16 @@ try {
 }
 
 // Log key env variables
-// ADDED a more comprehensive log for all VITE variables
 console.log('[main.tsx] Raw import.meta.env:', JSON.stringify(import.meta.env, null, 2));
 console.log('[main.tsx] VITE_AMPLIFY_API:', import.meta.env.VITE_AMPLIFY_API);
 console.log('[main.tsx] VITE_WORLD_APP_ID (primary check):', import.meta.env.VITE_WORLD_APP_ID);
-console.log('[main.tsx] VITE_WORLD_ID_APP_ID (fallback check):', import.meta.env.VITE_WORLD_ID_APP_ID); // Logging the fallback explicitly
+console.log('[main.tsx] VITE_WORLD_ID_APP_ID (fallback check):', import.meta.env.VITE_WORLD_ID_APP_ID);
 console.log('[main.tsx] VITE_WORLD_ACTION_ID:', import.meta.env.VITE_WORLD_ACTION_ID);
 
 
 // 2) Inject WORLD_APP_ID into global scope (No changes needed)
 const envAppId = import.meta.env.VITE_WORLD_APP_ID
-  || import.meta.env.VITE_WORLD_ID_APP_ID; // This logic correctly checks both
+  || import.meta.env.VITE_WORLD_ID_APP_ID;
 if (envAppId) {
   window.__ENV__ = { ...(window.__ENV__ || {}), WORLD_APP_ID: envAppId };
   console.log('[main.tsx] Injected WORLD_APP_ID into window.__ENV__:', envAppId);
@@ -89,7 +89,6 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
             textAlign: 'left', backgroundColor: '#f7fafc', padding: '10px',
             borderRadius: '5px', overflow: 'auto', fontSize: '12px'
           }}>
-            {/* Display the specific error message that caused the boundary */}
             {this.state.error?.message || this.state.error?.toString()}
           </pre>
           <button
@@ -114,17 +113,12 @@ if (!rootEl) throw new Error('Root element not found');
 
 ReactDOM.createRoot(rootEl).render(
   <React.StrictMode>
-    {/* In-app debug console via Eruda */}
     <ErudaProvider />
-
-    {/* BrowserRouter should wrap everything needing routing context */}
     <BrowserRouter>
-      {/* AuthProvider now has access to routing context */}
       <AuthProvider>
         <ErrorBoundary>
-          {/* MiniKitProvider also has access */}
           <MiniKitProvider>
-            <App /> {/* App component itself no longer needs BrowserRouter */}
+            <App />
           </MiniKitProvider>
         </ErrorBoundary>
       </AuthProvider>
