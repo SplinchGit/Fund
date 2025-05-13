@@ -11,23 +11,28 @@ const fetch = require('node-fetch');
 
 // --- Configuration ---
 const JWT_EXPIRY = '1d';
-const WORLD_ID_APP_ID = process.env.VITE_WORLD_APP_ID || process.env.WORLD_APP_ID;
+const WORLD_ID_APP_ID = process.env.VITE_WORLD_APP_ID || process.env.WORLD_APP_ID; // This still relies on VITE_ or WORLD_APP_ID. Consider setting WORLD_APP_ID directly in Lambda env.
 const ALLOWED_ORIGIN = process.env.FRONTEND_URL || 'https://main.d2fvyjulmwt6nl.amplifyapp.com';
 const JWT_SECRET_ARN = process.env.JWT_SECRET_ARN;
-const WORLD_ID_ACTION_ID = process.env.VITE_WORLD_ACTION_ID || 'verify-user';
-const RPC_URL = process.env.RPC_URL;
-const USERS_TABLE_NAME = process.env.USER_TABLE_NAME || 'Users-dev';
-const CAMPAIGNS_TABLE_NAME = process.env.CAMPAIGN_TABLE_NAME || 'Campaigns-dev';
+const WORLD_ID_ACTION_ID = process.env.VITE_WORLD_ACTION_ID || 'verify-user'; // Similar to WORLD_ID_APP_ID, consider direct env var.
+const RPC_URL = process.env.RPC_URL; // This is declared but not used yet. Needed for on-chain verification.
+
+// VV VV VV CORRECTED LINES HERE VV VV VV
+const USERS_TABLE_NAME = process.env.USERS_TABLE_NAME || 'Users-dev';         // CORRECTED: Now reads USERS_TABLE_NAME (plural S)
+const CAMPAIGNS_TABLE_NAME = process.env.CAMPAIGNS_TABLE_NAME || 'Campaigns-dev'; // CORRECTED: Now reads CAMPAIGNS_TABLE_NAME (plural S)
+// VV VV VV END OF CORRECTED LINES VV VV VV
 
 // --- AWS SDK Clients ---
-const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
-const dynamodbClient = new DynamoDBClient({ region: process.env.AWS_REGION });
+// Ensure AWS_REGION is set in your Lambda environment variables (Amplify usually does this)
+const lambdaRegion = process.env.AWS_REGION || 'eu-west-2'; // Fallback if not set, but should be.
+const secretsClient = new SecretsManagerClient({ region: lambdaRegion });
+const dynamodbClient = new DynamoDBClient({ region: lambdaRegion });
 const ddbDocClient = DynamoDBDocumentClient.from(dynamodbClient);
 
 // --- Global variable to cache the JWT secret ---
 let cachedJwtSecret = null;
 
-// --- HELPER FUNCTIONS (ADD THESE) ---
+// --- HELPER FUNCTIONS ---
 
 // Helper function to generate a secure nonce
 const generateNonce = () => {
@@ -40,7 +45,7 @@ function createResponse(statusCode, body) {
     statusCode: statusCode,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': ALLOWED_ORIGIN, // Using configured ALLOWED_ORIGIN
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Requested-With'
     },
@@ -54,16 +59,26 @@ const getJwtSecret = async () => {
     return cachedJwtSecret;
   }
   
+  if (!JWT_SECRET_ARN) {
+      console.error('JWT_SECRET_ARN environment variable is not set.');
+      throw new Error('Server configuration error: JWT secret ARN is missing.');
+  }
+
   try {
     const command = new GetSecretValueCommand({
       SecretId: JWT_SECRET_ARN,
     });
     
     const response = await secretsClient.send(command);
-    cachedJwtSecret = response.SecretString;
-    return cachedJwtSecret;
+    if (response.SecretString) {
+        cachedJwtSecret = response.SecretString;
+        return cachedJwtSecret;
+    } else {
+        console.error('SecretString is empty in the response from Secrets Manager for JWT_SECRET_ARN:', JWT_SECRET_ARN);
+        throw new Error('Failed to retrieve JWT secret content.');
+    }
   } catch (error) {
-    console.error('Error retrieving JWT secret:', error);
+    console.error('Error retrieving JWT secret from ARN:', JWT_SECRET_ARN, error);
     throw new Error('Failed to retrieve JWT secret');
   }
 };
@@ -84,6 +99,9 @@ const verifyJWT = async (authHeader) => {
   
   try {
     const jwtSecret = await getJwtSecret();
+    if (!jwtSecret) { // Additional check
+        throw new Error('JWT secret is not available for verification.');
+    }
     const decoded = jwt.verify(token, jwtSecret);
     return decoded;
   } catch (error) {
@@ -96,14 +114,29 @@ const verifyJWT = async (authHeader) => {
 exports.handler = async (event) => {
     console.log('Received event:', JSON.stringify(event, null, 2));
   
-    // Check essential configuration early  
-    if (!USERS_TABLE_NAME || !CAMPAIGNS_TABLE_NAME) {
-      console.error("Table names not configured");
-      return createResponse(500, { message: "Server configuration error: Missing table names." });
+    // Log effective table names at the start of each invocation for easier debugging
+    console.log(`Effective USERS_TABLE_NAME: '${USERS_TABLE_NAME}' (from process.env.USERS_TABLE_NAME: '${process.env.USERS_TABLE_NAME}')`);
+    console.log(`Effective CAMPAIGNS_TABLE_NAME: '${CAMPAIGNS_TABLE_NAME}' (from process.env.CAMPAIGNS_TABLE_NAME: '${process.env.CAMPAIGNS_TABLE_NAME}')`);
+    console.log(`Effective JWT_SECRET_ARN: '${JWT_SECRET_ARN}'`);
+    console.log(`Effective AWS_REGION: '${process.env.AWS_REGION}'`);
+
+
+    // Check essential configuration early   
+    if (!USERS_TABLE_NAME || USERS_TABLE_NAME === 'Users-dev' && !process.env.USERS_TABLE_NAME) { // Check if using fallback due to missing env var
+      console.error("USERS_TABLE_NAME not configured correctly. It's either not set or using fallback 'Users-dev' because process.env.USERS_TABLE_NAME is undefined.");
+      // Decide if this is critical enough to halt, or if 'Users-dev' fallback is sometimes acceptable.
+      // For now, we let it proceed but the log above is important.
+    }
+    if (!CAMPAIGNS_TABLE_NAME || CAMPAIGNS_TABLE_NAME === 'Campaigns-dev' && !process.env.CAMPAIGNS_TABLE_NAME) { // Check if using fallback
+      console.error("CAMPAIGNS_TABLE_NAME not configured correctly. It's either not set or using fallback 'Campaigns-dev' because process.env.CAMPAIGNS_TABLE_NAME is undefined.");
+    }
+    if (!JWT_SECRET_ARN) {
+      console.error("JWT_SECRET_ARN environment variable is not set. Cannot sign/verify tokens.");
+      return createResponse(500, { message: "Server configuration error: Missing JWT secret configuration." });
     }
   
     const httpMethod = event.httpMethod;
-    const path = event.requestContext?.http?.path || event.path;
+    const path = event.requestContext?.http?.path || event.path; // Using event.path as primary if event.requestContext.http.path is not standard for REST API
     console.log(`Handling request: ${httpMethod} ${path}`);
   
     // Handle CORS preflight OPTIONS requests globally
@@ -174,14 +207,15 @@ exports.handler = async (event) => {
               ExpressionAttributeValues: { ':now': now }
             }));
           } else {
-            throw err;
+            console.error(`Error putting/updating user in DynamoDB table '${USERS_TABLE_NAME}':`, err);
+            throw err; // Re-throw to be caught by outer try-catch
           }
         }
   
         // Generate JWT
         const jwtSecret = await getJwtSecret();
         const token = jwt.sign(
-          { walletAddress },
+          { walletAddress }, // Payload includes walletAddress
           jwtSecret,
           { expiresIn: JWT_EXPIRY }
         );
@@ -216,8 +250,26 @@ exports.handler = async (event) => {
   
         const worldIdProof = JSON.parse(event.body);
         
-        // TODO: Verify World ID proof with World ID API
-        // For now, just update user record
+        // TODO: Verify World ID proof with World ID API using WORLD_ID_APP_ID and WORLD_ID_ACTION_ID
+        // Example:
+        // const verificationResult = await fetch(`https://developer.worldcoin.org/api/v2/verify/${WORLD_ID_APP_ID}`, {
+        //    method: 'POST',
+        //    headers: { 'Content-Type': 'application/json' },
+        //    body: JSON.stringify({
+        //      merkle_root: worldIdProof.merkle_root,
+        //      nullifier_hash: worldIdProof.nullifier_hash,
+        //      proof: worldIdProof.proof,
+        //      verification_level: worldIdProof.verification_level, // or your required level
+        //      action: WORLD_ID_ACTION_ID, 
+        //      signal: walletAddress // Or other signal if used
+        //    })
+        // });
+        // if (!verificationResult.ok) {
+        //    const errorData = await verificationResult.json().catch(() => ({}));
+        //    console.error('World ID proof verification failed with API:', errorData);
+        //    return createResponse(400, { message: 'World ID proof verification failed', details: errorData.code || errorData.detail });
+        // }
+        // console.log('World ID proof successfully verified with API.');
         
         const now = new Date().toISOString();
         await ddbDocClient.send(new UpdateCommand({
@@ -235,9 +287,10 @@ exports.handler = async (event) => {
   
       } catch (error) {
         console.error('[POST /verify-worldid] Error:', error);
-        return createResponse(500, { 
-          message: 'Failed to verify World ID',
-          error: error.message 
+        const errorMessage = error.message || 'Failed to verify World ID';
+        return createResponse(error.message && error.message.includes('token') ? 401 : 500, { 
+          message: errorMessage,
+          errorDetails: error.message 
         });
       }
     }
@@ -247,7 +300,8 @@ exports.handler = async (event) => {
   // Create campaign
   if (httpMethod === 'POST' && path === '/campaigns') {
     try {
-      const decodedToken = await verifyJWT(event.headers?.Authorization || event.headers?.authorization);
+      const authHeader = event.headers?.Authorization || event.headers?.authorization;
+      const decodedToken = await verifyJWT(authHeader);
       const walletAddress = decodedToken.walletAddress;
 
       if (!event.body) {
@@ -288,9 +342,10 @@ exports.handler = async (event) => {
 
     } catch (error) {
       console.error('Error creating campaign:', error);
+      const errorMessage = error.message || 'Failed to create campaign';
       return createResponse(
-        error.message.includes('token') ? 401 : 500,
-        { message: error.message || 'Failed to create campaign' }
+        error.message && error.message.includes('token') ? 401 : 500,
+        { message: errorMessage, errorDetails: error.message }
       );
     }
   }
@@ -298,7 +353,9 @@ exports.handler = async (event) => {
   // List all campaigns
   if (httpMethod === 'GET' && path === '/campaigns') {
     try {
-      console.log(`[GET /campaigns] TRYING TO SCAN TABLE NAMED: '${CAMPAIGNS_TABLE_NAME}' (from process.env: '${process.env.CAMPAIGNS_TABLE_NAME}') (Region: '${process.env.AWS_REGION}')`);
+      // This is the diagnostic log you added - keep it for now
+      console.log(`[GET /campaigns] TRYING TO SCAN TABLE NAMED: '${CAMPAIGNS_TABLE_NAME}' (from process.env.CAMPAIGNS_TABLE_NAME: '${process.env.CAMPAIGNS_TABLE_NAME}') (Region: '${process.env.AWS_REGION}')`);
+      
       const result = await ddbDocClient.send(new ScanCommand({
         TableName: CAMPAIGNS_TABLE_NAME,
         FilterExpression: '#status = :active',
@@ -314,15 +371,16 @@ exports.handler = async (event) => {
       return createResponse(200, { campaigns: result.Items || [] });
 
     } catch (error) {
-      console.error('Error listing campaigns:', error);
-      return createResponse(500, { message: 'Failed to list campaigns' });
+      console.error(`Error listing campaigns from table '${CAMPAIGNS_TABLE_NAME}':`, error);
+      return createResponse(500, { message: 'Failed to list campaigns', errorDetails: error.message });
     }
   }
 
   // Get single campaign
-  if (httpMethod === 'GET' && path.startsWith('/campaigns/') && !path.endsWith('/donations')) {
+  if (httpMethod === 'GET' && path.startsWith('/campaigns/') && !path.endsWith('/donate')  && path.split('/').length === 3) {
     try {
       const campaignId = path.split('/')[2];
+      console.log(`[GET /campaigns/:id] Fetching campaign with ID: '${campaignId}', using table: '${CAMPAIGNS_TABLE_NAME}'`);
       
       const result = await ddbDocClient.send(new GetCommand({
         TableName: CAMPAIGNS_TABLE_NAME,
@@ -336,17 +394,20 @@ exports.handler = async (event) => {
       return createResponse(200, result.Item);
 
     } catch (error) {
-      console.error('Error getting campaign:', error);
-      return createResponse(500, { message: 'Failed to get campaign' });
+      console.error(`Error getting campaign from table '${CAMPAIGNS_TABLE_NAME}':`, error);
+      return createResponse(500, { message: 'Failed to get campaign', errorDetails: error.message });
     }
   }
 
   // Update campaign
-  if (httpMethod === 'PUT' && path.startsWith('/campaigns/')) {
+  if (httpMethod === 'PUT' && path.startsWith('/campaigns/') && path.split('/').length === 3) {
     try {
-      const decodedToken = await verifyJWT(event.headers?.Authorization || event.headers?.authorization);
+      const authHeader = event.headers?.Authorization || event.headers?.authorization;
+      const decodedToken = await verifyJWT(authHeader);
       const walletAddress = decodedToken.walletAddress;
       const campaignId = path.split('/')[2];
+      console.log(`[PUT /campaigns/:id] Updating campaign with ID: '${campaignId}', using table: '${CAMPAIGNS_TABLE_NAME}' by user: ${walletAddress}`);
+
 
       // First, verify ownership
       const getResult = await ddbDocClient.send(new GetCommand({
@@ -362,6 +423,9 @@ exports.handler = async (event) => {
         return createResponse(403, { message: 'Not authorized to update this campaign' });
       }
 
+      if (!event.body) {
+        return createResponse(400, { message: 'Missing request body for update' });
+      }
       const { title, description, goal, image, status } = JSON.parse(event.body);
       const now = new Date().toISOString();
 
@@ -395,6 +459,10 @@ exports.handler = async (event) => {
         expressionAttributeNames['#status'] = 'status';
         expressionAttributeValues[':status'] = status;
       }
+      
+      if (updateExpressions.length === 0) {
+        return createResponse(400, { message: 'No valid fields provided for update.'});
+      }
 
       updateExpressions.push('#updatedAt = :updatedAt');
       expressionAttributeNames['#updatedAt'] = 'updatedAt';
@@ -412,21 +480,25 @@ exports.handler = async (event) => {
       return createResponse(200, { success: true, updatedAt: now });
 
     } catch (error) {
-      console.error('Error updating campaign:', error);
+      console.error(`Error updating campaign on table '${CAMPAIGNS_TABLE_NAME}':`, error);
+      const errorMessage = error.message || 'Failed to update campaign';
       return createResponse(
-        error.message.includes('token') ? 401 : 
-        error.message.includes('Not authorized') ? 403 : 500,
-        { message: error.message || 'Failed to update campaign' }
+        error.message && error.message.includes('token') ? 401 : 
+        error.message && error.message.includes('Not authorized') ? 403 : 500,
+        { message: errorMessage, errorDetails: error.message }
       );
     }
   }
 
   // Delete campaign
-  if (httpMethod === 'DELETE' && path.startsWith('/campaigns/')) {
+  if (httpMethod === 'DELETE' && path.startsWith('/campaigns/') && path.split('/').length === 3) {
     try {
-      const decodedToken = await verifyJWT(event.headers?.Authorization || event.headers?.authorization);
+      const authHeader = event.headers?.Authorization || event.headers?.authorization;
+      const decodedToken = await verifyJWT(authHeader);
       const walletAddress = decodedToken.walletAddress;
       const campaignId = path.split('/')[2];
+      console.log(`[DELETE /campaigns/:id] Deleting campaign with ID: '${campaignId}', using table: '${CAMPAIGNS_TABLE_NAME}' by user: ${walletAddress}`);
+
 
       // First, verify ownership
       const getResult = await ddbDocClient.send(new GetCommand({
@@ -451,21 +523,25 @@ exports.handler = async (event) => {
       return createResponse(200, { success: true });
 
     } catch (error) {
-      console.error('Error deleting campaign:', error);
+      console.error(`Error deleting campaign on table '${CAMPAIGNS_TABLE_NAME}':`, error);
+      const errorMessage = error.message || 'Failed to delete campaign';
       return createResponse(
-        error.message.includes('token') ? 401 : 
-        error.message.includes('Not authorized') ? 403 : 500,
-        { message: error.message || 'Failed to delete campaign' }
+        error.message && error.message.includes('token') ? 401 : 
+        error.message && error.message.includes('Not authorized') ? 403 : 500,
+        { message: errorMessage, errorDetails: error.message }
       );
     }
   }
 
   // Record donation
-  if (httpMethod === 'POST' && path.endsWith('/donate')) {
+  if (httpMethod === 'POST' && path.startsWith('/campaigns/') && path.endsWith('/donate')) {
     try {
-      const decodedToken = await verifyJWT(event.headers?.Authorization || event.headers?.authorization);
+      const authHeader = event.headers?.Authorization || event.headers?.authorization;
+      const decodedToken = await verifyJWT(authHeader);
       const walletAddress = decodedToken.walletAddress;
-      const campaignId = path.split('/')[2];
+      const campaignId = path.split('/')[2]; // Correctly extracts campaignId
+      console.log(`[POST /campaigns/:id/donate] Recording donation for campaign ID: '${campaignId}', using table: '${CAMPAIGNS_TABLE_NAME}' by user: ${walletAddress}`);
+
 
       if (!event.body) {
         return createResponse(400, { message: 'Missing request body' });
@@ -476,6 +552,10 @@ exports.handler = async (event) => {
       if (!amount || !txHash) {
         return createResponse(400, { message: 'Amount and transaction hash are required' });
       }
+      if (typeof amount !== 'number' || amount <= 0) {
+        return createResponse(400, {message: 'Invalid amount'});
+      }
+
 
       const now = new Date().toISOString();
       const donation = {
@@ -486,6 +566,8 @@ exports.handler = async (event) => {
         createdAt: now,
         currency: 'WLD'
       };
+
+      // TODO: Add on-chain verification of txHash before updating DynamoDB
 
       // Update campaign with new donation
       await ddbDocClient.send(new UpdateCommand({
@@ -500,17 +582,22 @@ exports.handler = async (event) => {
           ':amount': Number(amount),
           ':donation': [donation],
           ':empty_list': []
-        }
+        },
+        ConditionExpression: 'attribute_exists(id)' // Ensure campaign exists
       }));
 
       console.log(`Recorded donation for campaign ${campaignId}: ${amount} WLD`);
       return createResponse(201, { success: true, donationId: donation.id });
 
     } catch (error) {
-      console.error('Error recording donation:', error);
+      console.error(`Error recording donation on table '${CAMPAIGNS_TABLE_NAME}':`, error);
+      const errorMessage = error.message || 'Failed to record donation';
+      if (error.name === 'ConditionalCheckFailedException') {
+          return createResponse(404, { message: 'Campaign not found to record donation.' });
+      }
       return createResponse(
-        error.message.includes('token') ? 401 : 500,
-        { message: error.message || 'Failed to record donation' }
+        error.message && error.message.includes('token') ? 401 : 500,
+        { message: errorMessage, errorDetails: error.message }
       );
     }
   }
@@ -519,16 +606,24 @@ exports.handler = async (event) => {
   if (httpMethod === 'GET' && path.startsWith('/users/') && path.endsWith('/campaigns')) {
     try {
       const walletAddress = path.split('/')[2];
+      console.log(`[GET /users/:walletAddress/campaigns] Fetching campaigns for user: '${walletAddress}', using table: '${CAMPAIGNS_TABLE_NAME}'`);
       
-      // Verify the requester is the owner or has a valid token
-      let requesterAddress = null;
-      try {
-        const decodedToken = await verifyJWT(event.headers?.Authorization || event.headers?.authorization);
-        requesterAddress = decodedToken.walletAddress;
-      } catch (e) {
-        // Allow public access to user's campaigns
-        console.log('No valid token, allowing public access to campaigns');
-      }
+      // Optional: Verify if the requester is the owner if you want to restrict this
+      // For now, this allows anyone to see any user's campaigns by their wallet address.
+      // let requesterAddress = null;
+      // try {
+      //   const authHeader = event.headers?.Authorization || event.headers?.authorization;
+      //   if (authHeader) { // only try to verify if a token is present
+      //      const decodedToken = await verifyJWT(authHeader);
+      //      requesterAddress = decodedToken.walletAddress;
+      //   }
+      // } catch (e) {
+      //   console.log('Token verification failed or no token, allowing public access to user campaigns if intended.');
+      // }
+      // if (requesterAddress !== walletAddress) {
+      //   // Potentially return 403 if you only want users to see their own, and a token was provided but didn't match
+      // }
+
 
       const result = await ddbDocClient.send(new ScanCommand({
         TableName: CAMPAIGNS_TABLE_NAME,
@@ -545,8 +640,8 @@ exports.handler = async (event) => {
       return createResponse(200, { campaigns: result.Items || [] });
 
     } catch (error) {
-      console.error('Error getting user campaigns:', error);
-      return createResponse(500, { message: 'Failed to get user campaigns' });
+      console.error(`Error getting user campaigns from table '${CAMPAIGNS_TABLE_NAME}':`, error);
+      return createResponse(500, { message: 'Failed to get user campaigns', errorDetails: error.message });
     }
   }
 
