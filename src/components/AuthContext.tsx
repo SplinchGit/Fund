@@ -36,6 +36,37 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const SESSION_TOKEN_KEY = 'worldfund_session_token';
 const WALLET_ADDRESS_KEY = 'worldfund_wallet_address';
 
+/**
+ * Helper to safely extract nonce from different message formats
+ */
+const extractNonceFromMessage = (message: string): string => {
+  if (!message) return '';
+  
+  // Try parsing as JSON first
+  try {
+    const parsed = JSON.parse(message);
+    if (parsed && typeof parsed === 'object' && parsed.nonce) {
+      return String(parsed.nonce);
+    }
+  } catch (e) {
+    // Not JSON, continue with other methods
+  }
+  
+  // Check if the message itself looks like a nonce (hexadecimal string)
+  if (/^[a-f0-9]{8,64}$/i.test(message)) {
+    return message;
+  }
+  
+  // Look for nonce pattern in the message
+  const nonceMatch = message.match(/nonce["']?\s*[:=]\s*["']?([a-f0-9]{8,64})["']?/i);
+  if (nonceMatch && nonceMatch[1]) {
+    return nonceMatch[1];
+  }
+  
+  // If all else fails, just return the message (backend will handle validation)
+  return message;
+};
+
 // Store session data helper
 const storeSessionData = (token: string, address: string): void => {
   try {
@@ -125,6 +156,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
+      // Log API environment variables for debugging
+      console.log('[AuthContext] API environment variables:', {
+        VITE_AMPLIFY_API: import.meta.env.VITE_AMPLIFY_API,
+        VITE_APP_BACKEND_API_URL: import.meta.env.VITE_APP_BACKEND_API_URL
+      });
+      
       // Try to get nonce from the backend
       const nonceResult = await authService.getNonce();
       
@@ -167,43 +204,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Login with wallet - FIXED WITH BETTER MESSAGE PARSING
   const loginWithWallet = useCallback(async (authResult: MiniAppWalletAuthSuccessPayload) => {
-    console.log('[AuthContext] loginWithWallet: Starting with payload:', authResult);
+    console.log('[AuthContext] loginWithWallet: Starting wallet login process');
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      // Check message validity
-      if (!authResult.message) {
-        console.error('[AuthContext] loginWithWallet: Invalid authResult.message');
-        throw new Error('Invalid authentication payload: message is missing');
+      // Validate the wallet auth result
+      if (!authResult || authResult.status !== 'success') {
+        console.error('[AuthContext] Invalid authentication result:', authResult);
+        throw new Error('Invalid wallet authentication result');
       }
 
-      // Extract nonce from the message - with enhanced error handling
-      let messageObj: any;
-      try {
-        messageObj = typeof authResult.message === 'object' 
-          ? authResult.message 
-          : JSON.parse(typeof authResult.message === 'string' ? authResult.message : '{}');
-      } catch (parseError) {
-        console.error('[AuthContext] loginWithWallet: Failed to parse message:', parseError);
+      // Check required fields
+      if (!authResult.message) {
+        console.error('[AuthContext] Message missing from wallet auth result');
+        throw new Error('Authentication payload missing message data');
+      }
+
+      if (!authResult.signature) {
+        console.error('[AuthContext] Signature missing from wallet auth result');
+        throw new Error('Authentication payload missing signature');
+      }
+
+      // Log message format (safe logging without exposing content)
+      console.log('[AuthContext] Message format:', {
+        type: typeof authResult.message,
+        length: authResult.message.length,
+        address: authResult.address ? `${authResult.address.substring(0, 6)}...` : 'none',
+        version: authResult.version
+      });
+
+      // Extract nonce from message - the message has already been converted to a string
+      // by the MiniKitProvider if it was an object
+      const signedNonce = extractNonceFromMessage(authResult.message);
+      
+      if (!signedNonce) {
+        console.error('[AuthContext] Could not extract nonce from message');
         throw new Error('Failed to parse authentication message from wallet');
       }
       
-      const signedNonce = messageObj.nonce || '';
-      
-      if (!signedNonce) {
-        console.error('[AuthContext] loginWithWallet: Nonce missing in signed message');
-        throw new Error('Nonce missing in signed message from wallet');
-      }
-      
-      console.log('[AuthContext] loginWithWallet: Nonce signed by wallet:', signedNonce);
+      console.log('[AuthContext] Extracted nonce from wallet message:', signedNonce);
 
       // Verify signature with backend
-      console.log('[AuthContext] loginWithWallet: Verifying signature with signedNonce:', signedNonce);
+      console.log('[AuthContext] Verifying wallet signature with backend...');
       const verifyResult = await authService.verifyWalletSignature(authResult, signedNonce);
-      console.log('[AuthContext] loginWithWallet: Verification result:', verifyResult);
+      console.log('[AuthContext] Verification result:', verifyResult.success);
 
       if (verifyResult.success && verifyResult.walletAddress && verifyResult.token) {
-        console.log('[AuthContext] loginWithWallet: Verification successful, calling login');
+        console.log('[AuthContext] Signature verification successful, logging in...');
         login(verifyResult.token, verifyResult.walletAddress, true);
       } else {
         // Enhanced error with clearer user message
@@ -216,7 +263,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error(errorMsg);
       }
     } catch (error: any) {
-      console.error('[AuthContext] loginWithWallet: Wallet login process failed:', error);
+      console.error('[AuthContext] Wallet login failed:', error);
       setAuthState(prev => ({
         ...prev,
         isLoading: false,
