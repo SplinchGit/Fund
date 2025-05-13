@@ -27,9 +27,70 @@ const ddbDocClient = DynamoDBDocumentClient.from(dynamodbClient);
 // --- Global variable to cache the JWT secret ---
 let cachedJwtSecret = null;
 
-// amplify/backend/function/0worldfunddebug56fd6525/src/index.js
+// --- HELPER FUNCTIONS (ADD THESE) ---
 
-// ... (keep all imports and helper functions as they are)
+// Helper function to generate a secure nonce
+const generateNonce = () => {
+  return crypto.randomBytes(16).toString('hex');
+};
+
+// Helper function to create consistent API responses
+function createResponse(statusCode, body) {
+  return {
+    statusCode: statusCode,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Requested-With'
+    },
+    body: JSON.stringify(body)
+  };
+}
+
+// Helper to get JWT secret from AWS Secrets Manager
+const getJwtSecret = async () => {
+  if (cachedJwtSecret) {
+    return cachedJwtSecret;
+  }
+  
+  try {
+    const command = new GetSecretValueCommand({
+      SecretId: JWT_SECRET_ARN,
+    });
+    
+    const response = await secretsClient.send(command);
+    cachedJwtSecret = response.SecretString;
+    return cachedJwtSecret;
+  } catch (error) {
+    console.error('Error retrieving JWT secret:', error);
+    throw new Error('Failed to retrieve JWT secret');
+  }
+};
+
+// Helper to verify JWT token
+const verifyJWT = async (authHeader) => {
+  if (!authHeader) {
+    throw new Error('No authorization header provided');
+  }
+  
+  const token = authHeader.startsWith('Bearer ') 
+    ? authHeader.substring(7)
+    : authHeader;
+  
+  if (!token) {
+    throw new Error('No token provided');
+  }
+  
+  try {
+    const jwtSecret = await getJwtSecret();
+    const decoded = jwt.verify(token, jwtSecret);
+    return decoded;
+  } catch (error) {
+    console.error('JWT verification failed:', error);
+    throw new Error('Invalid or expired token');
+  }
+};
 
 // --- Main Handler ---
 exports.handler = async (event) => {
