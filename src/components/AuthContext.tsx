@@ -24,7 +24,7 @@ interface AuthState {
 // Auth context interface
 interface AuthContextType extends AuthState {
   login: (token: string, address: string, shouldNavigate?: boolean) => void;
-  logout: () => Promise<void>; // This should return Promise<void>
+  logout: () => Promise<void>;
   loginWithWallet: (authResult: MiniAppWalletAuthSuccessPayload) => Promise<void>;
   getNonceForMiniKit: () => Promise<string>;
 }
@@ -119,15 +119,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [navigate]);
 
-  // Get nonce for MiniKit
+  // Get nonce for MiniKit - FIXED WITH ENHANCED ERROR HANDLING
   const getNonceForMiniKit = useCallback(async (): Promise<string> => {
     console.log('[AuthContext] getNonceForMiniKit: Fetching nonce...');
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
+      // Try to get nonce from the backend
       const nonceResult = await authService.getNonce();
-      if (!nonceResult.success || !nonceResult.nonce) {
+      
+      // Check if the request was successful
+      if (!nonceResult.success) {
         const errorMessage = nonceResult.error || 'Failed to fetch nonce';
+        console.error('[AuthContext] getNonceForMiniKit: Request failed -', errorMessage);
+        setAuthState(prev => ({ ...prev, isLoading: false, error: errorMessage }));
+        
+        // Convert to user-friendly message if it appears to be a URL or HTML
+        let userErrorMsg = errorMessage;
+        if (errorMessage.includes('Invalid response format') || 
+            errorMessage.includes('https://') ||
+            errorMessage.includes('<!DOCTYPE')) {
+          userErrorMsg = 'Backend connection error. Please check your network and API configuration.';
+        }
+        
+        throw new Error(userErrorMsg);
+      }
+      
+      // Check if we actually got a nonce back
+      if (!nonceResult.nonce) {
+        const errorMessage = 'Backend did not return a nonce';
         console.error('[AuthContext] getNonceForMiniKit:', errorMessage);
         setAuthState(prev => ({ ...prev, isLoading: false, error: errorMessage }));
         throw new Error(errorMessage);
@@ -145,7 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  // Login with wallet
+  // Login with wallet - FIXED WITH BETTER MESSAGE PARSING
   const loginWithWallet = useCallback(async (authResult: MiniAppWalletAuthSuccessPayload) => {
     console.log('[AuthContext] loginWithWallet: Starting with payload:', authResult);
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -157,10 +177,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Invalid authentication payload: message is missing');
       }
 
-      // Extract nonce from the message
-      const messageObj = typeof authResult.message === 'object' ? 
-        authResult.message : 
-        JSON.parse(typeof authResult.message === 'string' ? authResult.message : '{}');
+      // Extract nonce from the message - with enhanced error handling
+      let messageObj: any;
+      try {
+        messageObj = typeof authResult.message === 'object' 
+          ? authResult.message 
+          : JSON.parse(typeof authResult.message === 'string' ? authResult.message : '{}');
+      } catch (parseError) {
+        console.error('[AuthContext] loginWithWallet: Failed to parse message:', parseError);
+        throw new Error('Failed to parse authentication message from wallet');
+      }
       
       const signedNonce = messageObj.nonce || '';
       
@@ -180,7 +206,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('[AuthContext] loginWithWallet: Verification successful, calling login');
         login(verifyResult.token, verifyResult.walletAddress, true);
       } else {
-        throw new Error(verifyResult.error || 'Wallet signature verification failed');
+        // Enhanced error with clearer user message
+        let errorMsg = verifyResult.error || 'Wallet signature verification failed';
+        if (errorMsg.includes('Invalid response format') || 
+            errorMsg.includes('https://') ||
+            errorMsg.includes('<!DOCTYPE')) {
+          errorMsg = 'Backend connection error. Please check API configuration.';
+        }
+        throw new Error(errorMsg);
       }
     } catch (error: any) {
       console.error('[AuthContext] loginWithWallet: Wallet login process failed:', error);
@@ -193,7 +226,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [login]);
 
-  // Logout function - FIXED: Return type should be Promise<void>
+  // Logout function
   const logout = useCallback(async (): Promise<void> => {
     console.log('[AuthContext] Logging out...');
     setAuthState(prevState => ({ ...prevState, isLoading: true }));
@@ -221,8 +254,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       console.log('[AuthContext] User logged out successfully, redirecting to landing');
       navigate('/landing', { replace: true });
-      
-      // Don't return any value as the function must return void
     } catch (error: any) {
       console.error('[AuthContext] Logout failed:', error);
       setAuthState(prevState => ({ 

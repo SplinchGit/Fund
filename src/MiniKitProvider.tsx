@@ -41,32 +41,60 @@ export const triggerMiniKitWalletAuth = async (
 ): Promise<MiniAppWalletAuthSuccessPayload> => { // Still promise success payload, but handle errors internally
   console.log('[triggerMiniKitWalletAuth] Function called with nonce:', serverNonce);
 
-  if (!serverNonce || typeof serverNonce !== 'string' || serverNonce.length < 8) {
-    console.error('[triggerMiniKitWalletAuth] Invalid or missing serverNonce provided.');
+  // IMPROVED: Better nonce validation
+  if (!serverNonce || typeof serverNonce !== 'string') {
+    console.error('[triggerMiniKitWalletAuth] Invalid nonce format:', serverNonce);
     throw new Error('A valid server-issued nonce is required to trigger wallet auth.');
   }
-
+  
+  if (serverNonce.length < 8) {
+    console.warn('[triggerMiniKitWalletAuth] Nonce seems suspiciously short:', serverNonce);
+  }
+  
+  // IMPROVED: More robust MiniKit existence check
   if (typeof MiniKit === 'undefined') {
-    console.error('[triggerMiniKitWalletAuth] MiniKit is undefined');
-    throw new Error('MiniKit is not available');
+    console.error('[triggerMiniKitWalletAuth] MiniKit is undefined (not loaded)');
+    throw new Error('MiniKit script is not available. Please ensure it is properly loaded.');
   }
 
+  // IMPROVED: Better installation check with debugging info
   let isInstalled = false;
   try {
-    isInstalled = MiniKit.isInstalled && MiniKit.isInstalled();
+    console.log('[triggerMiniKitWalletAuth] Checking if MiniKit is installed...');
+    console.log('[triggerMiniKitWalletAuth] MiniKit object keys:', Object.keys(MiniKit));
+    
+    if (typeof MiniKit.isInstalled !== 'function') {
+      console.error('[triggerMiniKitWalletAuth] MiniKit.isInstalled is not a function');
+      throw new Error('MiniKit API is incomplete or corrupted');
+    }
+    
+    isInstalled = MiniKit.isInstalled();
     console.log(`[triggerMiniKitWalletAuth] MiniKit.isInstalled() check returned: ${isInstalled}`);
   } catch (err) {
     console.error('[triggerMiniKitWalletAuth] Error checking if MiniKit is installed:', err);
+    // Continue to installation attempt anyway
   }
 
+  // IMPROVED: Better App ID selection with fallbacks
   if (!isInstalled) {
     try {
-      const appId = import.meta.env.VITE_WORLD_APP_ID ||
-                    import.meta.env.VITE_WORLD_ID_APP_ID ||
-                    (window as any).__ENV__?.WORLD_APP_ID ||
-                    'app_0de9312869c4818fc1a1ec64306551b69';
-
+      // Get App ID with more robust fallback chain and logging
+      const envAppId = import.meta.env.VITE_WORLD_APP_ID || 
+                    import.meta.env.VITE_WORLD_ID_APP_ID;
+      const globalEnvAppId = (window as any).__ENV__?.WORLD_APP_ID;
+      
+      // Use the first available App ID, with default as last resort
+      const appId = envAppId || globalEnvAppId || 'app_0de9312869c4818fc1a1ec64306551b69';
+      
       console.log('[triggerMiniKitWalletAuth] Installing MiniKit with appId:', appId);
+      console.log('[triggerMiniKitWalletAuth] Environment variables available:', {
+        VITE_WORLD_APP_ID: import.meta.env.VITE_WORLD_APP_ID,
+        VITE_WORLD_ID_APP_ID: import.meta.env.VITE_WORLD_ID_APP_ID,
+        WORLD_APP_ID: import.meta.env.WORLD_APP_ID,
+        windowEnvVar: (window as any).__ENV__?.WORLD_APP_ID
+      });
+      
+      // Install MiniKit
       await MiniKit.install(String(appId));
       console.log('[triggerMiniKitWalletAuth] MiniKit installed successfully');
     } catch (err) {
@@ -75,36 +103,72 @@ export const triggerMiniKitWalletAuth = async (
     }
   }
 
+  // IMPROVED: Better structure and error handling for wallet auth
   try {
     console.log('[triggerMiniKitWalletAuth] Starting wallet auth flow with provided server nonce...');
 
-    if (!MiniKit.commandsAsync || !MiniKit.commandsAsync.walletAuth) {
-      console.error('[triggerMiniKitWalletAuth] MiniKit commands not available');
-      throw new Error('MiniKit wallet auth commands not available');
+    // Check for commands async API
+    if (!MiniKit.commandsAsync) {
+      console.error('[triggerMiniKitWalletAuth] MiniKit.commandsAsync is undefined');
+      throw new Error('MiniKit is initialized but commandsAsync API is not available. Check MiniKit version compatibility.');
+    }
+    
+    // Check for walletAuth command
+    if (!MiniKit.commandsAsync.walletAuth) {
+      console.error('[triggerMiniKitWalletAuth] MiniKit.commandsAsync.walletAuth is undefined');
+      throw new Error('MiniKit wallet authentication command is not available. Check MiniKit version compatibility.');
     }
 
     console.log('[triggerMiniKitWalletAuth] Calling MiniKit.commandsAsync.walletAuth with serverNonce:', serverNonce);
+    
+    // IMPROVED: Add statement and timeout for better UX
     const result = await MiniKit.commandsAsync.walletAuth({
       nonce: serverNonce,
-      // statement: 'Sign in to WorldFund to create and support campaigns.',
-      // expirationTime: new Date(Date.now() + 1000 * 60 * 10),
+      statement: 'Sign in to WorldFund to create and support campaigns.',
+      expirationTime: new Date(Date.now() + 1000 * 60 * 10), // 10 minutes expiry
     });
-    console.log('[triggerMiniKitWalletAuth] Wallet auth result:', result);
+    
+    console.log('[triggerMiniKitWalletAuth] Wallet auth result:', JSON.stringify(result, null, 2));
 
-    if (!result || !result.finalPayload) {
-      console.warn('[triggerMiniKitWalletAuth] MiniKit.commandsAsync.walletAuth did not return a finalPayload or result.');
-      throw new Error('MiniKit wallet authentication did not complete successfully (no payload). User might have cancelled.');
+    // IMPROVED: Better null/undefined handling
+    if (!result) {
+      console.error('[triggerMiniKitWalletAuth] MiniKit.commandsAsync.walletAuth returned null/undefined');
+      throw new Error('MiniKit wallet authentication returned an empty result');
+    }
+    
+    if (!result.finalPayload) {
+      console.error('[triggerMiniKitWalletAuth] MiniKit.commandsAsync.walletAuth returned no finalPayload');
+      throw new Error('MiniKit wallet authentication did not return a payload. User might have cancelled.');
     }
 
     // Use the more general MiniKitFinalPayload type for initial handling
     const finalPayload: MiniKitFinalPayload = result.finalPayload;
 
+    // IMPROVED: More detailed error handling with specific error types
     if (finalPayload.status !== 'success') {
       // Access error_code more safely
       const errorCode = finalPayload.error_code;
       const status = finalPayload.status;
-      console.error(`[triggerMiniKitWalletAuth] MiniKit auth returned non-success status: ${status}, error_code: ${errorCode}`);
-      throw new Error(`MiniKit auth failed: ${errorCode || status || 'unknown MiniKit error'}`);
+      
+      console.error('[triggerMiniKitWalletAuth] MiniKit auth returned non-success status:', {
+        status,
+        errorCode,
+        payload: JSON.stringify(finalPayload, null, 2)
+      });
+      
+      if (status === 'cancelled') {
+        throw new Error('Wallet authentication was cancelled by the user.');
+      } else if (status === 'error') {
+        throw new Error(`MiniKit auth failed: ${errorCode || 'unknown error code'}`);
+      } else {
+        throw new Error(`MiniKit auth failed with status: ${status || 'unknown status'}`);
+      }
+    }
+
+    // IMPROVED: Better payload validation
+    if (!finalPayload.message) {
+      console.error('[triggerMiniKitWalletAuth] MiniKit auth successful but missing expected message in payload');
+      throw new Error('MiniKit auth successful but returned an incomplete payload without signature data');
     }
 
     // If status is 'success', we can now be more confident it's MiniAppWalletAuthSuccessPayload
@@ -126,6 +190,7 @@ export default function MiniKitProvider({
   // Ensure getNonceForMiniKit is available from AuthContext
   const { loginWithWallet, getNonceForMiniKit } = useAuth();
 
+  // IMPROVED: Better environment variable handling
   useEffect(() => {
     try {
       if (appId) {
@@ -133,6 +198,15 @@ export default function MiniKitProvider({
         setAppIdToUse(appId);
         return;
       }
+      
+      // Log all possible environment variables for debugging
+      console.log('[MiniKitProvider] Environment variables check:', {
+        VITE_WORLD_APP_ID: import.meta.env.VITE_WORLD_APP_ID,
+        VITE_WORLD_ID_APP_ID: import.meta.env.VITE_WORLD_ID_APP_ID,
+        WORLD_APP_ID: import.meta.env.WORLD_APP_ID,
+        windowEnvVar: (window as any).__ENV__?.WORLD_APP_ID,
+      });
+      
       const envAppId = import.meta.env.VITE_WORLD_APP_ID ||
                        import.meta.env.VITE_WORLD_ID_APP_ID ||
                        import.meta.env.WORLD_APP_ID;
@@ -154,33 +228,64 @@ export default function MiniKitProvider({
     }
   }, [appId]);
 
+  // IMPROVED: Better initialization handling
   useEffect(() => {
     if (!appIdToUse) {
       console.warn('[MiniKitProvider] Cannot initialize MiniKit: No App ID available yet.');
       return;
     }
+    
     let isMounted = true;
     console.log('[MiniKitProvider] Attempting to initialize MiniKit with App ID:', appIdToUse);
+    
     const initializeMiniKit = async () => {
       try {
+        // Check if MiniKit is defined
         if (typeof MiniKit === 'undefined') {
           console.error('[MiniKitProvider] MiniKit is undefined. Cannot initialize.');
           return;
         }
+        
+        console.log('[MiniKitProvider] MiniKit object available with keys:', Object.keys(MiniKit));
+        
+        // Check if already installed
         let isInstalled = false;
         try {
-          isInstalled = MiniKit.isInstalled && MiniKit.isInstalled();
-        } catch (err) { /* Error already logged if triggerMiniKitWalletAuth was called */ }
+          if (typeof MiniKit.isInstalled === 'function') {
+            isInstalled = MiniKit.isInstalled();
+            console.log('[MiniKitProvider] MiniKit.isInstalled() check returned:', isInstalled);
+          } else {
+            console.error('[MiniKitProvider] MiniKit.isInstalled is not a function');
+          }
+        } catch (err) {
+          console.error('[MiniKitProvider] Error checking if MiniKit is installed:', err);
+        }
 
+        // Install if needed
         if (!isInstalled) {
-          console.log('[MiniKitProvider] Installing MiniKit (provider)...');
-          await MiniKit.install(String(appIdToUse));
-          console.log('[MiniKitProvider] MiniKit Install command finished (provider).');
+          console.log('[MiniKitProvider] Installing MiniKit with appId:', appIdToUse);
+          try {
+            await MiniKit.install(String(appIdToUse));
+            console.log('[MiniKitProvider] MiniKit Install command finished successfully');
+          } catch (installError) {
+            console.error('[MiniKitProvider] Error installing MiniKit:', installError);
+            return; // Exit on install error
+          }
         } else {
           console.log('[MiniKitProvider] MiniKit already installed (provider check).');
         }
 
-        if (MiniKit.isInstalled && MiniKit.isInstalled()) {
+        // Verify installation was successful
+        let verifyInstalled = false;
+        try {
+          if (typeof MiniKit.isInstalled === 'function') {
+            verifyInstalled = MiniKit.isInstalled();
+          }
+        } catch (err) {
+          console.error('[MiniKitProvider] Error verifying MiniKit installation:', err);
+        }
+        
+        if (verifyInstalled) {
           console.log('[MiniKitProvider] MiniKit is active and ready');
           if (isMounted) setIsMiniKitInitialized(true);
         } else {
@@ -190,46 +295,82 @@ export default function MiniKitProvider({
         console.error('[MiniKitProvider] Failed to initialize/install MiniKit:', error);
       }
     };
+    
     initializeMiniKit();
     return () => { isMounted = false; };
   }, [appIdToUse]);
 
+  // IMPROVED: Better window auth function handling
   useEffect(() => {
-    if (isMiniKitInitialized && typeof getNonceForMiniKit === 'function' && typeof loginWithWallet === 'function') {
-      (window as any).__triggerWalletAuth = async (): Promise<boolean> => { // Ensure boolean return
+    // Check if auth functions are available
+    if (isMiniKitInitialized && 
+        typeof getNonceForMiniKit === 'function' && 
+        typeof loginWithWallet === 'function') {
+      
+      // Set up global auth trigger function
+      (window as any).__triggerWalletAuth = async (): Promise<boolean> => {
         console.log('[window.__triggerWalletAuth] Direct wallet auth trigger called');
+        
+        // Prevent concurrent auth attempts
         if (isAttemptingAuthViaWindow) {
           console.warn('[window.__triggerWalletAuth] Auth already in progress, skipping');
           return false;
         }
+        
         setIsAttemptingAuthViaWindow(true);
+        
         try {
+          // Get nonce from backend
           console.log('[window.__triggerWalletAuth] Fetching nonce via AuthContext...');
-          const serverNonce = await getNonceForMiniKit();
-          console.log('[window.__triggerWalletAuth] Nonce received:', serverNonce);
+          let serverNonce: string;
+          try {
+            serverNonce = await getNonceForMiniKit();
+            console.log('[window.__triggerWalletAuth] Nonce received:', serverNonce);
+          } catch (nonceError) {
+            console.error('[window.__triggerWalletAuth] Failed to get nonce:', nonceError);
+            return false;
+          }
 
-          const authPayload = await triggerMiniKitWalletAuth(serverNonce);
-          console.log('[window.__triggerWalletAuth] Auth payload received:', authPayload);
+          // Get auth payload from wallet
+          console.log('[window.__triggerWalletAuth] Triggering MiniKit wallet auth with nonce...');
+          let authPayload: MiniAppWalletAuthSuccessPayload;
+          try {
+            authPayload = await triggerMiniKitWalletAuth(serverNonce);
+            console.log('[window.__triggerWalletAuth] Auth payload received:', authPayload);
+          } catch (authError) {
+            console.error('[window.__triggerWalletAuth] Wallet auth failed:', authError);
+            return false;
+          }
 
-          // authPayload here is MiniAppWalletAuthSuccessPayload because triggerMiniKitWalletAuth throws on non-success
-          // So, direct call to loginWithWallet is appropriate.
-          // The 'status' check was already done inside triggerMiniKitWalletAuth.
-          await loginWithWallet(authPayload); // authPayload is MiniAppWalletAuthSuccessPayload here
-          console.log('[window.__triggerWalletAuth] loginWithWallet completed successfully');
-          return true;
-
-        } catch (error) { // This will catch errors from getNonceForMiniKit or triggerMiniKitWalletAuth or loginWithWallet
-          console.error('[window.__triggerWalletAuth] Error during auth:', error);
+          // Verify auth with backend and login
+          console.log('[window.__triggerWalletAuth] Calling loginWithWallet with auth payload...');
+          try {
+            await loginWithWallet(authPayload);
+            console.log('[window.__triggerWalletAuth] loginWithWallet completed successfully');
+            return true;
+          } catch (loginError) {
+            console.error('[window.__triggerWalletAuth] Login with wallet failed:', loginError);
+            return false;
+          }
+        } catch (error) {
+          // Catch-all error handler
+          console.error('[window.__triggerWalletAuth] Unexpected error during auth flow:', error);
           return false;
         } finally {
           setIsAttemptingAuthViaWindow(false);
         }
       };
+      
       console.log('[MiniKitProvider] Exposed wallet auth function to window.__triggerWalletAuth');
     } else if (isMiniKitInitialized) {
-        console.warn('[MiniKitProvider] MiniKit initialized, but getNonceForMiniKit or loginWithWallet not available from AuthContext for window.__triggerWalletAuth.');
+        console.warn('[MiniKitProvider] MiniKit initialized, but auth functions not available:', {
+          getNonceAvailable: typeof getNonceForMiniKit === 'function',
+          loginWithWalletAvailable: typeof loginWithWallet === 'function'
+        });
     }
-    return () => { // Cleanup
+    
+    // Cleanup
+    return () => {
       if ((window as any).__triggerWalletAuth) {
         delete (window as any).__triggerWalletAuth;
         console.log('[MiniKitProvider] Removed window.__triggerWalletAuth');
