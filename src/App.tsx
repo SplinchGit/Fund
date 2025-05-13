@@ -1,31 +1,18 @@
 // src/App.tsx
 import React, { Suspense } from 'react';
-import { Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 
 // ProtectedRoute wrapper for authenticated routes
 import ProtectedRoute from './components/ProtectedRoute';
 
-// Lazy-loaded pages
-const LandingPage = React.lazy(() => import('./pages/LandingPage'));
-const CampaignsPage = React.lazy(() => import('./pages/CampaignsPage'));
-const CampaignDetailWrapper = React.lazy(() =>
-  import('./pages/CampaignDetailPage').then(module => {
-    const Component = module.CampaignDetail;
-    return {
-      default: () => {
-        const { id } = useParams();
-        console.log('[CampaignDetailWrapper] Rendering with ID:', id);
-        return <Component id={id ?? ''} />;
-      }
-    };
-  })
-);
-const Dashboard = React.lazy(() => import('./pages/Dashboard'));
-const TipJar = React.lazy(() => import('./pages/TipJar'));
-const CreateCampaignForm = React.lazy(() =>
-  import('./components/CreateCampaignForm').then(m => ({ default: m.CreateCampaignForm }))
-);
-const EditCampaignPage = React.lazy(() => import('./pages/EditCampaignPage'));
+// Direct imports instead of lazy-loaded for reliability
+import LandingPage from './pages/LandingPage';
+import CampaignsPage from './pages/CampaignsPage';
+import Dashboard from './pages/Dashboard';
+import TipJar from './pages/TipJar';
+import EditCampaignPage from './pages/EditCampaignPage';
+import { CampaignDetail } from './pages/CampaignDetailPage';
+import { CreateCampaignForm } from './components/CreateCampaignForm';
 
 // Loading fallback component
 const LoadingFallback: React.FC = () => {
@@ -49,7 +36,7 @@ const App: React.FC = () => {
         {/* Public Routes */}
         <Route path="/landing" element={<LandingPage />} />
         <Route path="/campaigns" element={<CampaignsPage />} />
-        <Route path="/campaigns/:id" element={<CampaignDetailWrapper />} />
+        <Route path="/campaigns/:id" element={<CampaignDetail id="" />} />
 
         {/* Protected Routes */}
         <Route

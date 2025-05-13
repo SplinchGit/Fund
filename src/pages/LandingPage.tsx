@@ -70,9 +70,6 @@ const LandingPage: React.FC = () => {
         if (!success) {
           throw new Error('Wallet authentication via debug trigger failed. Check console.');
         }
-        
-        // If successful, navigate to dashboard
-        navigate('/dashboard');
         return;
       }
       
@@ -88,8 +85,6 @@ const LandingPage: React.FC = () => {
       if (authPayload && authPayload.status === 'success') {
         console.log("[LandingPage] handleConnectWallet: MiniKit auth success, calling loginWithWallet");
         await loginWithWallet(authPayload);
-        console.log("[LandingPage] handleConnectWallet: Login completed, navigating to dashboard");
-        navigate('/dashboard');
       } else {
         const errorMessage = (authPayload as any)?.error_code || (authPayload as any)?.status || 'Authentication failed';
         console.error("[LandingPage] MiniKit auth did not succeed:", errorMessage);
@@ -103,17 +98,10 @@ const LandingPage: React.FC = () => {
     }
   };
 
-  // Navigation handler for Account tab - FIXED VERSION
-  const handleAccountTabClick = (e: React.MouseEvent) => {
-    console.log('[LandingPage] Account tab clicked. Auth state:', isAuthenticated);
-
-    if (isAuthenticated) {
-      console.log('[LandingPage] Already authenticated, navigating to dashboard');
-      navigate('/dashboard');
-    } else {
-      console.log('[LandingPage] Not authenticated, initiating wallet connection');
-      handleConnectWallet();
-    }
+  // Navigate to dashboard - DIRECT METHOD
+  const goToDashboard = () => {
+    console.log('[LandingPage] Direct navigation to dashboard');
+    navigate('/dashboard');
   };
 
   // Helper Functions
@@ -144,7 +132,7 @@ const LandingPage: React.FC = () => {
   };
 
   // Styles
-  const styles: { [key: string]: React.CSSProperties } = {
+  const styles = {
     page: { textAlign: 'center' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif', color: '#202124', backgroundColor: '#ffffff', margin: 0, padding: 0, overflowX: 'hidden' as const, width: '100%', maxWidth: '100vw', minHeight: '100vh', display: 'flex', flexDirection: 'column' as const },
     container: { margin: '0 auto', width: '100%', padding: '0 0.5rem', boxSizing: 'border-box' as const, maxWidth: '1200px', flexGrow: 1 },
     header: { background: 'white', padding: '0.5rem 0', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', position: 'sticky' as const, top: 0, zIndex: 100 },
@@ -199,7 +187,7 @@ const LandingPage: React.FC = () => {
           {isAuthenticated ? (
             <button
               style={{ ...styles.button, ...styles.buttonPrimary }}
-              onClick={() => navigate('/dashboard')}
+              onClick={goToDashboard}
             >
               Dashboard
             </button>
@@ -303,9 +291,9 @@ const LandingPage: React.FC = () => {
           <span>Explore</span>
         </Link>
         
-        {/* FIXED: Changed anchor to button with proper styling */}
+        {/* CRITICAL FIX: Use direct navigation function with button element */}
         <button 
-          onClick={handleAccountTabClick}
+          onClick={goToDashboard}
           style={{
             ...styles.tab,
             ...(isActivePath('/dashboard') ? styles.tabActive : {}),
