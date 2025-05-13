@@ -298,6 +298,7 @@ exports.handler = async (event) => {
   // List all campaigns
   if (httpMethod === 'GET' && path === '/campaigns') {
     try {
+      console.log(`[GET /campaigns] TRYING TO SCAN TABLE NAMED: '${CAMPAIGNS_TABLE_NAME}' (from process.env: '${process.env.CAMPAIGNS_TABLE_NAME}') (Region: '${process.env.AWS_REGION}')`);
       const result = await ddbDocClient.send(new ScanCommand({
         TableName: CAMPAIGNS_TABLE_NAME,
         FilterExpression: '#status = :active',
