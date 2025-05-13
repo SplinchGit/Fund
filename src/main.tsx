@@ -36,24 +36,28 @@ declare global {
 // 1) Initialize Amplify (Keep if needed for backend)
 try {
   configureAmplify();
-  console.log('Amplify configured successfully');
+  console.log('[main.tsx] Amplify configured successfully');
 } catch (error) {
-  console.error('Failed to configure Amplify:', error);
+  console.error('[main.tsx] Failed to configure Amplify:', error);
 }
 
-// Log key env variables (No changes needed)
-console.log('main.tsx - VITE_AMPLIFY_API:', import.meta.env.VITE_AMPLIFY_API); // Ensure this is VITE_APP_BACKEND_API_URL if changed
-console.log('main.tsx - VITE_WORLD_APP_ID:', import.meta.env.VITE_WORLD_APP_ID);
-console.log('main.tsx - VITE_WORLD_ACTION_ID:', import.meta.env.VITE_WORLD_ACTION_ID);
+// Log key env variables
+// ADDED a more comprehensive log for all VITE variables
+console.log('[main.tsx] Raw import.meta.env:', JSON.stringify(import.meta.env, null, 2));
+console.log('[main.tsx] VITE_AMPLIFY_API:', import.meta.env.VITE_AMPLIFY_API);
+console.log('[main.tsx] VITE_WORLD_APP_ID (primary check):', import.meta.env.VITE_WORLD_APP_ID);
+console.log('[main.tsx] VITE_WORLD_ID_APP_ID (fallback check):', import.meta.env.VITE_WORLD_ID_APP_ID); // Logging the fallback explicitly
+console.log('[main.tsx] VITE_WORLD_ACTION_ID:', import.meta.env.VITE_WORLD_ACTION_ID);
+
 
 // 2) Inject WORLD_APP_ID into global scope (No changes needed)
 const envAppId = import.meta.env.VITE_WORLD_APP_ID
-  || import.meta.env.VITE_WORLD_ID_APP_ID;
+  || import.meta.env.VITE_WORLD_ID_APP_ID; // This logic correctly checks both
 if (envAppId) {
   window.__ENV__ = { ...(window.__ENV__ || {}), WORLD_APP_ID: envAppId };
-  console.log('Injected WORLD_APP_ID into window.__ENV__:', envAppId);
+  console.log('[main.tsx] Injected WORLD_APP_ID into window.__ENV__:', envAppId);
 } else {
-  console.warn('No VITE_WORLD_APP_ID found; MiniKitProvider may error if not passed via props');
+  console.warn('[main.tsx] No VITE_WORLD_APP_ID or VITE_WORLD_ID_APP_ID found; MiniKitProvider may error if not passed via props');
 }
 
 // A simple React error boundary (No changes needed here)
