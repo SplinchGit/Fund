@@ -28,9 +28,6 @@
           "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
           "s3Key": "amplify-builds/0worldfunddebugAuthLibsLayer-LambdaLayerVersion9168254a-build.zip"
         }
-      },
-      "api": {
-        "WorldFundAPI": {}
       }
     }
   }

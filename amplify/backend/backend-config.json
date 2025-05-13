@@ -1,20 +1,5 @@
 {
-  "api": {
-    "WorldFundAPI": {
-      "dependsOn": [
-        {
-          "attributes": [
-            "Name",
-            "Arn"
-          ],
-          "category": "function",
-          "resourceName": "0worldfunddebug56fd6525"
-        }
-      ],
-      "providerPlugin": "awscloudformation",
-      "service": "API Gateway"
-    }
-  },
+  "api": {},
   "auth": {
     "0worldfunddebugd1266f95": {
       "customAuth": false,
