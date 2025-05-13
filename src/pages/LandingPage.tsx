@@ -1,14 +1,12 @@
 // src/pages/LandingPage.tsx
-// Fixed implementation with proper navigation handling
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../components/AuthContext';
 import { campaignService, Campaign as CampaignData } from '../services/CampaignService';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-// Import the wallet auth trigger (which now expects a nonce)
 import { triggerMiniKitWalletAuth } from '../MiniKitProvider';
-import { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js'; // Import for type clarity
+import { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
 
-// --- Campaign Interface ---
+// Campaign Interface
 interface CampaignDisplay extends CampaignData {
   daysLeft: number;
   creator: string;
@@ -16,7 +14,6 @@ interface CampaignDisplay extends CampaignData {
 }
 
 const LandingPage: React.FC = () => {
-  // Add getNonceForMiniKit to the destructured useAuth hook
   const { isAuthenticated, walletAddress, loginWithWallet, getNonceForMiniKit } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -26,17 +23,10 @@ const LandingPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isConnectingWallet, setIsConnectingWallet] = useState(false);
 
-  // Simplified authentication status logging
+  // Log authentication status changes
   useEffect(() => {
     console.log('[LandingPage] Auth status changed:', { isAuthenticated, walletAddress });
-    
-    // If user becomes authenticated, navigate to dashboard
-    // This helps with the race condition where auth state changes after wallet connection
-    if (isAuthenticated && walletAddress) {
-      console.log('[LandingPage] User authenticated, navigating to dashboard');
-      navigate('/dashboard');
-    }
-  }, [isAuthenticated, walletAddress, navigate]);
+  }, [isAuthenticated, walletAddress]);
 
   // Fetch campaigns on component mount
   useEffect(() => {
@@ -65,8 +55,8 @@ const LandingPage: React.FC = () => {
   }, []);
 
   // Handle wallet connection
-  const handleConnectWallet = async (): Promise<boolean> => {
-    if (isConnectingWallet) return false;
+  const handleConnectWallet = async () => {
+    if (isConnectingWallet) return;
 
     console.log('[LandingPage] handleConnectWallet: Starting wallet connection flow...');
     setIsConnectingWallet(true);
@@ -74,74 +64,59 @@ const LandingPage: React.FC = () => {
 
     try {
       // Debug path using window.__triggerWalletAuth (already handles its own nonce fetching)
-      // Conditionally enable for development if needed
       if (import.meta.env.DEV && (window as any).__triggerWalletAuth) {
         console.log("[LandingPage] handleConnectWallet: Using window.__triggerWalletAuth (debug mode)");
         const success = await (window as any).__triggerWalletAuth();
         if (!success) {
-          // Error is likely already logged by window.__triggerWalletAuth
           throw new Error('Wallet authentication via debug trigger failed. Check console.');
         }
-        // If window.__triggerWalletAuth is successful, loginWithWallet was already called internally.
-        return true;
+        
+        // If successful, navigate to dashboard
+        navigate('/dashboard');
+        return;
       }
+      
       // Standard production flow
-      else {
-        console.log("[LandingPage] handleConnectWallet: Fetching nonce for MiniKit auth...");
-        const serverNonce = await getNonceForMiniKit(); // <-- STEP 1: Fetch nonce
-        console.log("[LandingPage] handleConnectWallet: Nonce received:", serverNonce);
+      console.log("[LandingPage] handleConnectWallet: Fetching nonce for MiniKit auth...");
+      const serverNonce = await getNonceForMiniKit();
+      console.log("[LandingPage] handleConnectWallet: Nonce received:", serverNonce);
 
-        console.log("[LandingPage] handleConnectWallet: Calling triggerMiniKitWalletAuth with fetched nonce...");
-        // triggerMiniKitWalletAuth now expects a nonce and should return MiniAppWalletAuthSuccessPayload or throw
-        const authPayload: MiniAppWalletAuthSuccessPayload = await triggerMiniKitWalletAuth(serverNonce); // <-- STEP 2: Pass nonce
-        console.log("[LandingPage] handleConnectWallet: Auth payload received from triggerMiniKitWalletAuth:", authPayload);
+      console.log("[LandingPage] handleConnectWallet: Calling triggerMiniKitWalletAuth with fetched nonce...");
+      const authPayload = await triggerMiniKitWalletAuth(serverNonce);
+      console.log("[LandingPage] handleConnectWallet: Auth payload received:", authPayload);
 
-        // Since triggerMiniKitWalletAuth now throws an error if finalPayload.status !== 'success',
-        // we can assume authPayload here corresponds to a successful authentication from MiniKit.
-        if (authPayload && authPayload.status === 'success') {
-          console.log("[LandingPage] handleConnectWallet: MiniKit auth success, calling loginWithWallet from AuthContext.");
-          await loginWithWallet(authPayload); // <-- STEP 3: Pass payload to AuthContext
-          console.log("[LandingPage] handleConnectWallet: AuthContext loginWithWallet process completed.");
-          return true;
-        } else {
-          // This block might be less likely to be hit if triggerMiniKitWalletAuth strictly throws on non-success.
-          const errorMessage = (authPayload as any)?.error_code || (authPayload as any)?.status || 'Wallet authentication did not return a success status.';
-          console.error("[LandingPage] handleConnectWallet: MiniKit auth did not result in a success payload directly:", errorMessage);
-          throw new Error(`MiniKit authentication failed: ${errorMessage}`);
-        }
+      if (authPayload && authPayload.status === 'success') {
+        console.log("[LandingPage] handleConnectWallet: MiniKit auth success, calling loginWithWallet");
+        await loginWithWallet(authPayload);
+        console.log("[LandingPage] handleConnectWallet: Login completed, navigating to dashboard");
+        navigate('/dashboard');
+      } else {
+        const errorMessage = (authPayload as any)?.error_code || (authPayload as any)?.status || 'Authentication failed';
+        console.error("[LandingPage] MiniKit auth did not succeed:", errorMessage);
+        throw new Error(`MiniKit authentication failed: ${errorMessage}`);
       }
-    } catch (error) { // Catches errors from getNonceForMiniKit, triggerMiniKitWalletAuth, loginWithWallet, or the debug trigger
-      console.error("[LandingPage] handleConnectWallet: Error during wallet connection/login process:", error);
+    } catch (error) {
+      console.error("[LandingPage] handleConnectWallet: Error during wallet connection:", error);
       setError(error instanceof Error ? error.message : "An unknown error occurred during wallet connection.");
-      return false;
     } finally {
       setIsConnectingWallet(false);
     }
   };
 
-  // Navigation handler for Account tab
-  const handleAccountTabClick = async (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent default anchor behavior
-    console.log('[LandingPage] Account tab clicked. Current auth state:', isAuthenticated);
+  // Navigation handler for Account tab - FIXED VERSION
+  const handleAccountTabClick = (e: React.MouseEvent) => {
+    console.log('[LandingPage] Account tab clicked. Auth state:', isAuthenticated);
 
     if (isAuthenticated) {
-      console.log('[LandingPage] Already authenticated, navigating to dashboard immediately.');
+      console.log('[LandingPage] Already authenticated, navigating to dashboard');
       navigate('/dashboard');
     } else {
-      console.log('[LandingPage] Not authenticated, initiating wallet connection process.');
-      const success = await handleConnectWallet();
-      
-      if (success) {
-        // Explicitly navigate after successful login
-        console.log('[LandingPage] Wallet connection successful, navigating to dashboard');
-        navigate('/dashboard');
-      } else {
-        console.log('[LandingPage] Wallet connection failed or was cancelled');
-      }
+      console.log('[LandingPage] Not authenticated, initiating wallet connection');
+      handleConnectWallet();
     }
   };
 
-  // --- Helper Functions ---
+  // Helper Functions
   const calculateProgressPercentage = (raised: number, goal: number): string => {
     if (goal <= 0) return '0%';
     return Math.min(Math.round((raised / goal) * 100), 100) + '%';
@@ -150,7 +125,7 @@ const LandingPage: React.FC = () => {
   const calculateDaysLeft = (createdAt: string): number => {
     const created = new Date(createdAt);
     const now = new Date();
-    const diffTime = 30 * 24 * 60 * 60 * 1000 - (now.getTime() - created.getTime()); // 30 days campaign duration
+    const diffTime = 30 * 24 * 60 * 60 * 1000 - (now.getTime() - created.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return Math.max(0, diffDays);
   };
@@ -163,13 +138,13 @@ const LandingPage: React.FC = () => {
   const isActivePath = (path: string): boolean => {
     return (
       location.pathname === path ||
-      (path === '/' && location.pathname === '/landing') || // Or however your root path is identified
+      (path === '/' && location.pathname === '/landing') ||
       (path === '/campaigns' && location.pathname.startsWith('/campaigns/'))
     );
   };
 
-  // --- Styling (styles object as previously provided) ---
-  const styles: { [key: string]: React.CSSProperties } = { /* ... Your existing styles object ... */
+  // Styles
+  const styles: { [key: string]: React.CSSProperties } = {
     page: { textAlign: 'center' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif', color: '#202124', backgroundColor: '#ffffff', margin: 0, padding: 0, overflowX: 'hidden' as const, width: '100%', maxWidth: '100vw', minHeight: '100vh', display: 'flex', flexDirection: 'column' as const },
     container: { margin: '0 auto', width: '100%', padding: '0 0.5rem', boxSizing: 'border-box' as const, maxWidth: '1200px', flexGrow: 1 },
     header: { background: 'white', padding: '0.5rem 0', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', position: 'sticky' as const, top: 0, zIndex: 100 },
@@ -316,25 +291,31 @@ const LandingPage: React.FC = () => {
         <div>&copy; {new Date().getFullYear()} WorldFund. All rights reserved.</div>
       </footer>
 
-      {/* Bottom Navigation Tabs */}
+      {/* Bottom Navigation Tabs - FIXED VERSION */}
       <nav style={styles.tabs}>
         <Link to="/" style={{ ...styles.tab, ...(isActivePath('/') ? styles.tabActive : {}) }}>
           <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg>
           <span>Home</span>
         </Link>
+        
         <Link to="/campaigns" style={{ ...styles.tab, ...(isActivePath('/campaigns') ? styles.tabActive : {}) }}>
           <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" /></svg>
           <span>Explore</span>
         </Link>
+        
+        {/* FIXED: Changed anchor to button with proper styling */}
         <button 
-          onClick={handleAccountTabClick} 
-          style={{ 
-            ...styles.tab, 
+          onClick={handleAccountTabClick}
+          style={{
+            ...styles.tab,
             ...(isActivePath('/dashboard') ? styles.tabActive : {}),
             background: 'none',
             border: 'none',
+            fontFamily: 'inherit',
+            fontSize: 'inherit',
             cursor: 'pointer',
-            padding: '0.1rem 0.5rem'
+            padding: '0.1rem 0.5rem',
+            margin: 0
           }}
         >
           <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
