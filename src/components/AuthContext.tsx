@@ -42,10 +42,19 @@ const WALLET_ADDRESS_KEY = 'worldfund_wallet_address';
 const extractNonceFromMessage = (message: string): string => {
   if (!message) return '';
   
-  // Try parsing as JSON first
+  // SIWE format - exactly matching the format seen in the logs
+  // Look for "Nonce: [hexadecimal]" pattern
+  const siweNonceMatch = message.match(/Nonce:\s*([a-f0-9]{8,64})/i);
+  if (siweNonceMatch && siweNonceMatch[1]) {
+    console.log('[AuthContext] Extracted nonce from SIWE message format:', siweNonceMatch[1]);
+    return siweNonceMatch[1];
+  }
+  
+  // Try parsing as JSON
   try {
     const parsed = JSON.parse(message);
     if (parsed && typeof parsed === 'object' && parsed.nonce) {
+      console.log('[AuthContext] Extracted nonce from JSON message:', parsed.nonce);
       return String(parsed.nonce);
     }
   } catch (e) {
@@ -54,17 +63,22 @@ const extractNonceFromMessage = (message: string): string => {
   
   // Check if the message itself looks like a nonce (hexadecimal string)
   if (/^[a-f0-9]{8,64}$/i.test(message)) {
+    console.log('[AuthContext] Message is a hex string nonce:', message);
     return message;
   }
   
-  // Look for nonce pattern in the message
+  // Look for nonce pattern in the message with more generic format
   const nonceMatch = message.match(/nonce["']?\s*[:=]\s*["']?([a-f0-9]{8,64})["']?/i);
   if (nonceMatch && nonceMatch[1]) {
+    console.log('[AuthContext] Extracted nonce from generic pattern:', nonceMatch[1]);
     return nonceMatch[1];
   }
   
-  // If all else fails, just return the message (backend will handle validation)
-  return message;
+  console.warn('[AuthContext] Could not extract nonce from message:', 
+    message.substring(0, 100) + (message.length > 100 ? '...' : ''));
+  
+  // If all extraction methods fail, return empty string
+  return '';
 };
 
 // Store session data helper
@@ -150,7 +164,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [navigate]);
 
-  // Get nonce for MiniKit - FIXED WITH ENHANCED ERROR HANDLING
+  // Get nonce for MiniKit
   const getNonceForMiniKit = useCallback(async (): Promise<string> => {
     console.log('[AuthContext] getNonceForMiniKit: Fetching nonce...');
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -202,7 +216,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  // Login with wallet - FIXED WITH BETTER MESSAGE PARSING
+  // Login with wallet
   const loginWithWallet = useCallback(async (authResult: MiniAppWalletAuthSuccessPayload) => {
     console.log('[AuthContext] loginWithWallet: Starting wallet login process');
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
@@ -225,20 +239,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Authentication payload missing signature');
       }
 
-      // Log message format (safe logging without exposing content)
-      console.log('[AuthContext] Message format:', {
+      // Log payload structure (safely)
+      console.log('[AuthContext] Auth payload structure:', {
         type: typeof authResult.message,
         length: authResult.message.length,
         address: authResult.address ? `${authResult.address.substring(0, 6)}...` : 'none',
         version: authResult.version
       });
 
-      // Extract nonce from message - the message has already been converted to a string
-      // by the MiniKitProvider if it was an object
+      // Extract nonce from the SIWE message
       const signedNonce = extractNonceFromMessage(authResult.message);
       
       if (!signedNonce) {
         console.error('[AuthContext] Could not extract nonce from message');
+        // Log a snippet of the message to help with debugging
+        console.error('[AuthContext] Message snippet:', 
+          typeof authResult.message === 'string' 
+            ? authResult.message.substring(0, 100) + '...' 
+            : String(authResult.message).substring(0, 100) + '...');
         throw new Error('Failed to parse authentication message from wallet');
       }
       

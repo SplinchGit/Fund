@@ -329,17 +329,15 @@ export const triggerMiniKitWalletAuth = async (
       : JSON.stringify(sanitizedPayload.message);
     
     // Return properly formatted success payload with ALL required properties
-  const successPayload: MiniAppWalletAuthSuccessPayload = {
+const successPayload: MiniAppWalletAuthSuccessPayload = {
   status: 'success',
   message: messageString,
   signature: sanitizedPayload.signature,
   address: extractedAddress || '',
-  // Convert version to a number (it was incorrectly a string before)
+  // Handle different version formats - ensure it's a number
   version: typeof sanitizedPayload.version === 'number' 
     ? sanitizedPayload.version 
-    : sanitizedPayload.version 
-      ? Number(sanitizedPayload.version) 
-      : 1 // Default to number 1, not string '1'
+    : parseInt(String(sanitizedPayload.version || '1'), 10) || 1
 };
 
     console.log('[triggerMiniKitWalletAuth] Created complete success payload with all required fields');
