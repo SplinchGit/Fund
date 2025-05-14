@@ -28,7 +28,7 @@ const LOCAL_DEV_URL = 'http://localhost:5173'; // Your local Vite dev server URL
 const ALLOWED_ORIGINS_LIST = [DEPLOYED_FRONTEND_URL, LOCAL_DEV_URL];
 
 const USERS_TABLE_NAME = process.env.USERS_TABLE_NAME || 'Users-dev';
-const CAMPAIGNS_TABLE_NAME = process.env.CAMPAIGNS_TABLE_NAME || 'Campaigns-dev'; // Corrected from 'Campaigns-dev' to process.env.CAMPAIGNS_TABLE_NAME
+const CAMPAIGNS_TABLE_NAME = process.env.CAMPAIGNS_TABLE_NAME || 'Campaigns-dev';
 
 // # ############################################################################ #
 // # #                SECTION 3 - AWS SDK CLIENT INITIALIZATION                 #
@@ -46,7 +46,7 @@ const ddbDocClient = DynamoDBDocumentClient.from(dynamodbClient);
 let cachedJwtSecret = null;
 
 // # ############################################################################ #
-// # #                   SECTION 5 - HELPER FUNCTION: GENERATE NONCE                  #
+// # #                  SECTION 5 - HELPER FUNCTION: GENERATE NONCE                 #
 // # ############################################################################ #
 // --- HELPER FUNCTIONS ---
 
@@ -56,7 +56,7 @@ const generateNonce = () => {
 };
 
 // # ############################################################################ #
-// # #           SECTION 6 - HELPER FUNCTION: CREATE API RESPONSE (WITH CORS)         #
+// # #          SECTION 6 - HELPER FUNCTION: CREATE API RESPONSE (WITH CORS)        #
 // # ############################################################################ #
 // Helper function to create consistent API responses with dynamic CORS
 function createResponse(statusCode, body, requestOrigin) {
@@ -69,7 +69,6 @@ function createResponse(statusCode, body, requestOrigin) {
   // if (process.env.NODE_ENV === 'development_unsafe_cors') {
   //   effectiveAllowOrigin = '*';
   // }
-
 
   return {
     statusCode: statusCode,
@@ -84,7 +83,7 @@ function createResponse(statusCode, body, requestOrigin) {
 }
 
 // # ############################################################################ #
-// # #                    SECTION 7 - HELPER FUNCTION: GET JWT SECRET                   #
+// # #                   SECTION 7 - HELPER FUNCTION: GET JWT SECRET                  #
 // # ############################################################################ #
 // Helper to get JWT secret from AWS Secrets Manager
 const getJwtSecret = async () => {
@@ -117,7 +116,7 @@ const getJwtSecret = async () => {
 };
 
 // # ############################################################################ #
-// # #                  SECTION 8 - HELPER FUNCTION: VERIFY JWT TOKEN                 #
+// # #                 SECTION 8 - HELPER FUNCTION: VERIFY JWT TOKEN                #
 // # ############################################################################ #
 // Helper to verify JWT token
 const verifyJWT = async (authHeader) => {
@@ -147,7 +146,38 @@ const verifyJWT = async (authHeader) => {
 };
 
 // # ############################################################################ #
-// # #      SECTION 9 - MAIN LAMBDA HANDLER: INITIALIZATION & LOGGING       #
+// # #            SECTION 9 - HELPER FUNCTION: SANITIZE SIWE MESSAGE            #
+// # ############################################################################ #
+const sanitizeSiweMessage = (message) => {
+  if (typeof message !== 'string') {
+    console.warn('[sanitizeSiweMessage] Message is not a string, returning empty.');
+    return ''; // Or throw an error if a string is strictly required
+  }
+  // Normalize line endings to \n and trim whitespace from start and end
+  const normalizedMessage = message.replace(/\r\n/g, '\n').trim();
+  console.log('[sanitizeSiweMessage] Original message length:', message.length, 'Normalized message length:', normalizedMessage.length);
+  if (message !== normalizedMessage) {
+      console.log('[sanitizeSiweMessage] Message was normalized.');
+  }
+  return normalizedMessage;
+};
+
+// # ############################################################################ #
+// # #        SECTION 10 - HELPER FUNCTION: VALIDATE SIGNATURE FORMAT         #
+// # ############################################################################ #
+const isValidSignatureFormat = (signature) => {
+  if (typeof signature !== 'string') return false;
+  // Basic regex for Ethereum signature format (0x + 130 hex characters for r, s, v combined)
+  const signatureRegex = /^0x[0-9a-fA-F]{130}$/;
+  const isValid = signatureRegex.test(signature);
+  if (!isValid) {
+      console.warn('[isValidSignatureFormat] Signature format invalid:', signature);
+  }
+  return isValid;
+};
+
+// # ############################################################################ #
+// # #      SECTION 11 - MAIN LAMBDA HANDLER: INITIALIZATION & LOGGING      #
 // # ############################################################################ #
 // --- Main Handler ---
 exports.handler = async (event) => {
@@ -174,15 +204,11 @@ exports.handler = async (event) => {
     }
 
     const httpMethod = event.httpMethod;
-    // API Gateway (REST API with Lambda Proxy) usually provides path in event.path
-    // For HTTP API, it might be event.requestContext.http.path
-    // Let's prioritize event.path and fallback if needed, or use what Amplify sets up.
-    // Given Amplify setup, event.path should be correct for REST API with {proxy+}
     const path = event.path;
     console.log(`Handling request: ${httpMethod} ${path}`);
 
 // # ############################################################################ #
-// # #       SECTION 10 - MAIN LAMBDA HANDLER: CORS PREFLIGHT (OPTIONS)       #
+// # #      SECTION 12 - MAIN LAMBDA HANDLER: CORS PREFLIGHT (OPTIONS)      #
 // # ############################################################################ #
     // Handle CORS preflight OPTIONS requests globally
     if (httpMethod === 'OPTIONS') {
@@ -191,10 +217,9 @@ exports.handler = async (event) => {
     }
 
 // # ############################################################################ #
-// # #             SECTION 11 - MAIN LAMBDA HANDLER: ROUTE - GET /AUTH/NONCE            #
+// # #            SECTION 13 - MAIN LAMBDA HANDLER: ROUTE - GET /AUTH/NONCE           #
 // # ############################################################################ #
     // --- Auth Routes ---
-    // API Gateway with {proxy+} on /auth will send /auth/nonce to event.path
     if (httpMethod === 'GET' && path === '/auth/nonce') {
       console.log('[GET /auth/nonce] Generating nonce...');
       try {
@@ -207,7 +232,7 @@ exports.handler = async (event) => {
     }
 
 // # ############################################################################ #
-// # #    SECTION 12 - MAIN LAMBDA HANDLER: ROUTE - POST /AUTH/VERIFY-SIGNATURE   #
+// # #   SECTION 14 - MAIN LAMBDA HANDLER: ROUTE - POST /AUTH/VERIFY-SIGNATURE  #
 // # ############################################################################ #
     if (httpMethod === 'POST' && path === '/auth/verify-signature') {
       console.log('[POST /auth/verify-signature] Handler triggered');
@@ -216,27 +241,38 @@ exports.handler = async (event) => {
       }
       try {
         const { payload, nonce: serverIssuedNonceFromClient } = JSON.parse(event.body);
-        // `payload` contains: message (the SIWE string), signature, address (wallet's claimed address)
 
         if (!payload || !payload.message || !payload.signature || !payload.address || !serverIssuedNonceFromClient) {
           console.error('[POST /auth/verify-signature] Malformed request: Missing one or more required fields in payload or nonce.', { payload, nonceReceived: serverIssuedNonceFromClient });
           return createResponse(400, { message: 'Malformed request: Missing payload fields or nonce' }, requestOrigin);
         }
 
-        const siweMessageStringFromClient = payload.message;
+        const rawSiweMessageStringFromClient = payload.message;
         const signatureFromClient = payload.signature;
         const addressFromClientPayload = payload.address;
 
+        // Sanitize and Validate Inputs
+        const sanitizedMessageString = sanitizeSiweMessage(rawSiweMessageStringFromClient);
+        if (!sanitizedMessageString) {
+            console.error('[POST /auth/verify-signature] Sanitized SIWE message string is empty.');
+            return createResponse(400, { message: 'Invalid SIWE message format after sanitization.' }, requestOrigin);
+        }
+
+        if (!isValidSignatureFormat(signatureFromClient)) {
+            console.error('[POST /auth/verify-signature] Invalid signature format received.');
+            return createResponse(400, { message: 'Invalid signature format.' }, requestOrigin);
+        }
+
         // --- Detailed Logging Before Verification ---
-        console.log("--- [BACKEND /auth/verify-signature] VERIFICATION INPUTS ---");
+        console.log("--- [BACKEND /auth/verify-signature] VERIFICATION INPUTS (After Sanitization/Validation) ---");
         console.log("Server-issued Nonce (received alongside payload):", serverIssuedNonceFromClient);
         console.log("Client Payload Address (from payload.address):", addressFromClientPayload);
         console.log("Client Payload Signature:", signatureFromClient);
-        console.log("Client SIWE Message String (from payload.message):", JSON.stringify(siweMessageStringFromClient));
+        console.log("Sanitized SIWE Message String (to be verified):", JSON.stringify(sanitizedMessageString));
 
-        const siweMessage = new SiweMessage(siweMessageStringFromClient);
+        const siweMessage = new SiweMessage(sanitizedMessageString);
 
-        console.log("--- [BACKEND /auth/verify-signature] PARSED SIWE OBJECT FIELDS (from payload.message) ---");
+        console.log("--- [BACKEND /auth/verify-signature] PARSED SIWE OBJECT FIELDS (from sanitized message) ---");
         console.log("siweMessage.domain:", siweMessage.domain);
         console.log("siweMessage.address (parsed from message):", siweMessage.address);
         console.log("siweMessage.nonce (parsed from message):", siweMessage.nonce);
@@ -254,11 +290,10 @@ exports.handler = async (event) => {
           time: new Date().toISOString(),
         });
 
-        // If verify() completes without throwing, verificationResult.success will be true.
         const walletAddress = verificationResult.data.address;
 
         if (walletAddress.toLowerCase() !== addressFromClientPayload.toLowerCase()) {
-            console.warn(`[POST /auth/verify-signature] Address from client payload (${addressFromClientPayload}) does not match verified SIWE message address (${walletAddress}). Using verified address.`);
+            console.warn(`[POST /auth/verify-signature] Address from client payload (${addressFromClientPayload}) does not exactly match verified SIWE message address (${walletAddress}) after toLowerCase. This might be an EIP-55 checksum difference. Using verified address.`);
         }
 
         console.log(`[POST /auth/verify-signature] SIWE signature successfully verified for address: ${walletAddress}`);
@@ -297,28 +332,25 @@ exports.handler = async (event) => {
         let errorMessage = 'Failed to verify signature';
         let statusCode = 500;
 
-        // Check if it's a SiweError-like object to provide more specific details
-        // In JavaScript, we directly access properties after checking if 'error' is an object and has 'type'.
         if (error && typeof error === 'object' && error.type) {
-            errorMessage = `${error.type || 'Verification failed'}`; // Use error.type
+            errorMessage = `${error.type || 'Verification failed'}`;
             if (error.expected && error.received) {
                 errorMessage += `: Expected ${error.expected}, Received ${error.received}`;
             } else if (error.message && typeof error.message === 'string') {
                  errorMessage = error.message;
             }
-            // Ensure error.type is a string before calling includes
             if (typeof error.type === 'string' && ['EXPIRED_MESSAGE', 'INVALID_SIGNATURE', 'NONCE_MISMATCH', 'INVALID_ADDRESS'].includes(error.type)) {
                 statusCode = 401; 
             }
-        } else if (error instanceof Error) { // Standard JavaScript Error object
+        } else if (error instanceof Error) {
             errorMessage = error.message;
-        } else if (typeof error === 'object' && error !== null) { // Some other object error
+        } else if (typeof error === 'object' && error !== null) {
             try {
                 errorMessage = JSON.stringify(error);
             } catch (e) {
                 errorMessage = 'An unknown object error occurred during signature verification.';
             }
-        } else if (typeof error === 'string') { // Error is just a string
+        } else if (typeof error === 'string') {
             errorMessage = error;
         }
 
@@ -327,7 +359,7 @@ exports.handler = async (event) => {
     }
 
 // # ############################################################################ #
-// # #          SECTION 13 - MAIN LAMBDA HANDLER: ROUTE - POST /VERIFY-WORLDID        #
+// # #         SECTION 15 - MAIN LAMBDA HANDLER: ROUTE - POST /VERIFY-WORLDID       #
 // # ############################################################################ #
     // Path for /verify-worldid (assuming it's a top-level path defined in Amplify CLI as /verify-worldid)
     if (httpMethod === 'POST' && path === '/verify-worldid') {
@@ -343,10 +375,6 @@ exports.handler = async (event) => {
 
         // --- Actual World ID Verification Logic (Placeholder) ---
         console.log(`Simulating World ID verification for app ${WORLD_ID_APP_ID}, action ${WORLD_ID_ACTION_ID}, signal ${walletAddress}`);
-        // Replace with actual fetch call to World ID verification endpoint
-        // const verificationResult = await fetch(`https://developer.worldcoin.org/api/v2/verify/${WORLD_ID_APP_ID}`, { /* ... */ });
-        // if (!verificationResult.ok) { /* handle error */ }
-        // For now, we'll assume verification is successful for testing purposes
         const isVerified = true; // Placeholder
         if (!isVerified) {
              return createResponse(400, { message: 'World ID proof verification failed (Simulated)' }, requestOrigin);
@@ -376,20 +404,15 @@ exports.handler = async (event) => {
     }
 
 // # ############################################################################ #
-// # #          SECTION 14 - MAIN LAMBDA HANDLER: ROUTE BLOCK - /CAMPAIGNS          #
+// # #         SECTION 16 - MAIN LAMBDA HANDLER: ROUTE BLOCK - /CAMPAIGNS         #
 // # ############################################################################ #
     // --- Campaign Routes ---
-    // API Gateway with {proxy+} on /campaigns will send /campaigns to event.path for base
-    // and /campaigns/ID to event.path for specific campaign
-    // and /campaigns/ID/donate to event.path for donation to specific campaign
-
     if (path.startsWith('/campaigns')) {
-        const pathParts = path.split('/').filter(part => part !== ''); // e.g. ['campaigns', 'ID', 'donate'] or ['campaigns', 'ID'] or ['campaigns']
+        const pathParts = path.split('/').filter(part => part !== '');
 
 // # ############################################################################ #
-// # #        SECTION 15 - MAIN LAMBDA HANDLER: SUB-ROUTE - POST /CAMPAIGNS       #
+// # #       SECTION 17 - MAIN LAMBDA HANDLER: SUB-ROUTE - POST /CAMPAIGNS      #
 // # ############################################################################ #
-        // POST /campaigns (Create campaign)
         if (httpMethod === 'POST' && pathParts.length === 1 && pathParts[0] === 'campaigns') {
             try {
                 const authHeader = event.headers?.Authorization || event.headers?.authorization;
@@ -416,9 +439,8 @@ exports.handler = async (event) => {
         }
 
 // # ############################################################################ #
-// # #         SECTION 16 - MAIN LAMBDA HANDLER: SUB-ROUTE - GET /CAMPAIGNS         #
+// # #        SECTION 18 - MAIN LAMBDA HANDLER: SUB-ROUTE - GET /CAMPAIGNS        #
 // # ############################################################################ #
-        // GET /campaigns (List all campaigns)
         if (httpMethod === 'GET' && pathParts.length === 1 && pathParts[0] === 'campaigns') {
             try {
                 console.log(`[GET /campaigns] TRYING TO SCAN TABLE NAMED: '${CAMPAIGNS_TABLE_NAME}'`);
@@ -437,16 +459,14 @@ exports.handler = async (event) => {
         }
 
 // # ############################################################################ #
-// # #      SECTION 17 - MAIN LAMBDA HANDLER: SUB-ROUTE BLOCK - /CAMPAIGNS/{ID}     #
+// # #     SECTION 19 - MAIN LAMBDA HANDLER: SUB-ROUTE BLOCK - /CAMPAIGNS/{ID}    #
 // # ############################################################################ #
-        // Operations on a specific campaign: /campaigns/{campaignId}/*
         if (pathParts.length >= 2 && pathParts[0] === 'campaigns') {
             const campaignId = pathParts[1];
 
 // # ############################################################################ #
-// # #       SECTION 18 - MAIN LAMBDA HANDLER: SUB-ROUTE - GET /CAMPAIGNS/{ID}      #
+// # #      SECTION 20 - MAIN LAMBDA HANDLER: SUB-ROUTE - GET /CAMPAIGNS/{ID}     #
 // # ############################################################################ #
-            // GET /campaigns/{campaignId}
             if (httpMethod === 'GET' && pathParts.length === 2) {
                 try {
                     console.log(`[GET /campaigns/:id] Fetching campaign ID: '${campaignId}'`);
@@ -460,9 +480,8 @@ exports.handler = async (event) => {
             }
 
 // # ############################################################################ #
-// # #       SECTION 19 - MAIN LAMBDA HANDLER: SUB-ROUTE - PUT /CAMPAIGNS/{ID}      #
+// # #      SECTION 21 - MAIN LAMBDA HANDLER: SUB-ROUTE - PUT /CAMPAIGNS/{ID}     #
 // # ############################################################################ #
-            // PUT /campaigns/{campaignId}
             if (httpMethod === 'PUT' && pathParts.length === 2) {
                 try {
                     const authHeader = event.headers?.Authorization || event.headers?.authorization;
@@ -498,9 +517,8 @@ exports.handler = async (event) => {
             }
 
 // # ############################################################################ #
-// # #      SECTION 20 - MAIN LAMBDA HANDLER: SUB-ROUTE - DELETE /CAMPAIGNS/{ID}    #
+// # #     SECTION 22 - MAIN LAMBDA HANDLER: SUB-ROUTE - DELETE /CAMPAIGNS/{ID}   #
 // # ############################################################################ #
-            // DELETE /campaigns/{campaignId}
             if (httpMethod === 'DELETE' && pathParts.length === 2) {
                  try {
                     const authHeader = event.headers?.Authorization || event.headers?.authorization;
@@ -521,9 +539,8 @@ exports.handler = async (event) => {
             }
 
 // # ############################################################################ #
-// # #   SECTION 21 - MAIN LAMBDA HANDLER: SUB-ROUTE - POST /CAMPAIGNS/{ID}/DONATE  #
+// # #  SECTION 23 - MAIN LAMBDA HANDLER: SUB-ROUTE - POST /CAMPAIGNS/{ID}/DONATE #
 // # ############################################################################ #
-            // POST /campaigns/{campaignId}/donate
             if (httpMethod === 'POST' && pathParts.length === 3 && pathParts[2] === 'donate') {
                 try {
                     const authHeader = event.headers?.Authorization || event.headers?.authorization;
@@ -557,20 +574,19 @@ exports.handler = async (event) => {
     }
 
 // # ############################################################################ #
-// # #           SECTION 22 - MAIN LAMBDA HANDLER: ROUTE BLOCK - /USERS           #
+// # #          SECTION 24 - MAIN LAMBDA HANDLER: ROUTE BLOCK - /USERS          #
 // # ############################################################################ #
     // --- User Routes ---
-    // API Gateway with {proxy+} on /users will send /users/{walletAddress}/campaigns to event.path
     if (path.startsWith('/users/')) {
-        const pathParts = path.split('/').filter(part => part !== ''); // e.g. ['users', 'WALLET_ADDRESS', 'campaigns']
+        const pathParts = path.split('/').filter(part => part !== '');
 // # ############################################################################ #
-// # #    SECTION 23 - MAIN LAMBDA HANDLER: SUB-ROUTE - GET /USERS/{WA}/CAMPAIGNS   #
+// # #   SECTION 25 - MAIN LAMBDA HANDLER: SUB-ROUTE - GET /USERS/{WA}/CAMPAIGNS  #
 // # ############################################################################ #
         if (httpMethod === 'GET' && pathParts.length === 3 && pathParts[0] === 'users' && pathParts[2] === 'campaigns') {
             const userWalletAddress = pathParts[1];
             try {
                 console.log(`[GET /users/:walletAddress/campaigns] Fetching campaigns for user: '${userWalletAddress}'`);
-                const result = await ddbDocClient.send(new ScanCommand({ // Consider Query if you have an index on ownerId
+                const result = await ddbDocClient.send(new ScanCommand({
                     TableName: CAMPAIGNS_TABLE_NAME,
                     FilterExpression: '#oId = :walletAddress',
                     ExpressionAttributeNames: { '#oId': 'ownerId' },
@@ -586,23 +602,16 @@ exports.handler = async (event) => {
     }
 
 // # ############################################################################ #
-// # #        SECTION 24 - MAIN LAMBDA HANDLER: ROUTE - POST /DONATE (EXAMPLE)      #
+// # #       SECTION 26 - MAIN LAMBDA HANDLER: ROUTE - POST /DONATE (EXAMPLE)     #
 // # ############################################################################ #
     // --- Donate Route (if you have a top-level /donate defined in Amplify CLI) ---
-    // This is an example if you defined /donate as a base path.
-    // If donations are always /campaigns/{id}/donate, this block might not be needed.
     if (httpMethod === 'POST' && path === '/donate') {
         console.log('[POST /donate] Top-level donate endpoint hit. This might be for a general donation pool or needs campaignId in body.');
-        // Implement logic for a general donation if applicable, or return error if campaignId is expected in body
-        // For example, if campaignId is expected in the body:
-        // const { campaignId, amount, txHash } = JSON.parse(event.body);
-        // if (!campaignId) return createResponse(400, { message: 'campaignId is required in the request body for /donate' }, requestOrigin);
-        // ... then proceed similar to /campaigns/{id}/donate logic ...
         return createResponse(501, { message: 'Top-level /donate not fully implemented. Use /campaigns/{id}/donate' }, requestOrigin);
     }
 
 // # ############################################################################ #
-// # #         SECTION 25 - MAIN LAMBDA HANDLER: DEFAULT ROUTE (NOT FOUND)        #
+// # #        SECTION 27 - MAIN LAMBDA HANDLER: DEFAULT ROUTE (NOT FOUND)       #
 // # ############################################################################ #
     // --- Default Route (Not Found) ---
     console.log(`Unhandled path: ${httpMethod} ${path}`);
