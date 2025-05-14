@@ -115,6 +115,70 @@ class AuthService {
     console.log('[AuthService] Retry configuration updated:', this.retryConfig);
   }
 
+  /** Try to access the API using a simple health check */
+  public async checkApiConnection(): Promise<{ success: boolean; error?: string; latencyMs?: number }> {
+    const requestId = this.generateRequestId();
+    console.log(`[AuthService] ${requestId} - Testing API connection to: ${this.API_BASE}`);
+    
+    try {
+      // Attempt a simple OPTIONS request first as it's lightweight
+      const startTime = Date.now();
+      const response = await fetch(`${this.API_BASE}/auth/nonce`, {
+        method: 'OPTIONS',
+        mode: 'cors',
+        headers: {
+          'X-Request-ID': requestId
+        },
+        // Short timeout for health check
+        signal: AbortSignal.timeout(5000)
+      });
+      
+      const latencyMs = Date.now() - startTime;
+      
+      // Check CORS headers
+      const corsHeaders = {
+        'access-control-allow-origin': response.headers.get('access-control-allow-origin'),
+        'access-control-allow-methods': response.headers.get('access-control-allow-methods'),
+        'access-control-allow-headers': response.headers.get('access-control-allow-headers')
+      };
+      
+      console.log(`[AuthService] ${requestId} - API health check results:`, {
+        status: response.status,
+        latencyMs,
+        corsHeaders
+      });
+      
+      // Consider any response a success for connection test
+      return { 
+        success: true,
+        latencyMs
+      };
+    } catch (error: any) {
+      const errorType = this.parseErrorType(error);
+      let errorMessage = error.message || 'Unknown connection error';
+      
+      console.error(`[AuthService] ${requestId} - API connection test failed:`, {
+        error: errorMessage,
+        type: errorType,
+        apiBase: this.API_BASE
+      });
+      
+      // Provide a helpful message based on error type
+      if (errorType === ErrorType.TIMEOUT) {
+        errorMessage = `API endpoint did not respond within timeout period. The server might be overloaded or unreachable.`;
+      } else if (errorType === ErrorType.CORS) {
+        errorMessage = `Cross-origin request blocked. This app is not allowed to access the API endpoint.`;
+      } else if (errorType === ErrorType.NETWORK) {
+        errorMessage = `Could not connect to the API endpoint. Please check your internet connection and API URL.`;
+      }
+      
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  }
+
   /** Generate a unique request ID */
   private generateRequestId(): string {
     return `req_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
@@ -271,22 +335,82 @@ class AuthService {
           console.warn(`[AuthService] ${requestId} - Request timeout after ${this.retryConfig.timeoutMs}ms`);
         }, this.retryConfig.timeoutMs);
         
-        // Attempt the fetch
-        const startTime = Date.now();
-        const response = await fetch(url, {
+        // Create a safe copy of options to prevent reference issues
+        const safeOptions = {
           ...options,
           signal: controller.signal,
           headers: {
             ...options.headers,
             'X-Attempt-Number': String(attempt + 1)
           }
+        };
+        
+        // Add CORS mode explicitly if not already set
+        if (!safeOptions.mode) {
+          safeOptions.mode = 'cors';
+        }
+        
+        // Log the full request details for debugging
+        console.log(`[AuthService] ${requestId} - Request details:`, {
+          url,
+          method: safeOptions.method,
+          mode: safeOptions.mode,
+          headers: Object.keys(safeOptions.headers || {}),
+          hasBody: !!safeOptions.body
         });
         
-        // Clear the timeout
+        // Attempt the fetch with a try/catch to better handle network errors
+        let response;
+        const startTime = Date.now();
+        
+        try {
+          response = await fetch(url, safeOptions);
+        } catch (fetchError: any) {
+          // Clear the timeout since fetch already failed
+          clearTimeout(timeoutId);
+          
+          const errorMessage = fetchError.message || 'Network request failed';
+          console.error(`[AuthService] ${requestId} - Fetch operation failed:`, {
+            error: errorMessage,
+            type: fetchError.name || 'Unknown',
+            stack: fetchError.stack || 'No stack trace'
+          });
+          
+          // Create a better error message
+          let enhancedError;
+          if (fetchError.name === 'TypeError' && errorMessage.includes('Failed to fetch')) {
+            enhancedError = new Error(
+              `Network error: Could not connect to ${new URL(url).hostname}. Please check your connection and API endpoint.`
+            );
+          } else if (errorMessage.includes('NetworkError')) {
+            enhancedError = new Error(
+              `CORS error: The API endpoint at ${new URL(url).hostname} is not allowing requests from this origin. Check your CORS configuration.`
+            );
+          } else {
+            enhancedError = new Error(`Network error: ${errorMessage}`);
+          }
+          
+          // Always consider network errors as retryable
+          const backoffMs = this.calculateBackoff(attempt);
+          console.warn(`[AuthService] ${requestId} - Network error, retrying in ${backoffMs}ms: ${enhancedError.message}`);
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+          attempt++;
+          continue;
+        }
+        
+        // Clear the timeout since we got a response
         clearTimeout(timeoutId);
         
         const duration = Date.now() - startTime;
         console.log(`[AuthService] ${requestId} - Response received in ${duration}ms with status ${response.status}`);
+        
+        // Log response headers for debugging CORS issues
+        const corsHeaders = {
+          'access-control-allow-origin': response.headers.get('access-control-allow-origin'),
+          'access-control-allow-methods': response.headers.get('access-control-allow-methods'),
+          'access-control-allow-headers': response.headers.get('access-control-allow-headers')
+        };
+        console.log(`[AuthService] ${requestId} - CORS headers:`, corsHeaders);
         
         // Check for error status
         if (!response.ok) {
@@ -300,6 +424,14 @@ class AuthService {
           } catch (e) {
             errorMessage = errorBody || `HTTP error ${response.status}`;
           }
+          
+          // Log the full error response for debugging
+          console.error(`[AuthService] ${requestId} - Error response:`, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: Object.fromEntries([...response.headers.entries()]),
+            body: errorBody.substring(0, 500) // Log first 500 chars to avoid huge logs
+          });
           
           const error = new Error(errorMessage);
           lastError = error;
@@ -327,9 +459,17 @@ class AuthService {
         const contentType = response.headers.get('content-type');
         if (response.status === 204 || !contentType) {
           data = {} as T;
-        } else if (contentType.includes('application/json')) {
+        } else if (contentType && contentType.includes('application/json')) {
           // Parse JSON response
-          data = await response.json() as T;
+          try {
+            data = await response.json() as T;
+          } catch (jsonError) {
+            console.error(`[AuthService] ${requestId} - Failed to parse JSON response:`, jsonError);
+            // Try to get text response as fallback
+            const text = await response.text();
+            console.log(`[AuthService] ${requestId} - Raw response text:`, text.substring(0, 500));
+            throw new Error(`Invalid JSON response: ${(jsonError as Error)?.message || 'Parse error'}`);
+          }
         } else {
           // Other response types (text, etc.)
           const text = await response.text();
@@ -343,25 +483,43 @@ class AuthService {
         this.completeRequest(requestId, true);
         return data;
       } catch (error: any) {
-        lastError = error;
+        // Prevent undefined errors in logs
+        lastError = error || new Error('Unknown error occurred');
+        
+        // Ensure error has a message
+        if (!lastError.message) {
+          lastError.message = 'An unknown error occurred during request processing';
+        }
         
         // Handle abort/timeout errors specially
-        if (error.name === 'AbortError') {
+        if (error && error.name === 'AbortError') {
           console.error(`[AuthService] ${requestId} - Request aborted (timeout)`);
           lastError = new Error(`Request timeout after ${this.retryConfig.timeoutMs}ms`);
         }
         
+        // Log the error with all properties for debugging
+        console.error(`[AuthService] ${requestId} - Error details:`, {
+          message: lastError.message,
+          name: lastError.name,
+          stack: lastError.stack,
+          code: lastError.code,
+          errno: lastError.errno,
+          syscall: lastError.syscall,
+          address: lastError.address,
+          port: lastError.port
+        });
+        
         // Determine error type and if we should retry
-        const errorType = this.parseErrorType(error);
+        const errorType = this.parseErrorType(lastError);
         if (!this.isRetryableError(errorType) || attempt >= this.retryConfig.maxRetries) {
-          console.error(`[AuthService] ${requestId} - Non-retryable error (${errorType}) or max retries reached:`, error);
-          this.completeRequest(requestId, false, error);
+          console.error(`[AuthService] ${requestId} - Non-retryable error (${errorType}) or max retries reached:`, lastError.message);
+          this.completeRequest(requestId, false, lastError);
           throw lastError;
         }
         
         // Log and retry after backoff
         const backoffMs = this.calculateBackoff(attempt);
-        console.warn(`[AuthService] ${requestId} - Retryable error (${errorType}), retrying in ${backoffMs}ms:`, error);
+        console.warn(`[AuthService] ${requestId} - Retryable error (${errorType}), retrying in ${backoffMs}ms:`, lastError.message);
         await new Promise(resolve => setTimeout(resolve, backoffMs));
         attempt++;
       }
@@ -414,6 +572,22 @@ class AuthService {
   public async getNonce(): Promise<{ success: boolean; nonce?: string; error?: string }> {
     console.log('[AuthService] Fetching nonce...');
     
+    // First check API connectivity to fail fast if there's a connection issue
+    try {
+      const connectionCheck = await this.checkApiConnection();
+      if (!connectionCheck.success) {
+        console.error('[AuthService] Connection check failed before getNonce:', connectionCheck.error);
+        return {
+          success: false,
+          error: connectionCheck.error || 'Could not connect to authentication service'
+        };
+      }
+      console.log('[AuthService] Connection check successful, latency:', connectionCheck.latencyMs, 'ms');
+    } catch (checkError) {
+      console.error('[AuthService] Error during connection check:', checkError);
+      // Continue with the request even if the check fails
+    }
+    
     const requestId = this.generateRequestId();
     const endpoint = '/auth/nonce';
     
@@ -433,6 +607,8 @@ class AuthService {
           },
           mode: 'cors', // Explicit CORS mode
           credentials: 'same-origin',
+          // Set cache to no-store to prevent caching of nonce
+          cache: 'no-store'
         },
         requestId,
         endpoint
