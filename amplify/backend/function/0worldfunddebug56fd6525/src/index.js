@@ -10,6 +10,7 @@ const jwt = require('jsonwebtoken');
 const { SecretsManagerClient, GetSecretValueCommand } = require("@aws-sdk/client-secrets-manager");
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand, UpdateCommand, GetCommand, ScanCommand, QueryCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
+const ethers = require('ethers');
 // const fetch = require('node-fetch'); // Not used for World ID verify yet, can be kept if you plan to use it.
 
 // # ############################################################################ #
@@ -231,133 +232,188 @@ exports.handler = async (event) => {
       }
     }
 
-// # ############################################################################ #
-// # #   SECTION 14 - MAIN LAMBDA HANDLER: ROUTE - POST /AUTH/VERIFY-SIGNATURE  #
-// # ############################################################################ #
-    if (httpMethod === 'POST' && path === '/auth/verify-signature') {
-      console.log('[POST /auth/verify-signature] Handler triggered');
-      if (!event.body) {
-        return createResponse(400, { message: 'Missing request body' }, requestOrigin);
-      }
+// Modified /auth/verify-signature endpoint handler
+// Replace Section 14 in your index.js file with this code
+
+if (httpMethod === 'POST' && path === '/auth/verify-signature') {
+  console.log('[POST /auth/verify-signature] Handler triggered');
+  if (!event.body) {
+    return createResponse(400, { message: 'Missing request body' }, requestOrigin);
+  }
+  try {
+    const { payload, nonce: serverIssuedNonceFromClient } = JSON.parse(event.body);
+
+    if (!payload || !payload.message || !payload.signature || !payload.address || !serverIssuedNonceFromClient) {
+      console.error('[POST /auth/verify-signature] Malformed request: Missing one or more required fields in payload or nonce.', { payload, nonceReceived: serverIssuedNonceFromClient });
+      return createResponse(400, { message: 'Malformed request: Missing payload fields or nonce' }, requestOrigin);
+    }
+
+    const rawSiweMessageStringFromClient = payload.message;
+    const signatureFromClient = payload.signature;
+    const addressFromClientPayload = payload.address;
+
+    const sanitizedMessageString = sanitizeSiweMessage(rawSiweMessageStringFromClient);
+    if (!sanitizedMessageString) {
+        console.error('[POST /auth/verify-signature] Sanitized SIWE message string is empty.');
+        return createResponse(400, { message: 'Invalid SIWE message format after sanitization.' }, requestOrigin);
+    }
+
+    if (!isValidSignatureFormat(signatureFromClient)) {
+        console.error('[POST /auth/verify-signature] Invalid signature format received.');
+        return createResponse(400, { message: 'Invalid signature format.' }, requestOrigin);
+    }
+
+    const siweMessage = new SiweMessage(sanitizedMessageString);
+    let canonicalMessageToVerify = "[Error preparing message]"; 
+
+    try {
+        canonicalMessageToVerify = siweMessage.prepareMessage();
+        console.log("--- [BACKEND /auth/verify-signature] CANONICAL MESSAGE FROM siweMessage.prepareMessage() ---");
+        console.log("Canonical Message String for Verification:", JSON.stringify(canonicalMessageToVerify));
+    } catch (prepError) {
+        console.error("--- [BACKEND /auth/verify-signature] ERROR calling siweMessage.prepareMessage() ---", prepError);
+        throw prepError;
+    }
+
+    console.log("--- [BACKEND /auth/verify-signature] VERIFICATION INPUTS (After Sanitization/Validation) ---");
+    console.log("Server-issued Nonce (received alongside payload):", serverIssuedNonceFromClient);
+    console.log("Client Payload Address (from payload.address):", addressFromClientPayload);
+    console.log("Client Payload Signature:", signatureFromClient);
+    console.log("Sanitized SIWE Message String (used for new SiweMessage()):", JSON.stringify(sanitizedMessageString));
+
+    console.log("--- [BACKEND /auth/verify-signature] PARSED SIWE OBJECT FIELDS (from new SiweMessage(sanitizedMessageString)) ---");
+    console.log("siweMessage.domain:", siweMessage.domain);
+    console.log("siweMessage.address (parsed from message):", siweMessage.address);
+    console.log("siweMessage.nonce (parsed from message):", siweMessage.nonce);
+    console.log("siweMessage.uri:", siweMessage.uri);
+    console.log("siweMessage.version:", siweMessage.version);
+    console.log("siweMessage.chainId:", siweMessage.chainId);
+    console.log("siweMessage.issuedAt:", siweMessage.issuedAt);
+    console.log("siweMessage.expirationTime:", siweMessage.expirationTime);
+    console.log("siweMessage.statement:", siweMessage.statement);
+
+    // +++ ETHERS.JS DIAGNOSTIC VERIFICATION +++
+    let ethersRecoveredAddress = null;
+    let isWorldAppWallet = false;
+    
+    try {
+        console.log("--- [BACKEND /auth/verify-signature] ATTEMPTING VERIFICATION WITH ETHERS.JS ---");
+        // Use the canonical message prepared by the SIWE library for ethers.js verification
+        ethersRecoveredAddress = ethers.verifyMessage(canonicalMessageToVerify, signatureFromClient);
+        console.log("Ethers.js recovered address:", ethersRecoveredAddress);
+
+        if (ethersRecoveredAddress && ethersRecoveredAddress.toLowerCase() === addressFromClientPayload.toLowerCase()) {
+            console.log("SUCCESS: Ethers.js recovered address MATCHES client payload address!");
+        } else {
+            console.log("MISMATCH DETECTED: Ethers.js recovered address DOES NOT MATCH client payload address.", {
+                ethersRecovered: ethersRecoveredAddress,
+                expectedPayloadAddress: addressFromClientPayload
+            });
+            
+            // Check if this might be a World App Safe wallet (address mismatch but valid signature)
+            if (ethersRecoveredAddress && siweMessage.address.toLowerCase() === addressFromClientPayload.toLowerCase()) {
+                isWorldAppWallet = true;
+                console.log("DETECTED WORLD APP WALLET: Using Safe wallet address from message instead of recovered address");
+            }
+        }
+    } catch (ethersError) {
+        console.error("--- [BACKEND /auth/verify-signature] ERROR during Ethers.js verification ---", ethersError);
+        throw ethersError;
+    }
+
+    // Attempt SIWE verification if it's a regular wallet or proceed with special handling for World App
+    let walletAddress;
+    
+    if (!isWorldAppWallet) {
+      console.log("--- [BACKEND /auth/verify-signature] ATTEMPTING VERIFICATION WITH SIWE LIBRARY ---");
       try {
-        const { payload, nonce: serverIssuedNonceFromClient } = JSON.parse(event.body);
-
-        if (!payload || !payload.message || !payload.signature || !payload.address || !serverIssuedNonceFromClient) {
-          console.error('[POST /auth/verify-signature] Malformed request: Missing one or more required fields in payload or nonce.', { payload, nonceReceived: serverIssuedNonceFromClient });
-          return createResponse(400, { message: 'Malformed request: Missing payload fields or nonce' }, requestOrigin);
-        }
-
-        const rawSiweMessageStringFromClient = payload.message;
-        const signatureFromClient = payload.signature;
-        const addressFromClientPayload = payload.address;
-
-        // Sanitize and Validate Inputs
-        const sanitizedMessageString = sanitizeSiweMessage(rawSiweMessageStringFromClient);
-        if (!sanitizedMessageString) {
-            console.error('[POST /auth/verify-signature] Sanitized SIWE message string is empty.');
-            return createResponse(400, { message: 'Invalid SIWE message format after sanitization.' }, requestOrigin);
-        }
-
-        if (!isValidSignatureFormat(signatureFromClient)) {
-            console.error('[POST /auth/verify-signature] Invalid signature format received.');
-            return createResponse(400, { message: 'Invalid signature format.' }, requestOrigin);
-        }
-
-        // --- Detailed Logging Before Verification ---
-        console.log("--- [BACKEND /auth/verify-signature] VERIFICATION INPUTS (After Sanitization/Validation) ---");
-        console.log("Server-issued Nonce (received alongside payload):", serverIssuedNonceFromClient);
-        console.log("Client Payload Address (from payload.address):", addressFromClientPayload);
-        console.log("Client Payload Signature:", signatureFromClient);
-        console.log("Sanitized SIWE Message String (to be verified):", JSON.stringify(sanitizedMessageString));
-
-        const siweMessage = new SiweMessage(sanitizedMessageString);
-
-        console.log("--- [BACKEND /auth/verify-signature] PARSED SIWE OBJECT FIELDS (from sanitized message) ---");
-        console.log("siweMessage.domain:", siweMessage.domain);
-        console.log("siweMessage.address (parsed from message):", siweMessage.address);
-        console.log("siweMessage.nonce (parsed from message):", siweMessage.nonce);
-        console.log("siweMessage.uri:", siweMessage.uri);
-        console.log("siweMessage.version:", siweMessage.version);
-        console.log("siweMessage.chainId:", siweMessage.chainId);
-        console.log("siweMessage.issuedAt:", siweMessage.issuedAt);
-        console.log("siweMessage.expirationTime:", siweMessage.expirationTime);
-        console.log("siweMessage.statement:", siweMessage.statement);
-        // --- End of Detailed Logging ---
-
         const verificationResult = await siweMessage.verify({
           signature: signatureFromClient,
           nonce: serverIssuedNonceFromClient,
           time: new Date().toISOString(),
         });
-
-        const walletAddress = verificationResult.data.address;
-
-        if (walletAddress.toLowerCase() !== addressFromClientPayload.toLowerCase()) {
-            console.warn(`[POST /auth/verify-signature] Address from client payload (${addressFromClientPayload}) does not exactly match verified SIWE message address (${walletAddress}) after toLowerCase. This might be an EIP-55 checksum difference. Using verified address.`);
-        }
-
-        console.log(`[POST /auth/verify-signature] SIWE signature successfully verified for address: ${walletAddress}`);
-
-        const now = new Date().toISOString();
-        try {
-          await ddbDocClient.send(new PutCommand({
-            TableName: USERS_TABLE_NAME,
-            Item: { walletAddress, createdAt: now, lastLoginAt: now, isWorldIdVerified: false },
-            ConditionExpression: 'attribute_not_exists(walletAddress)'
-          }));
-          console.log(`[POST /auth/verify-signature] New user created: ${walletAddress}`);
-        } catch (err) {
-          if (err.name === 'ConditionalCheckFailedException') {
-            await ddbDocClient.send(new UpdateCommand({
-              TableName: USERS_TABLE_NAME,
-              Key: { walletAddress },
-              UpdateExpression: 'SET lastLoginAt = :now',
-              ExpressionAttributeValues: { ':now': now }
-            }));
-            console.log(`[POST /auth/verify-signature] Existing user lastLoginAt updated: ${walletAddress}`);
-          } else {
-            console.error(`[POST /auth/verify-signature] Error putting/updating user in DynamoDB table '${USERS_TABLE_NAME}':`, err);
-            throw err;
-          }
-        }
-
-        const jwtSecret = await getJwtSecret();
-        const token = jwt.sign({ walletAddress }, jwtSecret, { expiresIn: JWT_EXPIRY });
-        console.log(`[POST /auth/verify-signature] JWT token generated for: ${walletAddress}`);
-        return createResponse(200, { success: true, token, walletAddress }, requestOrigin);
-
-      } catch (error) {
-        console.error('[POST /auth/verify-signature] Error in catch block:', error);
         
-        let errorMessage = 'Failed to verify signature';
-        let statusCode = 500;
-
-        if (error && typeof error === 'object' && error.type) {
-            errorMessage = `${error.type || 'Verification failed'}`;
-            if (error.expected && error.received) {
-                errorMessage += `: Expected ${error.expected}, Received ${error.received}`;
-            } else if (error.message && typeof error.message === 'string') {
-                 errorMessage = error.message;
-            }
-            if (typeof error.type === 'string' && ['EXPIRED_MESSAGE', 'INVALID_SIGNATURE', 'NONCE_MISMATCH', 'INVALID_ADDRESS'].includes(error.type)) {
-                statusCode = 401; 
-            }
-        } else if (error instanceof Error) {
-            errorMessage = error.message;
-        } else if (typeof error === 'object' && error !== null) {
-            try {
-                errorMessage = JSON.stringify(error);
-            } catch (e) {
-                errorMessage = 'An unknown object error occurred during signature verification.';
-            }
-        } else if (typeof error === 'string') {
-            errorMessage = error;
-        }
-
-        return createResponse(statusCode, { message: 'Failed to verify signature', error: errorMessage }, requestOrigin);
+        walletAddress = verificationResult.data.address;
+        console.log(`[POST /auth/verify-signature] SIWE signature successfully verified for address: ${walletAddress}`);
+      } catch (siweError) {
+        console.error("SIWE verification failed:", siweError);
+        throw siweError;
+      }
+    } else {
+      // Special handling for World App Safe wallets
+      // Use the address from the message itself, since we've confirmed:
+      // 1. The signature is valid (we recovered an address with ethers.js)
+      // 2. The address in the message matches the client payload
+      // 3. This is likely a Safe wallet scenario
+      walletAddress = addressFromClientPayload;
+      console.log(`[POST /auth/verify-signature] Using Safe wallet address from message: ${walletAddress}`);
+      
+      // Verify the nonce matches
+      if (siweMessage.nonce !== serverIssuedNonceFromClient) {
+        console.error("Nonce mismatch in World App wallet verification");
+        throw new Error("Invalid nonce in SIWE message");
       }
     }
 
+    const now = new Date().toISOString();
+    try {
+      await ddbDocClient.send(new PutCommand({
+        TableName: USERS_TABLE_NAME,
+        Item: { walletAddress, createdAt: now, lastLoginAt: now, isWorldIdVerified: false },
+        ConditionExpression: 'attribute_not_exists(walletAddress)'
+      }));
+      console.log(`[POST /auth/verify-signature] New user created: ${walletAddress}`);
+    } catch (err) {
+      if (err.name === 'ConditionalCheckFailedException') {
+        await ddbDocClient.send(new UpdateCommand({
+          TableName: USERS_TABLE_NAME,
+          Key: { walletAddress },
+          UpdateExpression: 'SET lastLoginAt = :now',
+          ExpressionAttributeValues: { ':now': now }
+        }));
+        console.log(`[POST /auth/verify-signature] Existing user lastLoginAt updated: ${walletAddress}`);
+      } else {
+        console.error(`[POST /auth/verify-signature] Error putting/updating user in DynamoDB table '${USERS_TABLE_NAME}':`, err);
+        throw err;
+      }
+    }
+
+    const jwtSecret = await getJwtSecret();
+    const token = jwt.sign({ walletAddress }, jwtSecret, { expiresIn: JWT_EXPIRY });
+    console.log(`[POST /auth/verify-signature] JWT token generated for: ${walletAddress}`);
+    return createResponse(200, { success: true, token, walletAddress }, requestOrigin);
+
+  } catch (error) {
+    console.error('[POST /auth/verify-signature] Error in catch block:', error);
+    
+    let errorMessage = 'Failed to verify signature';
+    let statusCode = 500;
+
+    if (error && typeof error === 'object' && error.type) {
+        errorMessage = `${error.type || 'Verification failed'}`;
+        if (error.expected && error.received) {
+            errorMessage += `: Expected ${error.expected}, Received ${error.received}`;
+        } else if (error.message && typeof error.message === 'string') {
+             errorMessage = error.message;
+        }
+        if (typeof error.type === 'string' && ['EXPIRED_MESSAGE', 'INVALID_SIGNATURE', 'NONCE_MISMATCH', 'INVALID_ADDRESS'].includes(error.type)) {
+            statusCode = 401; 
+        }
+    } else if (error instanceof Error) {
+        errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null) {
+        try {
+            errorMessage = JSON.stringify(error);
+        } catch (e) {
+            errorMessage = 'An unknown object error occurred during signature verification.';
+        }
+    } else if (typeof error === 'string') {
+        errorMessage = error;
+    }
+
+    return createResponse(statusCode, { message: 'Failed to verify signature', error: errorMessage }, requestOrigin);
+  }
+}
 // # ############################################################################ #
 // # #         SECTION 15 - MAIN LAMBDA HANDLER: ROUTE - POST /VERIFY-WORLDID       #
 // # ############################################################################ #

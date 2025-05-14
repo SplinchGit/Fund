@@ -53,7 +53,7 @@ interface MiniKitFinalPayload {
   message?: any; // Allow any type for internal processing, we'll stringify before returning
   signature?: string;
   address?: string; // Add address property
-  version?: string; // Add version property
+  version?: string | number; // Updated to allow both string and number types
   // Include other properties that might be common or specific to error payloads
   [key: string]: any; // Allow other properties
 }
@@ -365,7 +365,7 @@ async function installMiniKit(appId: string): Promise<void> {
 }
 
 // # ############################################################################ #
-// # #      SECTION 14 - EXPORTED FUNCTION: TRIGGER MINIKIT WALLET AUTH       #
+// # #       SECTION 14 - EXPORTED FUNCTION: TRIGGER MINIKIT WALLET AUTH      #
 // # ############################################################################ #
 // Export a function to manually trigger wallet auth from anywhere in the app
 export const triggerMiniKitWalletAuth = async (
@@ -399,7 +399,6 @@ export const triggerMiniKitWalletAuth = async (
 
       if (typeof MiniKit.isInstalled !== 'function') {
         console.error('[triggerMiniKitWalletAuth] MiniKit.isInstalled is not a function');
-        // Added short delay before retrying
         await new Promise(resolve => setTimeout(resolve, 300));
         retryCount++;
         continue;
@@ -409,12 +408,10 @@ export const triggerMiniKitWalletAuth = async (
       console.log(`[triggerMiniKitWalletAuth] MiniKit.isInstalled() check returned: ${isInstalled}`);
       if (isInstalled) break;
 
-      // Added delay between retries
       await new Promise(resolve => setTimeout(resolve, 300));
       retryCount++;
     } catch (err) {
       console.error(`[triggerMiniKitWalletAuth] Error checking if MiniKit is installed (attempt ${retryCount + 1}):`, err);
-      // Added short delay before retrying
       await new Promise(resolve => setTimeout(resolve, 300));
       retryCount++;
     }
@@ -422,28 +419,23 @@ export const triggerMiniKitWalletAuth = async (
 
   if (!isInstalled) {
     try {
-      // Get App ID with more robust fallback chain and logging
       const envAppId = import.meta.env.VITE_WORLD_APP_ID ||
                        import.meta.env.VITE_WORLD_ID_APP_ID;
       const globalEnvAppId = (window as any).__ENV__?.WORLD_APP_ID;
-
-      // Use the first available App ID, with default as last resort
       const appId = envAppId || globalEnvAppId || DEFAULT_APP_ID;
 
       console.log('[triggerMiniKitWalletAuth] Installing MiniKit with appId:', appId);
       console.log('[triggerMiniKitWalletAuth] Environment variables available:', {
         VITE_WORLD_APP_ID: import.meta.env.VITE_WORLD_APP_ID,
         VITE_WORLD_ID_APP_ID: import.meta.env.VITE_WORLD_ID_APP_ID,
-        WORLD_APP_ID: import.meta.env.WORLD_APP_ID,
+        WORLD_APP_ID: import.meta.env.WORLD_APP_ID, // This might be undefined if not set via DefinePlugin or similar
         windowEnvVar: (window as any).__ENV__?.WORLD_APP_ID
       });
 
-      // Install MiniKit with retries
       let installRetryCount = 0;
       while (installRetryCount <= maxRetries) {
         try {
-          // Use our safer installation method
-          await installMiniKit(appId);
+          await installMiniKit(appId); // Uses our safer installation method
           console.log('[triggerMiniKitWalletAuth] MiniKit installed successfully');
           break;
         } catch (installError) {
@@ -452,7 +444,6 @@ export const triggerMiniKitWalletAuth = async (
             throw new Error('Failed to initialize MiniKit after multiple attempts: ' +
               (installError instanceof Error ? installError.message : String(installError)));
           }
-          // Wait before retry
           await new Promise(resolve => setTimeout(resolve, 500));
           installRetryCount++;
         }
@@ -466,7 +457,6 @@ export const triggerMiniKitWalletAuth = async (
   try {
     console.log('[triggerMiniKitWalletAuth] Starting wallet auth flow with provided server nonce...');
 
-    // Check for commands async API with retry
     let apiRetryCount = 0;
     while (!MiniKit.commandsAsync && apiRetryCount <= maxRetries) {
       console.log(`[triggerMiniKitWalletAuth] Waiting for MiniKit.commandsAsync to be available (attempt ${apiRetryCount + 1})...`);
@@ -479,7 +469,6 @@ export const triggerMiniKitWalletAuth = async (
       throw new Error('MiniKit is initialized but commandsAsync API is not available. Check MiniKit version compatibility.');
     }
 
-    // Check for walletAuth command
     if (!MiniKit.commandsAsync.walletAuth) {
       console.error('[triggerMiniKitWalletAuth] MiniKit.commandsAsync.walletAuth is undefined');
       throw new Error('MiniKit wallet authentication command is not available. Check MiniKit version compatibility.');
@@ -487,16 +476,48 @@ export const triggerMiniKitWalletAuth = async (
 
     console.log('[triggerMiniKitWalletAuth] Calling MiniKit.commandsAsync.walletAuth with serverNonce:', serverNonce);
 
-    // Add statement and timeout for better UX
     const result = await MiniKit.commandsAsync.walletAuth({
       nonce: serverNonce,
-      statement: 'Sign in to WorldFund to create and support campaigns.',
-      expirationTime: new Date(Date.now() + 1000 * 60 * AUTH_EXPIRY_MINUTES), // expiry
+      statement: 'Sign in to WorldFund to create and support campaigns.', // Recommended
+      expirationTime: new Date(Date.now() + 1000 * 60 * AUTH_EXPIRY_MINUTES),
     });
 
-    console.log('[triggerMiniKitWalletAuth] Wallet auth result:', JSON.stringify(result, null, 2));
+    // ***** BEGIN CORRECTED DETAILED LOGGING *****
+    console.log('[triggerMiniKitWalletAuth] >>> RAW MiniKit.commandsAsync.walletAuth() RESPONSE <<<');
+    if (result && result.finalPayload) {
+      // Cast with double assertion for safety: first to unknown, then to our interface
+      const finalPayload = result.finalPayload as unknown as MiniKitFinalPayload;
 
-    // Better null/undefined handling
+      console.log('[triggerMiniKitWalletAuth] Raw result.finalPayload.status:', finalPayload.status);
+
+      if (finalPayload.status === 'success') {
+        console.log('[triggerMiniKitWalletAuth] Raw result.finalPayload.message (SUCCESS):', finalPayload.message);
+        console.log('[triggerMiniKitWalletAuth] typeof result.finalPayload.message (SUCCESS):', typeof finalPayload.message);
+        console.log('[triggerMiniKitWalletAuth] Raw result.finalPayload.signature (SUCCESS):', finalPayload.signature);
+        console.log('[triggerMiniKitWalletAuth] Raw result.finalPayload.address (SUCCESS):', finalPayload.address);
+        console.log('[triggerMiniKitWalletAuth] Raw result.finalPayload.version (SUCCESS):', finalPayload.version);
+      } else if (finalPayload.status === 'error') {
+        console.log('[triggerMiniKitWalletAuth] Raw result.finalPayload.error_code (ERROR):', finalPayload.error_code);
+        if ('message' in finalPayload && finalPayload.message) {
+            console.log('[triggerMiniKitWalletAuth] Raw result.finalPayload.message (ERROR description):', finalPayload.message);
+        }
+      } else if (finalPayload.status === 'cancelled') {
+        console.log('[triggerMiniKitWalletAuth] Wallet auth was cancelled by user (status: cancelled).');
+      } else {
+        console.log('[triggerMiniKitWalletAuth] Received unknown or unexpected finalPayload status:', finalPayload.status);
+        console.log('[triggerMiniKitWalletAuth] Full raw unknown finalPayload (JSON):', JSON.stringify(finalPayload, null, 2));
+      }
+    } else if (result) {
+      console.warn('[triggerMiniKitWalletAuth] MiniKit.commandsAsync.walletAuth() returned a result, but result.finalPayload is missing. Full result:', JSON.stringify(result, null, 2));
+    } else {
+      console.error('[triggerMiniKitWalletAuth] MiniKit.commandsAsync.walletAuth() returned a null/undefined result.');
+    }
+    console.log('[triggerMiniKitWalletAuth] >>> END RAW MiniKit.commandsAsync.walletAuth() RESPONSE <<<');
+    // ***** END CORRECTED DETAILED LOGGING *****
+
+    // Existing log (good for seeing the whole result object from MiniKit)
+    console.log('[triggerMiniKitWalletAuth] Wallet auth result (full object from MiniKit):', JSON.stringify(result, null, 2));
+
     if (!result) {
       console.error('[triggerMiniKitWalletAuth] MiniKit.commandsAsync.walletAuth returned null/undefined');
       throw new Error('MiniKit wallet authentication returned an empty result');
@@ -504,24 +525,21 @@ export const triggerMiniKitWalletAuth = async (
 
     if (!result.finalPayload) {
       console.error('[triggerMiniKitWalletAuth] MiniKit.commandsAsync.walletAuth returned no finalPayload');
-      throw new Error('MiniKit wallet authentication did not return a payload. User might have cancelled.');
+      console.error('[triggerMiniKitWalletAuth] Full result object when finalPayload was missing:', JSON.stringify(result, null, 2));
+      throw new Error('MiniKit wallet authentication did not return a payload. User might have cancelled or an error occurred before payload generation.');
     }
 
-    // Sanitize the wallet payload for security
     const sanitizedPayload = sanitizeWalletPayload(result.finalPayload);
+    console.log('[triggerMiniKitWalletAuth] Sanitized Payload for further processing:', JSON.stringify(sanitizedPayload, null, 2));
 
-    // More detailed error handling with specific error types
     if (sanitizedPayload.status !== 'success') {
-      // Access error_code more safely
       const errorCode = sanitizedPayload.error_code;
       const status = sanitizedPayload.status;
-
       console.error('[triggerMiniKitWalletAuth] MiniKit auth returned non-success status:', {
         status,
         errorCode,
         payload: JSON.stringify(sanitizedPayload, null, 2)
       });
-
       if (status === 'cancelled') {
         throw new Error('Wallet authentication was cancelled by the user.');
       } else if (status === 'error') {
@@ -531,7 +549,6 @@ export const triggerMiniKitWalletAuth = async (
       }
     }
 
-    // Validate the payload
     if (!sanitizedPayload.message) {
       console.error('[triggerMiniKitWalletAuth] MiniKit auth successful but missing expected message in payload');
       throw new Error('MiniKit auth successful but returned an incomplete payload without signature data');
@@ -542,7 +559,7 @@ export const triggerMiniKitWalletAuth = async (
       throw new Error('MiniKit auth successful but returned an incomplete payload without signature');
     }
 
-    // Extract nonce for validation
+    // Extract nonce for validation (optional, as server nonce is primary)
     const extractedNonce = extractNonceFromMessage(sanitizedPayload.message);
     if (!extractedNonce) {
       console.warn('[triggerMiniKitWalletAuth] Could not extract nonce from message:',
@@ -550,32 +567,43 @@ export const triggerMiniKitWalletAuth = async (
           ? JSON.stringify(sanitizedPayload.message)
           : sanitizedPayload.message);
     }
+    // Optionally, you could compare serverNonce with extractedNonce here if needed for stricter validation
 
-    // Extract address from payload
+    // Extract address from the sanitized payload
     const extractedAddress = extractAddress(sanitizedPayload);
 
-    // IMPORTANT: Ensure message is a string for MiniAppWalletAuthSuccessPayload
+    // Ensure message is a string for MiniAppWalletAuthSuccessPayload
     const messageString = typeof sanitizedPayload.message === 'string'
       ? sanitizedPayload.message
       : JSON.stringify(sanitizedPayload.message);
 
-    // Return properly formatted success payload with ALL required properties
+    if (typeof sanitizedPayload.message === 'object' && sanitizedPayload.message !== null) {
+        console.log('[triggerMiniKitWalletAuth] Original sanitizedPayload.message (object) was stringified to:', messageString);
+    }
+
+    // Construct the success payload ensuring all required fields are present
     const successPayload: MiniAppWalletAuthSuccessPayload = {
       status: 'success',
       message: messageString,
-      signature: sanitizedPayload.signature,
-      address: extractedAddress || '',
-      // Handle different version formats - ensure it's a number
+      signature: sanitizedPayload.signature, // Already checked for existence
+      // Use the 'extractedAddress' variable here
+      address: extractedAddress || (sanitizedPayload.address || ''), // Fallback to sanitizedPayload.address if extractAddress returns empty
       version: typeof sanitizedPayload.version === 'number'
         ? sanitizedPayload.version
         : parseInt(String(sanitizedPayload.version || '1'), 10) || 1
     };
 
-    console.log('[triggerMiniKitWalletAuth] Created complete success payload with all required fields');
+    console.log('[triggerMiniKitWalletAuth] FINAL successPayload being returned:', JSON.stringify(successPayload, null, 2));
     return successPayload;
+
   } catch (error) {
     console.error('[triggerMiniKitWalletAuth] Error during wallet auth process:', error);
-    throw error;
+    // Ensure the error is re-thrown so the caller can handle it
+    if (error instanceof Error) {
+        throw error; // rethrow Error instances
+    } else {
+        throw new Error(String(error)); // wrap other types in an Error
+    }
   }
 };
 
