@@ -1,5 +1,8 @@
 // amplify/backend/function/0worldfunddebug56fd6525/src/index.js
 
+// # ############################################################################ #
+// # #                         SECTION 1 - MODULE IMPORTS                         #
+// # ############################################################################ #
 const crypto = require('crypto');
 const { SiweMessage } = require('siwe');
 // const { ethers } = require('ethers'); // Not directly used in this version, can be removed if no direct ethers calls
@@ -9,6 +12,9 @@ const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
 const { DynamoDBDocumentClient, PutCommand, UpdateCommand, GetCommand, ScanCommand, QueryCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 // const fetch = require('node-fetch'); // Not used for World ID verify yet, can be kept if you plan to use it.
 
+// # ############################################################################ #
+// # #              SECTION 2 - GLOBAL CONFIGURATION & CONSTANTS              #
+// # ############################################################################ #
 // --- Configuration ---
 const JWT_EXPIRY = '1d';
 const WORLD_ID_APP_ID = process.env.VITE_WORLD_APP_ID || process.env.WORLD_APP_ID;
@@ -24,15 +30,24 @@ const ALLOWED_ORIGINS_LIST = [DEPLOYED_FRONTEND_URL, LOCAL_DEV_URL];
 const USERS_TABLE_NAME = process.env.USERS_TABLE_NAME || 'Users-dev';
 const CAMPAIGNS_TABLE_NAME = process.env.CAMPAIGNS_TABLE_NAME || 'Campaigns-dev'; // Corrected from 'Campaigns-dev' to process.env.CAMPAIGNS_TABLE_NAME
 
+// # ############################################################################ #
+// # #                SECTION 3 - AWS SDK CLIENT INITIALIZATION                 #
+// # ############################################################################ #
 // --- AWS SDK Clients ---
 const lambdaRegion = process.env.AWS_REGION || 'eu-west-2';
 const secretsClient = new SecretsManagerClient({ region: lambdaRegion });
 const dynamodbClient = new DynamoDBClient({ region: lambdaRegion });
 const ddbDocClient = DynamoDBDocumentClient.from(dynamodbClient);
 
+// # ############################################################################ #
+// # #                      SECTION 4 - GLOBAL CACHE VARIABLES                    #
+// # ############################################################################ #
 // --- Global variable to cache the JWT secret ---
 let cachedJwtSecret = null;
 
+// # ############################################################################ #
+// # #                   SECTION 5 - HELPER FUNCTION: GENERATE NONCE                  #
+// # ############################################################################ #
 // --- HELPER FUNCTIONS ---
 
 // Helper function to generate a secure nonce
@@ -40,6 +55,9 @@ const generateNonce = () => {
   return crypto.randomBytes(16).toString('hex');
 };
 
+// # ############################################################################ #
+// # #           SECTION 6 - HELPER FUNCTION: CREATE API RESPONSE (WITH CORS)         #
+// # ############################################################################ #
 // Helper function to create consistent API responses with dynamic CORS
 function createResponse(statusCode, body, requestOrigin) {
   let effectiveAllowOrigin = DEPLOYED_FRONTEND_URL; // Default to deployed URL
@@ -65,12 +83,15 @@ function createResponse(statusCode, body, requestOrigin) {
   };
 }
 
+// # ############################################################################ #
+// # #                    SECTION 7 - HELPER FUNCTION: GET JWT SECRET                   #
+// # ############################################################################ #
 // Helper to get JWT secret from AWS Secrets Manager
 const getJwtSecret = async () => {
   if (cachedJwtSecret) {
     return cachedJwtSecret;
   }
-  
+
   if (!JWT_SECRET_ARN) {
       console.error('JWT_SECRET_ARN environment variable is not set.');
       throw new Error('Server configuration error: JWT secret ARN is missing.');
@@ -80,7 +101,7 @@ const getJwtSecret = async () => {
     const command = new GetSecretValueCommand({
       SecretId: JWT_SECRET_ARN,
     });
-    
+
     const response = await secretsClient.send(command);
     if (response.SecretString) {
         cachedJwtSecret = response.SecretString;
@@ -95,23 +116,26 @@ const getJwtSecret = async () => {
   }
 };
 
+// # ############################################################################ #
+// # #                  SECTION 8 - HELPER FUNCTION: VERIFY JWT TOKEN                 #
+// # ############################################################################ #
 // Helper to verify JWT token
 const verifyJWT = async (authHeader) => {
   if (!authHeader) {
     throw new Error('No authorization header provided');
   }
-  
-  const token = authHeader.startsWith('Bearer ') 
+
+  const token = authHeader.startsWith('Bearer ')
     ? authHeader.substring(7)
     : authHeader;
-  
+
   if (!token) {
     throw new Error('No token provided');
   }
-  
+
   try {
     const jwtSecret = await getJwtSecret();
-    if (!jwtSecret) { 
+    if (!jwtSecret) {
         throw new Error('JWT secret is not available for verification.');
     }
     const decoded = jwt.verify(token, jwtSecret);
@@ -122,6 +146,9 @@ const verifyJWT = async (authHeader) => {
   }
 };
 
+// # ############################################################################ #
+// # #      SECTION 9 - MAIN LAMBDA HANDLER: INITIALIZATION & LOGGING       #
+// # ############################################################################ #
 // --- Main Handler ---
 exports.handler = async (event) => {
     console.log('Received event:', JSON.stringify(event, null, 2));
@@ -134,32 +161,38 @@ exports.handler = async (event) => {
     console.log(`Effective JWT_SECRET_ARN: '${JWT_SECRET_ARN}'`);
     console.log(`Effective AWS_REGION: '${process.env.AWS_REGION}'`);
 
-    // Check essential configuration early   
-    if (!USERS_TABLE_NAME || (USERS_TABLE_NAME === 'Users-dev' && !process.env.USERS_TABLE_NAME)) { 
+    // Check essential configuration early
+    if (!USERS_TABLE_NAME || (USERS_TABLE_NAME === 'Users-dev' && !process.env.USERS_TABLE_NAME)) {
       console.error("USERS_TABLE_NAME not configured correctly. It's either not set or using fallback 'Users-dev' because process.env.USERS_TABLE_NAME is undefined.");
     }
-    if (!CAMPAIGNS_TABLE_NAME || (CAMPAIGNS_TABLE_NAME === 'Campaigns-dev' && !process.env.CAMPAIGNS_TABLE_NAME)) { 
+    if (!CAMPAIGNS_TABLE_NAME || (CAMPAIGNS_TABLE_NAME === 'Campaigns-dev' && !process.env.CAMPAIGNS_TABLE_NAME)) {
       console.error("CAMPAIGNS_TABLE_NAME not configured correctly. It's either not set or using fallback 'Campaigns-dev' because process.env.CAMPAIGNS_TABLE_NAME is undefined.");
     }
     if (!JWT_SECRET_ARN) {
       console.error("JWT_SECRET_ARN environment variable is not set. Cannot sign/verify tokens.");
       return createResponse(500, { message: "Server configuration error: Missing JWT secret configuration." }, requestOrigin);
     }
-  
+
     const httpMethod = event.httpMethod;
     // API Gateway (REST API with Lambda Proxy) usually provides path in event.path
     // For HTTP API, it might be event.requestContext.http.path
     // Let's prioritize event.path and fallback if needed, or use what Amplify sets up.
     // Given Amplify setup, event.path should be correct for REST API with {proxy+}
-    const path = event.path; 
+    const path = event.path;
     console.log(`Handling request: ${httpMethod} ${path}`);
-  
+
+// # ############################################################################ #
+// # #       SECTION 10 - MAIN LAMBDA HANDLER: CORS PREFLIGHT (OPTIONS)       #
+// # ############################################################################ #
     // Handle CORS preflight OPTIONS requests globally
     if (httpMethod === 'OPTIONS') {
       console.log('Handling OPTIONS preflight request');
       return createResponse(200, {}, requestOrigin);
     }
-  
+
+// # ############################################################################ #
+// # #             SECTION 11 - MAIN LAMBDA HANDLER: ROUTE - GET /AUTH/NONCE            #
+// # ############################################################################ #
     // --- Auth Routes ---
     // API Gateway with {proxy+} on /auth will send /auth/nonce to event.path
     if (httpMethod === 'GET' && path === '/auth/nonce') {
@@ -172,23 +205,64 @@ exports.handler = async (event) => {
         return createResponse(500, { message: 'Failed to generate nonce' }, requestOrigin);
       }
     }
-  
+
+// # ############################################################################ #
+// # #    SECTION 12 - MAIN LAMBDA HANDLER: ROUTE - POST /AUTH/VERIFY-SIGNATURE   #
+// # ############################################################################ #
     if (httpMethod === 'POST' && path === '/auth/verify-signature') {
       console.log('[POST /auth/verify-signature] Handler triggered');
       if (!event.body) {
         return createResponse(400, { message: 'Missing request body' }, requestOrigin);
       }
       try {
-        const { payload, nonce } = JSON.parse(event.body);
-        if (!payload || !nonce) {
-          return createResponse(400, { message: 'Missing payload or nonce' }, requestOrigin);
+        const { payload, nonce: serverIssuedNonceFromClient } = JSON.parse(event.body);
+        // `payload` contains: message (the SIWE string), signature, address (wallet's claimed address)
+
+        if (!payload || !payload.message || !payload.signature || !payload.address || !serverIssuedNonceFromClient) {
+          console.error('[POST /auth/verify-signature] Malformed request: Missing one or more required fields in payload or nonce.', { payload, nonceReceived: serverIssuedNonceFromClient });
+          return createResponse(400, { message: 'Malformed request: Missing payload fields or nonce' }, requestOrigin);
         }
-        const siweMessage = new SiweMessage(payload.message);
-        const fields = await siweMessage.verify({ signature: payload.signature });
-        if (!fields.success) {
-          return createResponse(401, { message: 'Invalid signature' }, requestOrigin);
+
+        const siweMessageStringFromClient = payload.message;
+        const signatureFromClient = payload.signature;
+        const addressFromClientPayload = payload.address;
+
+        // --- Detailed Logging Before Verification ---
+        console.log("--- [BACKEND /auth/verify-signature] VERIFICATION INPUTS ---");
+        console.log("Server-issued Nonce (received alongside payload):", serverIssuedNonceFromClient);
+        console.log("Client Payload Address (from payload.address):", addressFromClientPayload);
+        console.log("Client Payload Signature:", signatureFromClient);
+        console.log("Client SIWE Message String (from payload.message):", JSON.stringify(siweMessageStringFromClient));
+
+        const siweMessage = new SiweMessage(siweMessageStringFromClient);
+
+        console.log("--- [BACKEND /auth/verify-signature] PARSED SIWE OBJECT FIELDS (from payload.message) ---");
+        console.log("siweMessage.domain:", siweMessage.domain);
+        console.log("siweMessage.address (parsed from message):", siweMessage.address);
+        console.log("siweMessage.nonce (parsed from message):", siweMessage.nonce);
+        console.log("siweMessage.uri:", siweMessage.uri);
+        console.log("siweMessage.version:", siweMessage.version);
+        console.log("siweMessage.chainId:", siweMessage.chainId);
+        console.log("siweMessage.issuedAt:", siweMessage.issuedAt);
+        console.log("siweMessage.expirationTime:", siweMessage.expirationTime);
+        console.log("siweMessage.statement:", siweMessage.statement);
+        // --- End of Detailed Logging ---
+
+        const verificationResult = await siweMessage.verify({
+          signature: signatureFromClient,
+          nonce: serverIssuedNonceFromClient,
+          time: new Date().toISOString(),
+        });
+
+        // If verify() completes without throwing, verificationResult.success will be true.
+        const walletAddress = verificationResult.data.address;
+
+        if (walletAddress.toLowerCase() !== addressFromClientPayload.toLowerCase()) {
+            console.warn(`[POST /auth/verify-signature] Address from client payload (${addressFromClientPayload}) does not match verified SIWE message address (${walletAddress}). Using verified address.`);
         }
-        const walletAddress = siweMessage.address;
+
+        console.log(`[POST /auth/verify-signature] SIWE signature successfully verified for address: ${walletAddress}`);
+
         const now = new Date().toISOString();
         try {
           await ddbDocClient.send(new PutCommand({
@@ -196,6 +270,7 @@ exports.handler = async (event) => {
             Item: { walletAddress, createdAt: now, lastLoginAt: now, isWorldIdVerified: false },
             ConditionExpression: 'attribute_not_exists(walletAddress)'
           }));
+          console.log(`[POST /auth/verify-signature] New user created: ${walletAddress}`);
         } catch (err) {
           if (err.name === 'ConditionalCheckFailedException') {
             await ddbDocClient.send(new UpdateCommand({
@@ -204,22 +279,58 @@ exports.handler = async (event) => {
               UpdateExpression: 'SET lastLoginAt = :now',
               ExpressionAttributeValues: { ':now': now }
             }));
+            console.log(`[POST /auth/verify-signature] Existing user lastLoginAt updated: ${walletAddress}`);
           } else {
-            console.error(`Error putting/updating user in DynamoDB table '${USERS_TABLE_NAME}':`, err);
+            console.error(`[POST /auth/verify-signature] Error putting/updating user in DynamoDB table '${USERS_TABLE_NAME}':`, err);
             throw err;
           }
         }
+
         const jwtSecret = await getJwtSecret();
         const token = jwt.sign({ walletAddress }, jwtSecret, { expiresIn: JWT_EXPIRY });
+        console.log(`[POST /auth/verify-signature] JWT token generated for: ${walletAddress}`);
         return createResponse(200, { success: true, token, walletAddress }, requestOrigin);
+
       } catch (error) {
-        console.error('[POST /auth/verify-signature] Error:', error);
-        return createResponse(500, { message: 'Failed to verify signature', error: error.message }, requestOrigin);
+        console.error('[POST /auth/verify-signature] Error in catch block:', error);
+        
+        let errorMessage = 'Failed to verify signature';
+        let statusCode = 500;
+
+        // Check if it's a SiweError-like object to provide more specific details
+        // In JavaScript, we directly access properties after checking if 'error' is an object and has 'type'.
+        if (error && typeof error === 'object' && error.type) {
+            errorMessage = `${error.type || 'Verification failed'}`; // Use error.type
+            if (error.expected && error.received) {
+                errorMessage += `: Expected ${error.expected}, Received ${error.received}`;
+            } else if (error.message && typeof error.message === 'string') {
+                 errorMessage = error.message;
+            }
+            // Ensure error.type is a string before calling includes
+            if (typeof error.type === 'string' && ['EXPIRED_MESSAGE', 'INVALID_SIGNATURE', 'NONCE_MISMATCH', 'INVALID_ADDRESS'].includes(error.type)) {
+                statusCode = 401; 
+            }
+        } else if (error instanceof Error) { // Standard JavaScript Error object
+            errorMessage = error.message;
+        } else if (typeof error === 'object' && error !== null) { // Some other object error
+            try {
+                errorMessage = JSON.stringify(error);
+            } catch (e) {
+                errorMessage = 'An unknown object error occurred during signature verification.';
+            }
+        } else if (typeof error === 'string') { // Error is just a string
+            errorMessage = error;
+        }
+
+        return createResponse(statusCode, { message: 'Failed to verify signature', error: errorMessage }, requestOrigin);
       }
     }
-  
+
+// # ############################################################################ #
+// # #          SECTION 13 - MAIN LAMBDA HANDLER: ROUTE - POST /VERIFY-WORLDID        #
+// # ############################################################################ #
     // Path for /verify-worldid (assuming it's a top-level path defined in Amplify CLI as /verify-worldid)
-    if (httpMethod === 'POST' && path === '/verify-worldid') { 
+    if (httpMethod === 'POST' && path === '/verify-worldid') {
       console.log('[POST /verify-worldid] Handler triggered');
       try {
         const authHeader = event.headers?.Authorization || event.headers?.authorization;
@@ -229,7 +340,7 @@ exports.handler = async (event) => {
           return createResponse(400, { message: 'Missing request body' }, requestOrigin);
         }
         const worldIdProof = JSON.parse(event.body);
-        
+
         // --- Actual World ID Verification Logic (Placeholder) ---
         console.log(`Simulating World ID verification for app ${WORLD_ID_APP_ID}, action ${WORLD_ID_ACTION_ID}, signal ${walletAddress}`);
         // Replace with actual fetch call to World ID verification endpoint
@@ -258,12 +369,15 @@ exports.handler = async (event) => {
       } catch (error) {
         console.error('[POST /verify-worldid] Error:', error);
         const errorMessage = error.message || 'Failed to verify World ID';
-        return createResponse(error.message && error.message.includes('token') ? 401 : 500, { 
-          message: errorMessage, errorDetails: error.message 
+        return createResponse(error.message && error.message.includes('token') ? 401 : 500, {
+          message: errorMessage, errorDetails: error.message
         }, requestOrigin);
       }
     }
-  
+
+// # ############################################################################ #
+// # #          SECTION 14 - MAIN LAMBDA HANDLER: ROUTE BLOCK - /CAMPAIGNS          #
+// # ############################################################################ #
     // --- Campaign Routes ---
     // API Gateway with {proxy+} on /campaigns will send /campaigns to event.path for base
     // and /campaigns/ID to event.path for specific campaign
@@ -271,7 +385,10 @@ exports.handler = async (event) => {
 
     if (path.startsWith('/campaigns')) {
         const pathParts = path.split('/').filter(part => part !== ''); // e.g. ['campaigns', 'ID', 'donate'] or ['campaigns', 'ID'] or ['campaigns']
-        
+
+// # ############################################################################ #
+// # #        SECTION 15 - MAIN LAMBDA HANDLER: SUB-ROUTE - POST /CAMPAIGNS       #
+// # ############################################################################ #
         // POST /campaigns (Create campaign)
         if (httpMethod === 'POST' && pathParts.length === 1 && pathParts[0] === 'campaigns') {
             try {
@@ -298,6 +415,9 @@ exports.handler = async (event) => {
             }
         }
 
+// # ############################################################################ #
+// # #         SECTION 16 - MAIN LAMBDA HANDLER: SUB-ROUTE - GET /CAMPAIGNS         #
+// # ############################################################################ #
         // GET /campaigns (List all campaigns)
         if (httpMethod === 'GET' && pathParts.length === 1 && pathParts[0] === 'campaigns') {
             try {
@@ -316,10 +436,16 @@ exports.handler = async (event) => {
             }
         }
 
+// # ############################################################################ #
+// # #      SECTION 17 - MAIN LAMBDA HANDLER: SUB-ROUTE BLOCK - /CAMPAIGNS/{ID}     #
+// # ############################################################################ #
         // Operations on a specific campaign: /campaigns/{campaignId}/*
         if (pathParts.length >= 2 && pathParts[0] === 'campaigns') {
             const campaignId = pathParts[1];
 
+// # ############################################################################ #
+// # #       SECTION 18 - MAIN LAMBDA HANDLER: SUB-ROUTE - GET /CAMPAIGNS/{ID}      #
+// # ############################################################################ #
             // GET /campaigns/{campaignId}
             if (httpMethod === 'GET' && pathParts.length === 2) {
                 try {
@@ -333,6 +459,9 @@ exports.handler = async (event) => {
                 }
             }
 
+// # ############################################################################ #
+// # #       SECTION 19 - MAIN LAMBDA HANDLER: SUB-ROUTE - PUT /CAMPAIGNS/{ID}      #
+// # ############################################################################ #
             // PUT /campaigns/{campaignId}
             if (httpMethod === 'PUT' && pathParts.length === 2) {
                 try {
@@ -368,6 +497,9 @@ exports.handler = async (event) => {
                 }
             }
 
+// # ############################################################################ #
+// # #      SECTION 20 - MAIN LAMBDA HANDLER: SUB-ROUTE - DELETE /CAMPAIGNS/{ID}    #
+// # ############################################################################ #
             // DELETE /campaigns/{campaignId}
             if (httpMethod === 'DELETE' && pathParts.length === 2) {
                  try {
@@ -388,6 +520,9 @@ exports.handler = async (event) => {
                 }
             }
 
+// # ############################################################################ #
+// # #   SECTION 21 - MAIN LAMBDA HANDLER: SUB-ROUTE - POST /CAMPAIGNS/{ID}/DONATE  #
+// # ############################################################################ #
             // POST /campaigns/{campaignId}/donate
             if (httpMethod === 'POST' && pathParts.length === 3 && pathParts[2] === 'donate') {
                 try {
@@ -420,11 +555,17 @@ exports.handler = async (event) => {
             }
         }
     }
-    
+
+// # ############################################################################ #
+// # #           SECTION 22 - MAIN LAMBDA HANDLER: ROUTE BLOCK - /USERS           #
+// # ############################################################################ #
     // --- User Routes ---
     // API Gateway with {proxy+} on /users will send /users/{walletAddress}/campaigns to event.path
     if (path.startsWith('/users/')) {
         const pathParts = path.split('/').filter(part => part !== ''); // e.g. ['users', 'WALLET_ADDRESS', 'campaigns']
+// # ############################################################################ #
+// # #    SECTION 23 - MAIN LAMBDA HANDLER: SUB-ROUTE - GET /USERS/{WA}/CAMPAIGNS   #
+// # ############################################################################ #
         if (httpMethod === 'GET' && pathParts.length === 3 && pathParts[0] === 'users' && pathParts[2] === 'campaigns') {
             const userWalletAddress = pathParts[1];
             try {
@@ -444,6 +585,9 @@ exports.handler = async (event) => {
         }
     }
 
+// # ############################################################################ #
+// # #        SECTION 24 - MAIN LAMBDA HANDLER: ROUTE - POST /DONATE (EXAMPLE)      #
+// # ############################################################################ #
     // --- Donate Route (if you have a top-level /donate defined in Amplify CLI) ---
     // This is an example if you defined /donate as a base path.
     // If donations are always /campaigns/{id}/donate, this block might not be needed.
@@ -457,7 +601,9 @@ exports.handler = async (event) => {
         return createResponse(501, { message: 'Top-level /donate not fully implemented. Use /campaigns/{id}/donate' }, requestOrigin);
     }
 
-
+// # ############################################################################ #
+// # #         SECTION 25 - MAIN LAMBDA HANDLER: DEFAULT ROUTE (NOT FOUND)        #
+// # ############################################################################ #
     // --- Default Route (Not Found) ---
     console.log(`Unhandled path: ${httpMethod} ${path}`);
     return createResponse(404, { message: `Not Found: ${httpMethod} ${path}` }, requestOrigin);
