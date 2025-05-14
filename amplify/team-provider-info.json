@@ -22,7 +22,7 @@
       "function": {
         "0worldfunddebug56fd6525": {
           "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
-          "s3Key": "amplify-builds/0worldfunddebug56fd6525-50744c6b6b48766d6965-build.zip"
+          "s3Key": "amplify-builds/0worldfunddebug56fd6525-7a7a3150595a4a6e7459-build.zip"
         },
         "0worldfunddebugAuthLibsLayer": {
           "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
