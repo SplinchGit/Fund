@@ -1,5 +1,5 @@
 // src/services/AuthService.ts
-// Service for handling authentication with the backend
+// Enhanced service for handling authentication with the backend
 
 import type { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
 import type { ISuccessResult as IDKitSuccessResult } from '@worldcoin/idkit';
@@ -7,13 +7,49 @@ import type { ISuccessResult as IDKitSuccessResult } from '@worldcoin/idkit';
 // Constants
 const SESSION_TOKEN_KEY = 'worldfund_session_token';
 const WALLET_ADDRESS_KEY = 'worldfund_wallet_address';
-const DEFAULT_TIMEOUT = 15000; // 15 seconds timeout for fetch requests
+
+// Configuration for retry logic and timeouts
+interface RetryConfig {
+  maxRetries: number;
+  baseDelayMs: number;
+  maxDelayMs: number;
+  timeoutMs: number;
+}
+
+// Default configuration values
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxRetries: 3,
+  baseDelayMs: 300,
+  maxDelayMs: 5000,
+  timeoutMs: 15000
+};
+
+// Error types for better error handling
+enum ErrorType {
+  NETWORK = 'network_error',
+  TIMEOUT = 'timeout_error',
+  SERVER = 'server_error',
+  AUTH = 'authentication_error',
+  VALIDATION = 'validation_error',
+  CORS = 'cors_error',
+  UNKNOWN = 'unknown_error'
+}
+
+// Interface for correlation tracking
+interface RequestMetadata {
+  requestId: string;
+  endpoint: string;
+  startTime: number;
+  attempts: number;
+}
 
 // Class for authentication service
 class AuthService {
   private static instance: AuthService;
   private API_BASE: string;
   private API_KEY?: string;
+  private activeRequests: Map<string, RequestMetadata>;
+  private retryConfig: RetryConfig;
 
   private constructor() {
     // Log all environment variables for debugging
@@ -56,6 +92,12 @@ class AuthService {
       import.meta.env.VITE_WORLD_APP_API ||
       import.meta.env.VITE_APP_BACKEND_API_KEY;
 
+    // Initialize request tracking
+    this.activeRequests = new Map();
+    
+    // Initialize retry configuration
+    this.retryConfig = DEFAULT_RETRY_CONFIG;
+
     console.log('[AuthService] Initialized with API base:', this.API_BASE);
   }
 
@@ -65,6 +107,110 @@ class AuthService {
       AuthService.instance = new AuthService();
     }
     return AuthService.instance;
+  }
+
+  /** Configure retry parameters */
+  public configureRetry(config: Partial<RetryConfig>): void {
+    this.retryConfig = { ...this.retryConfig, ...config };
+    console.log('[AuthService] Retry configuration updated:', this.retryConfig);
+  }
+
+  /** Generate a unique request ID */
+  private generateRequestId(): string {
+    return `req_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+  }
+
+  /** Track a new request */
+  private trackRequest(requestId: string, endpoint: string): void {
+    this.activeRequests.set(requestId, {
+      requestId,
+      endpoint,
+      startTime: Date.now(),
+      attempts: 0
+    });
+  }
+
+  /** Update tracking for a request attempt */
+  private updateRequestAttempt(requestId: string): void {
+    const metadata = this.activeRequests.get(requestId);
+    if (metadata) {
+      metadata.attempts += 1;
+      this.activeRequests.set(requestId, metadata);
+    }
+  }
+
+  /** Complete tracking for a request */
+  private completeRequest(requestId: string, success: boolean, error?: any): void {
+    const metadata = this.activeRequests.get(requestId);
+    if (metadata) {
+      const duration = Date.now() - metadata.startTime;
+      console.log(`[AuthService] Request ${requestId} to ${metadata.endpoint} completed in ${duration}ms after ${metadata.attempts} attempt(s). Success: ${success}${error ? `. Error: ${error.message || JSON.stringify(error)}` : ''}`);
+      this.activeRequests.delete(requestId);
+    }
+  }
+
+  /** Parse error from fetch response or exception */
+  private parseErrorType(error: any, status?: number): ErrorType {
+    if (!error) return ErrorType.UNKNOWN;
+    
+    const errorMsg = error.message || String(error);
+    
+    if (errorMsg.includes('timeout') || error.name === 'AbortError') {
+      return ErrorType.TIMEOUT;
+    }
+    
+    if (errorMsg.includes('networkerror') || errorMsg.includes('failed to fetch') || errorMsg.includes('network request failed')) {
+      return ErrorType.NETWORK;
+    }
+    
+    if (errorMsg.includes('cors') || errorMsg.includes('cross-origin')) {
+      return ErrorType.CORS;
+    }
+    
+    if (status) {
+      if (status >= 400 && status < 500) {
+        return ErrorType.VALIDATION;
+      }
+      if (status >= 500) {
+        return ErrorType.SERVER;
+      }
+      if (status === 401 || status === 403) {
+        return ErrorType.AUTH;
+      }
+    }
+    
+    return ErrorType.UNKNOWN;
+  }
+
+  /** Calculate backoff delay with jitter */
+  private calculateBackoff(attempt: number): number {
+    // Exponential backoff with jitter
+    const exponentialDelay = Math.min(
+      this.retryConfig.maxDelayMs,
+      this.retryConfig.baseDelayMs * Math.pow(2, attempt)
+    );
+    
+    // Add jitter (0-20% randomness)
+    const jitter = exponentialDelay * 0.2 * Math.random();
+    return exponentialDelay + jitter;
+  }
+
+  /** Determine if an error is retryable */
+  private isRetryableError(errorType: ErrorType, status?: number): boolean {
+    // Network errors are generally retryable
+    if (errorType === ErrorType.NETWORK) return true;
+    
+    // Timeouts are retryable
+    if (errorType === ErrorType.TIMEOUT) return true;
+    
+    // Server errors (5xx) are retryable
+    if (errorType === ErrorType.SERVER) return true;
+    
+    // Some specific status codes might be retryable
+    if (status === 429 || status === 503) return true;
+    
+    // All other errors are not retryable by default
+    return false;
   }
 
   /** Build a properly-formed URL with the API base */
@@ -80,6 +226,8 @@ class AuthService {
       'Content-Type': 'application/json',
       // Add CORS headers
       'Accept': 'application/json, text/plain, */*',
+      // Add correlation ID header for tracing
+      'X-Request-ID': this.generateRequestId()
     };
 
     if (this.API_KEY) {
@@ -96,121 +244,225 @@ class AuthService {
     return headers;
   }
 
-  /** Enhanced fetch with timeout and error handling */
-  private async fetchWithTimeout(
-    url: string, 
-    options: RequestInit, 
-    timeout: number = DEFAULT_TIMEOUT
-  ): Promise<Response> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+  /** Enhanced fetch with retries, timeouts, and detailed logging */
+  private async fetchWithRetry<T>(
+    url: string,
+    options: RequestInit,
+    requestId: string,
+    endpoint: string
+  ): Promise<T> {
+    this.trackRequest(requestId, endpoint);
     
-    try {
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
+    let attempt = 0;
+    let lastError: any;
+    let lastStatus: number | undefined;
+    
+    // Keep trying until we hit max retries
+    while (attempt <= this.retryConfig.maxRetries) {
+      this.updateRequestAttempt(requestId);
       
-      return response;
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error(`Request timeout after ${timeout}ms`);
+      try {
+        console.log(`[AuthService] ${requestId} - Attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1} for ${endpoint}`);
+        
+        // Create abort controller for this attempt
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          controller.abort();
+          console.warn(`[AuthService] ${requestId} - Request timeout after ${this.retryConfig.timeoutMs}ms`);
+        }, this.retryConfig.timeoutMs);
+        
+        // Attempt the fetch
+        const startTime = Date.now();
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal,
+          headers: {
+            ...options.headers,
+            'X-Attempt-Number': String(attempt + 1)
+          }
+        });
+        
+        // Clear the timeout
+        clearTimeout(timeoutId);
+        
+        const duration = Date.now() - startTime;
+        console.log(`[AuthService] ${requestId} - Response received in ${duration}ms with status ${response.status}`);
+        
+        // Check for error status
+        if (!response.ok) {
+          lastStatus = response.status;
+          const errorBody = await response.text();
+          let errorMessage: string;
+          
+          try {
+            const errorJson = JSON.parse(errorBody);
+            errorMessage = errorJson.message || errorJson.error || `HTTP error ${response.status}`;
+          } catch (e) {
+            errorMessage = errorBody || `HTTP error ${response.status}`;
+          }
+          
+          const error = new Error(errorMessage);
+          lastError = error;
+          
+          // Check if this error is retryable
+          const errorType = this.parseErrorType(error, response.status);
+          if (!this.isRetryableError(errorType, response.status) || attempt >= this.retryConfig.maxRetries) {
+            console.error(`[AuthService] ${requestId} - Non-retryable error (${errorType}) or max retries reached:`, errorMessage);
+            this.completeRequest(requestId, false, error);
+            throw error;
+          }
+          
+          // Log and retry after backoff
+          const backoffMs = this.calculateBackoff(attempt);
+          console.warn(`[AuthService] ${requestId} - Retryable error (${errorType}), retrying in ${backoffMs}ms:`, errorMessage);
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+          attempt++;
+          continue;
+        }
+        
+        // Handle successful response
+        let data: T;
+        
+        // Check for empty response (e.g., 204 No Content)
+        const contentType = response.headers.get('content-type');
+        if (response.status === 204 || !contentType) {
+          data = {} as T;
+        } else if (contentType.includes('application/json')) {
+          // Parse JSON response
+          data = await response.json() as T;
+        } else {
+          // Other response types (text, etc.)
+          const text = await response.text();
+          try {
+            data = JSON.parse(text) as T;
+          } catch (e) {
+            data = text as unknown as T;
+          }
+        }
+        
+        this.completeRequest(requestId, true);
+        return data;
+      } catch (error: any) {
+        lastError = error;
+        
+        // Handle abort/timeout errors specially
+        if (error.name === 'AbortError') {
+          console.error(`[AuthService] ${requestId} - Request aborted (timeout)`);
+          lastError = new Error(`Request timeout after ${this.retryConfig.timeoutMs}ms`);
+        }
+        
+        // Determine error type and if we should retry
+        const errorType = this.parseErrorType(error);
+        if (!this.isRetryableError(errorType) || attempt >= this.retryConfig.maxRetries) {
+          console.error(`[AuthService] ${requestId} - Non-retryable error (${errorType}) or max retries reached:`, error);
+          this.completeRequest(requestId, false, error);
+          throw lastError;
+        }
+        
+        // Log and retry after backoff
+        const backoffMs = this.calculateBackoff(attempt);
+        console.warn(`[AuthService] ${requestId} - Retryable error (${errorType}), retrying in ${backoffMs}ms:`, error);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+        attempt++;
       }
-      throw error;
-    } finally {
-      clearTimeout(timeoutId);
     }
+    
+    // If we get here, we've exceeded retries
+    console.error(`[AuthService] ${requestId} - Max retries exceeded`);
+    this.completeRequest(requestId, false, lastError);
+    
+    if (lastError) {
+      throw lastError;
+    } else {
+      throw new Error(`Failed after ${this.retryConfig.maxRetries} retries`);
+    }
+  }
+
+  /** Validate wallet authentication payload */
+  private validateWalletPayload(payload: MiniAppWalletAuthSuccessPayload, nonce: string): boolean {
+    // Check required fields
+    if (!payload) {
+      console.error('[AuthService] validateWalletPayload: Payload is null or undefined');
+      return false;
+    }
+    
+    if (payload.status !== 'success') {
+      console.error('[AuthService] validateWalletPayload: Payload status is not success:', payload.status);
+      return false;
+    }
+    
+    if (!payload.message) {
+      console.error('[AuthService] validateWalletPayload: Payload message is missing');
+      return false;
+    }
+    
+    if (!payload.signature) {
+      console.error('[AuthService] validateWalletPayload: Payload signature is missing');
+      return false;
+    }
+    
+    // Verify the message contains the nonce (simple check)
+    if (typeof payload.message === 'string' && !payload.message.includes(nonce)) {
+      console.warn('[AuthService] validateWalletPayload: Nonce not found in message, this could indicate a potential replay attack');
+      // We're not failing validation here, just warning, as the message format might vary
+    }
+    
+    return true;
   }
 
   /** Fetches a unique nonce from the backend. */
   public async getNonce(): Promise<{ success: boolean; nonce?: string; error?: string }> {
     console.log('[AuthService] Fetching nonce...');
+    
+    const requestId = this.generateRequestId();
+    const endpoint = '/auth/nonce';
+    
     try {
-      // Build URL and log for debugging
-      const url = this.buildUrl('/auth/nonce');
-      console.log('[AuthService] Fetching from:', url);
+      // Build URL
+      const url = this.buildUrl(endpoint);
+      console.log(`[AuthService] ${requestId} - Fetching from: ${url}`);
       
-      // Enhanced fetch with timeout
-      const res = await this.fetchWithTimeout(
+      // Execute fetch with retry logic
+      const data = await this.fetchWithRetry<any>(
         url, 
         {
           method: 'GET',
-          headers: this.getHeaders(false),
+          headers: {
+            ...this.getHeaders(false),
+            'X-Request-ID': requestId
+          },
           mode: 'cors', // Explicit CORS mode
           credentials: 'same-origin',
         },
-        10000 // 10 second timeout for nonce
+        requestId,
+        endpoint
       );
-
-      console.log('[AuthService] Response:', {
-        status: res.status,
-        statusText: res.statusText,
-        contentType: res.headers.get('Content-Type'),
-        url: res.url,
-      });
-
-      // Get response as text first to avoid JSON parsing errors
-      const textResponse = await res.text();
       
-      if (!textResponse) {
-        console.warn('[AuthService] Empty response received');
-        return { 
-          success: false, 
-          error: `Empty response received (Status: ${res.status})` 
-        };
+      if (!data.nonce) {
+        console.error(`[AuthService] ${requestId} - Nonce missing in response`, data);
+        return { success: false, error: 'Nonce not found in response' };
       }
       
-      // Log first 100 chars of response for debugging
-      console.log('[AuthService] Response text (first 100 chars):', 
-        textResponse.substring(0, 100) + (textResponse.length > 100 ? '...' : ''));
-      
-      try {
-        // Try to parse as JSON
-        const data = JSON.parse(textResponse);
-        
-        if (!res.ok) {
-          console.error('[AuthService] Nonce fetch failed:', data);
-          return {
-            success: false,
-            error: data.message || `Failed to fetch nonce (${res.status} ${res.statusText})`,
-          };
-        }
-        
-        if (!data.nonce) {
-          console.error('[AuthService] Nonce missing in response', data);
-          return { success: false, error: 'Nonce not found in response' };
-        }
-        
-        console.log('[AuthService] Nonce received successfully');
-        return { success: true, nonce: data.nonce };
-      } catch (parseError) {
-        // Not valid JSON - check if it looks like HTML
-        const isHtml = textResponse.includes('<html') || textResponse.includes('<!DOCTYPE html');
-        const errorDetail = isHtml ? 'Received HTML instead of JSON' : 'Invalid JSON format';
-        
-        console.error(`[AuthService] ${errorDetail}. First 100 chars:`, 
-          textResponse.substring(0, 100) + (textResponse.length > 100 ? '...' : ''));
-        
-        return { 
-          success: false, 
-          error: `Invalid response format: ${errorDetail}. This could indicate a configuration issue with your API URL.` 
-        };
-      }
+      console.log(`[AuthService] ${requestId} - Nonce received successfully`);
+      return { success: true, nonce: data.nonce };
     } catch (error: any) {
       const errorMessage = error.message || 'Network error while fetching nonce';
-      const isTimeoutError = errorMessage.includes('timeout');
-      const isCorsError = errorMessage.includes('CORS') || errorMessage.includes('cross-origin');
+      const errorType = this.parseErrorType(error);
       
       let friendlyError = errorMessage;
       
-      if (isTimeoutError) {
+      if (errorType === ErrorType.TIMEOUT) {
         friendlyError = `API request timed out. Please check your network connection and API availability.`;
-      } else if (isCorsError) {
+      } else if (errorType === ErrorType.CORS) {
         friendlyError = `Cross-origin (CORS) error. This may indicate a configuration issue with your API.`;
+      } else if (errorType === ErrorType.NETWORK) {
+        friendlyError = `Network error. Please check your internet connection.`;
+      } else if (errorType === ErrorType.SERVER) {
+        friendlyError = `Server error. The authentication service is currently experiencing issues.`;
       }
       
-      console.error('[AuthService] Error fetching nonce:', error);
-      console.error('[AuthService] API Base URL:', this.API_BASE);
+      console.error(`[AuthService] ${requestId} - Error fetching nonce:`, error);
+      console.error(`[AuthService] ${requestId} - API Base URL:`, this.API_BASE);
       
       return {
         success: false,
@@ -225,105 +477,90 @@ class AuthService {
     nonce: string
   ): Promise<{ success: boolean; token?: string; walletAddress?: string; error?: string }> {
     console.log('[AuthService] Verifying wallet signature...');
+    
+    // Validate payload
+    if (!this.validateWalletPayload(payload, nonce)) {
+      return {
+        success: false,
+        error: 'Invalid wallet authentication payload'
+      };
+    }
+    
+    const requestId = this.generateRequestId();
+    const endpoint = '/auth/verify-signature';
+    
     try {
-      const url = this.buildUrl('/auth/verify-signature');
-      console.log('[AuthService] Posting to:', url);
+      // Build properly formatted request body with nonce included
+      const requestBody = {
+        payload,
+        nonce,
+        // Add correlation for request tracking
+        requestId
+      };
       
-      // Enhanced fetch with timeout
-      const res = await this.fetchWithTimeout(
+      const url = this.buildUrl(endpoint);
+      console.log(`[AuthService] ${requestId} - Posting to: ${url}`);
+      
+      // Execute fetch with retry logic
+      const data = await this.fetchWithRetry<any>(
         url, 
         {
           method: 'POST',
-          headers: this.getHeaders(false),
-          body: JSON.stringify({ payload, nonce }),
+          headers: {
+            ...this.getHeaders(false),
+            'X-Request-ID': requestId
+          },
+          body: JSON.stringify(requestBody),
           mode: 'cors',
           credentials: 'same-origin',
-        }
+        },
+        requestId,
+        endpoint
       );
 
-      console.log('[AuthService] Response:', {
-        status: res.status,
-        statusText: res.statusText,
-        contentType: res.headers.get('Content-Type'),
-      });
-      
-      // Get response as text first
-      const textResponse = await res.text();
-      
-      if (!textResponse) {
-        console.warn('[AuthService] Empty response received');
-        return { 
-          success: false, 
-          error: `Empty response received (Status: ${res.status})` 
-        };
-      }
-      
-      // Log first part of response for debugging
-      console.log('[AuthService] Response text (first 100 chars):', 
-        textResponse.substring(0, 100) + (textResponse.length > 100 ? '...' : ''));
-      
-      try {
-        // Try to parse as JSON
-        const data = JSON.parse(textResponse);
-        
-        if (!res.ok) {
-          console.error('[AuthService] Signature verification failed:', data);
-          return {
-            success: false,
-            error: data.message || `Verification failed (${res.status} ${res.statusText})`,
-          };
-        }
-
-        if (!data.token || !data.walletAddress) {
-          console.error('[AuthService] Missing token or walletAddress in:', data);
-          return {
-            success: false,
-            error: 'Token or wallet address missing from response',
-          };
-        }
-
-        // Persist session
-        try {
-          localStorage.setItem(SESSION_TOKEN_KEY, data.token);
-          localStorage.setItem(WALLET_ADDRESS_KEY, data.walletAddress);
-        } catch (storageError) {
-          console.error('[AuthService] Error storing session data:', storageError);
-          // Continue even if storage fails - might be in incognito mode
-        }
-
-        console.log('[AuthService] Signature verified successfully');
-        return {
-          success: true,
-          token: data.token,
-          walletAddress: data.walletAddress,
-        };
-      } catch (parseError) {
-        // Not valid JSON - check if it looks like HTML
-        const isHtml = textResponse.includes('<html') || textResponse.includes('<!DOCTYPE html');
-        const errorDetail = isHtml ? 'Received HTML instead of JSON' : 'Invalid JSON format';
-        
-        console.error(`[AuthService] ${errorDetail}. First 100 chars:`, 
-          textResponse.substring(0, 100) + (textResponse.length > 100 ? '...' : ''));
-        
+      if (!data.token || !data.walletAddress) {
+        console.error(`[AuthService] ${requestId} - Missing token or walletAddress in:`, data);
         return {
           success: false,
-          error: `Invalid response format: ${errorDetail}. This could indicate a configuration issue with your API URL.`
+          error: 'Token or wallet address missing from response'
         };
       }
+
+      // Persist session
+      try {
+        localStorage.setItem(SESSION_TOKEN_KEY, data.token);
+        localStorage.setItem(WALLET_ADDRESS_KEY, data.walletAddress);
+        console.log(`[AuthService] ${requestId} - Session data stored successfully`);
+      } catch (storageError) {
+        console.error(`[AuthService] ${requestId} - Error storing session data:`, storageError);
+        // Continue even if storage fails - might be in incognito mode
+      }
+
+      console.log(`[AuthService] ${requestId} - Signature verified successfully`);
+      return {
+        success: true,
+        token: data.token,
+        walletAddress: data.walletAddress,
+      };
     } catch (error: any) {
       const errorMessage = error.message || 'Network error during verification';
-      const isTimeoutError = errorMessage.includes('timeout');
-      const isCorsError = errorMessage.includes('CORS') || errorMessage.includes('cross-origin');
+      const errorType = this.parseErrorType(error);
       
       let friendlyError = errorMessage;
       
-      if (isTimeoutError) {
-        friendlyError = `API request timed out. Please check your network connection and API availability.`;
-      } else if (isCorsError) {
+      if (errorType === ErrorType.TIMEOUT) {
+        friendlyError = `API request timed out. Please check your network connection and try again.`;
+      } else if (errorType === ErrorType.CORS) {
         friendlyError = `Cross-origin (CORS) error. This may indicate a configuration issue with your API.`;
+      } else if (errorType === ErrorType.NETWORK) {
+        friendlyError = `Network error. Please check your internet connection.`;
+      } else if (errorType === ErrorType.SERVER) {
+        friendlyError = `Server error. The authentication service is currently experiencing issues.`;
+      } else if (errorType === ErrorType.VALIDATION) {
+        friendlyError = `Validation error: ${errorMessage}`;
       }
       
-      console.error('[AuthService] Error verifying signature:', error);
+      console.error(`[AuthService] ${requestId} - Error verifying signature:`, error);
       
       return {
         success: false,
@@ -337,92 +574,65 @@ class AuthService {
     proof: IDKitSuccessResult
   ): Promise<{ success: boolean; error?: string }> {
     console.log('[AuthService] Verifying World ID proof...');
+    
+    // Validate proof
+    if (!proof || !proof.merkle_root || !proof.nullifier_hash || !proof.proof) {
+      console.error('[AuthService] verifyWorldIdProof: Invalid or incomplete proof:', proof);
+      return { 
+        success: false, 
+        error: 'Invalid or incomplete World ID proof' 
+      };
+    }
+    
+    const requestId = this.generateRequestId();
+    const endpoint = '/verify-worldid';
+    
     try {
-      const url = this.buildUrl('/verify-worldid');
-      console.log('[AuthService] Posting to:', url);
+      const url = this.buildUrl(endpoint);
+      console.log(`[AuthService] ${requestId} - Posting to: ${url}`);
       
-      // Enhanced fetch with timeout
-      const res = await this.fetchWithTimeout(
+      // Execute fetch with retry logic
+      const data = await this.fetchWithRetry<any>(
         url, 
         {
           method: 'POST',
-          headers: this.getHeaders(true),
-          body: JSON.stringify(proof),
+          headers: {
+            ...this.getHeaders(true),
+            'X-Request-ID': requestId
+          },
+          body: JSON.stringify({
+            ...proof,
+            // Add correlation for request tracking
+            requestId
+          }),
           mode: 'cors',
           credentials: 'same-origin',
-        }
+        },
+        requestId,
+        endpoint
       );
-
-      console.log('[AuthService] Response:', {
-        status: res.status,
-        statusText: res.statusText,
-        contentType: res.headers.get('Content-Type'),
-      });
       
-      // Get response as text first
-      const textResponse = await res.text();
-      
-      // Log first part of response for debugging if not empty
-      if (textResponse) {
-        console.log('[AuthService] Response text (first 100 chars):', 
-          textResponse.substring(0, 100) + (textResponse.length > 100 ? '...' : ''));
-      } else {
-        console.log('[AuthService] Response is empty (possibly a 204 No Content)');
-      }
-      
-      // Empty response is OK for some endpoints
-      if (!textResponse && res.ok) {
-        console.log('[AuthService] World ID proof verified successfully (empty response)');
-        return { success: true };
-      }
-      
-      try {
-        // Try to parse as JSON if there's content
-        const data = textResponse ? JSON.parse(textResponse) : {};
-        
-        if (!res.ok) {
-          console.error('[AuthService] World ID verification failed:', data);
-          return {
-            success: false,
-            error: data.message || `Verification failed (${res.status} ${res.statusText})`,
-          };
-        }
-
-        console.log('[AuthService] World ID proof verified successfully');
-        return { success: true };
-      } catch (parseError) {
-        if (!res.ok) {
-          // Not valid JSON and not a successful response
-          const isHtml = textResponse.includes('<html') || textResponse.includes('<!DOCTYPE html');
-          const errorDetail = isHtml ? 'Received HTML instead of JSON' : 'Invalid JSON format';
-          
-          console.error(`[AuthService] ${errorDetail}. First 100 chars:`, 
-            textResponse.substring(0, 100) + (textResponse.length > 100 ? '...' : ''));
-          
-          return {
-            success: false,
-            error: `Invalid response format: ${errorDetail}. This could indicate a configuration issue with your API URL.`
-          };
-        } else {
-          // Not valid JSON but successful response - this is unusual but we'll accept it
-          console.warn('[AuthService] Successful response but invalid JSON format');
-          return { success: true };
-        }
-      }
+      console.log(`[AuthService] ${requestId} - World ID proof verified successfully`);
+      return { success: true };
     } catch (error: any) {
       const errorMessage = error.message || 'Network error during verification';
-      const isTimeoutError = errorMessage.includes('timeout');
-      const isCorsError = errorMessage.includes('CORS') || errorMessage.includes('cross-origin');
+      const errorType = this.parseErrorType(error);
       
       let friendlyError = errorMessage;
       
-      if (isTimeoutError) {
-        friendlyError = `API request timed out. Please check your network connection and API availability.`;
-      } else if (isCorsError) {
+      if (errorType === ErrorType.TIMEOUT) {
+        friendlyError = `API request timed out. Please check your network connection and try again.`;
+      } else if (errorType === ErrorType.CORS) {
         friendlyError = `Cross-origin (CORS) error. This may indicate a configuration issue with your API.`;
+      } else if (errorType === ErrorType.NETWORK) {
+        friendlyError = `Network error. Please check your internet connection.`;
+      } else if (errorType === ErrorType.SERVER) {
+        friendlyError = `Server error. The verification service is currently experiencing issues.`;
+      } else if (errorType === ErrorType.AUTH) {
+        friendlyError = `Authentication error: ${errorMessage}`;
       }
       
-      console.error('[AuthService] Error verifying World ID proof:', error);
+      console.error(`[AuthService] ${requestId} - Error verifying World ID proof:`, error);
       
       return {
         success: false,
@@ -434,20 +644,23 @@ class AuthService {
   /** Logs the user out */
   public async logout(): Promise<{ success: boolean; error?: string }> {
     console.log('[AuthService] Logging out...');
+    
+    const requestId = this.generateRequestId();
+    
     try {
       // Clear local session
       try {
         localStorage.removeItem(SESSION_TOKEN_KEY);
         localStorage.removeItem(WALLET_ADDRESS_KEY);
       } catch (storageError) {
-        console.warn('[AuthService] Error removing items from localStorage:', storageError);
+        console.warn(`[AuthService] ${requestId} - Error removing items from localStorage:`, storageError);
         // Continue even if this fails
       }
       
-      console.log('[AuthService] Logout successful');
+      console.log(`[AuthService] ${requestId} - Logout successful`);
       return { success: true };
     } catch (error: any) {
-      console.error('[AuthService] Error during logout:', error);
+      console.error(`[AuthService] ${requestId} - Error during logout:`, error);
       return {
         success: false,
         error: error.message || 'Logout failed',
@@ -462,6 +675,9 @@ class AuthService {
     walletAddress: string | null;
   }> {
     console.log('[AuthService] Checking auth status...');
+    
+    const requestId = this.generateRequestId();
+    
     try {
       let token = null;
       let walletAddress = null;
@@ -470,12 +686,12 @@ class AuthService {
         token = localStorage.getItem(SESSION_TOKEN_KEY);
         walletAddress = localStorage.getItem(WALLET_ADDRESS_KEY);
       } catch (storageError) {
-        console.warn('[AuthService] Error accessing localStorage:', storageError);
+        console.warn(`[AuthService] ${requestId} - Error accessing localStorage:`, storageError);
         // Continue with null values if this fails
       }
       
       const ok = Boolean(token && walletAddress);
-      console.log('[AuthService] Auth status →', ok);
+      console.log(`[AuthService] ${requestId} - Auth status → ${ok ? 'Authenticated' : 'Not authenticated'}`);
       
       return {
         isAuthenticated: ok,
@@ -483,26 +699,29 @@ class AuthService {
         walletAddress,
       };
     } catch (error: any) {
-      console.error('[AuthService] Error checking auth status:', error);
+      console.error(`[AuthService] ${requestId} - Error checking auth status:`, error);
       
       try {
         localStorage.removeItem(SESSION_TOKEN_KEY);
         localStorage.removeItem(WALLET_ADDRESS_KEY);
       } catch (storageError) {
-        console.warn('[AuthService] Error removing items from localStorage:', storageError);
+        console.warn(`[AuthService] ${requestId} - Error removing items from localStorage:`, storageError);
       }
       
       return { isAuthenticated: false, token: null, walletAddress: null };
     }
   }
 
-  /** Verifies that a token is valid (optional JWT‐decode) */
+  /** Verifies that a token is valid */
   public async verifyToken(token: string): Promise<{
     isValid: boolean;
     error?: string;
     walletAddress?: string;
   }> {
     console.log('[AuthService] Verifying token validity...');
+    
+    const requestId = this.generateRequestId();
+    
     try {
       // Basic validation
       if (!token || typeof token !== 'string' || token.trim() === '') {
@@ -531,13 +750,14 @@ class AuthService {
           return { isValid: false, error: 'Token missing wallet address' };
         }
 
+        console.log(`[AuthService] ${requestId} - Token validated successfully`);
         return { isValid: true, walletAddress: payload.walletAddress };
       } catch (decodeError) {
-        console.error('[AuthService] Error decoding token payload:', decodeError);
+        console.error(`[AuthService] ${requestId} - Error decoding token payload:`, decodeError);
         return { isValid: false, error: 'Invalid token format (cannot decode payload)' };
       }
     } catch (error: any) {
-      console.error('[AuthService] Error verifying token:', error);
+      console.error(`[AuthService] ${requestId} - Error verifying token:`, error);
       return { isValid: false, error: error.message || 'Error validating token' };
     }
   }
