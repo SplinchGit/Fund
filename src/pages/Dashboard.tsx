@@ -363,7 +363,20 @@ const Dashboard: React.FC = () => {
 
       <main style={styles.container}>
         <div style={styles.dashboardHeader}>
-          <h1 style={styles.dashboardTitle}>Your Dashboard</h1>
+          <div>
+            <h1 style={styles.dashboardTitle}>Your Dashboard</h1>
+            <p style={{...styles.infoText, margin: '0.5rem 0 0 0', fontSize: '0.8rem'}}>
+              Manage your campaigns securely - only you can edit or delete your campaigns from this dashboard.
+            </p>
+          </div>
+          
+          {walletAddress && (
+            <div style={{fontSize: '0.8rem', color: '#5f6368', display: 'flex', alignItems: 'center'}}>
+              <span style={{marginRight: '1rem'}}>
+                Connected: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+              </span>
+            </div>
+          )}
         </div>
         
         <div style={styles.statsGrid}>
@@ -452,11 +465,11 @@ const Dashboard: React.FC = () => {
             <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path>
           </svg>
           <span>Account</span>
-        </Link>
+       </Link>
       </nav>
     </div>
   );
-};
+}
 
 // # ############################################################################ #
 // # #                        SECTION 8 - DEFAULT EXPORT                        #

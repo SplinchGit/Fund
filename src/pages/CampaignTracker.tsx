@@ -16,6 +16,8 @@ export const CampaignTracker: React.FC = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalCampaigns: 0,
     totalRaised: 0,
@@ -70,7 +72,49 @@ export const CampaignTracker: React.FC = () => {
   }, [walletAddress]);
 
 // # ############################################################################ #
-// # #            SECTION 4 - CONDITIONAL RENDERING: LOADING STATE            #
+// # #            SECTION 4 - EVENT HANDLER: DELETE CAMPAIGN             #
+// # ############################################################################ #
+  const handleDeleteCampaign = async (id: string, title: string) => {
+    // Confirm deletion
+    if (!window.confirm(`Are you sure you want to delete the campaign "${title}"? This action cannot be undone.`)) {
+      return;
+    }
+    
+    setIsDeleting(id);
+    setDeleteError(null);
+    
+    try {
+      const result = await campaignService.deleteCampaign(id);
+      
+      if (result.success) {
+        // Find the campaign before removing it to update stats
+        const campaign = campaigns.find(c => c.id === id);
+        
+        // Remove the campaign from the local state to update UI immediately
+        setCampaigns(campaigns.filter(campaign => campaign.id !== id));
+        
+        // Update stats after successful deletion
+        setStats(prev => ({
+          ...prev,
+          totalCampaigns: prev.totalCampaigns - 1,
+          totalRaised: prev.totalRaised - (campaign?.raised || 0),
+          activeCampaigns: prev.activeCampaigns - (campaign?.status === 'active' ? 1 : 0)
+        }));
+        
+        console.log(`Campaign "${title}" (${id}) was successfully deleted`);
+      } else {
+        setDeleteError(result.error || 'Failed to delete campaign');
+      }
+    } catch (error: any) {
+      console.error('Error deleting campaign:', error);
+      setDeleteError(error.message || 'An error occurred while deleting the campaign');
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+// # ############################################################################ #
+// # #            SECTION 5 - CONDITIONAL RENDERING: LOADING STATE            #
 // # ############################################################################ #
   if (loading) {
     return (
@@ -82,7 +126,7 @@ export const CampaignTracker: React.FC = () => {
   }
 
 // # ############################################################################ #
-// # #             SECTION 5 - CONDITIONAL RENDERING: ERROR STATE             #
+// # #             SECTION 6 - CONDITIONAL RENDERING: ERROR STATE             #
 // # ############################################################################ #
   if (error) {
     return (
@@ -99,7 +143,7 @@ export const CampaignTracker: React.FC = () => {
   }
 
 // # ############################################################################ #
-// # #      SECTION 6 - JSX RETURN: STATS OVERVIEW & CAMPAIGNS TABLE      #
+// # #      SECTION 7 - JSX RETURN: STATS OVERVIEW & CAMPAIGNS TABLE      #
 // # ############################################################################ #
   return (
     <div>
@@ -125,6 +169,14 @@ export const CampaignTracker: React.FC = () => {
           <p className="text-2xl font-bold text-purple-600">{stats.totalContributors}</p>
         </div>
       </div>
+
+      {/* Deletion Error Message */}
+      {deleteError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md my-4">
+          <p className="font-medium">Error deleting campaign</p>
+          <p>{deleteError}</p>
+        </div>
+      )}
 
       {/* Campaigns Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -235,6 +287,13 @@ export const CampaignTracker: React.FC = () => {
                           >
                             Edit
                           </Link>
+                          <button
+                            onClick={() => handleDeleteCampaign(campaign.id, campaign.title)}
+                            disabled={isDeleting === campaign.id}
+                            className={`text-red-600 hover:text-red-900 ${isDeleting === campaign.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            {isDeleting === campaign.id ? 'Deleting...' : 'Delete'}
+                          </button>
                         </div>
                       </td>
                     </tr>
