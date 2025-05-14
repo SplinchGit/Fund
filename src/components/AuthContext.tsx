@@ -5,7 +5,8 @@ import React, {
   useContext,
   ReactNode,
   useCallback,
-  useEffect
+  useEffect,
+  useRef
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/AuthService';
@@ -37,7 +38,7 @@ const SESSION_TOKEN_KEY = 'worldfund_session_token';
 const WALLET_ADDRESS_KEY = 'worldfund_wallet_address';
 
 /**
- * Helper to safely extract nonce from different message formats
+ * Helper to safely extract nonce from different message formats with enhanced SIWE handling
  */
 const extractNonceFromMessage = (message: string): string => {
   if (!message) return '';
@@ -48,6 +49,16 @@ const extractNonceFromMessage = (message: string): string => {
   if (siweNonceMatch && siweNonceMatch[1]) {
     console.log('[AuthContext] Extracted nonce from SIWE message format:', siweNonceMatch[1]);
     return siweNonceMatch[1];
+  }
+  
+  // Try line-by-line scanning for SIWE format (which is often multi-line)
+  const lines = message.split(/\r?\n/);
+  for (const line of lines) {
+    const lineMatch = line.match(/^\s*Nonce:\s*([a-f0-9]{8,64})\s*$/i);
+    if (lineMatch && lineMatch[1]) {
+      console.log('[AuthContext] Extracted nonce from multiline SIWE message:', lineMatch[1]);
+      return lineMatch[1];
+    }
   }
   
   // Try parsing as JSON
@@ -133,6 +144,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     nonce: null,
   });
 
+  // Active operation tracking refs to prevent race conditions
+  const isLoginInProgressRef = useRef(false);
+  const nonceRequestInProgressRef = useRef<Promise<string> | null>(null);
+  
+  // Maximum retries for API calls
+  const MAX_RETRIES = 2;
+
   // Login function
   const login = useCallback((token: string, address: string, shouldNavigate: boolean = true) => {
     console.log('[AuthContext] Login called with:', { hasToken: !!token, address, shouldNavigate });
@@ -164,61 +182,116 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [navigate]);
 
-  // Get nonce for MiniKit
+  // Helper function to retry an async operation
+  const retryOperation = async <T,>(
+    operation: () => Promise<T>, 
+    maxRetries: number, 
+    delayMs: number = 300
+  ): Promise<T> => {
+    let lastError: Error | unknown;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        console.warn(`[AuthContext] Operation failed (attempt ${attempt + 1}/${maxRetries + 1}):`, error);
+        
+        if (attempt < maxRetries) {
+          // Wait before retrying with increasing backoff
+          await new Promise(resolve => setTimeout(resolve, delayMs * Math.pow(1.5, attempt)));
+        }
+      }
+    }
+    
+    throw lastError;
+  };
+
+  // Get nonce for MiniKit with deduplication to prevent race conditions
   const getNonceForMiniKit = useCallback(async (): Promise<string> => {
     console.log('[AuthContext] getNonceForMiniKit: Fetching nonce...');
+    
+    // If a nonce request is already in progress, return the existing promise
+    if (nonceRequestInProgressRef.current) {
+      console.log('[AuthContext] Reusing in-progress nonce request');
+      return nonceRequestInProgressRef.current;
+    }
+    
+    // Start loading state
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
     
-    try {
-      // Log API environment variables for debugging
-      console.log('[AuthContext] API environment variables:', {
-        VITE_AMPLIFY_API: import.meta.env.VITE_AMPLIFY_API,
-        VITE_APP_BACKEND_API_URL: import.meta.env.VITE_APP_BACKEND_API_URL
-      });
-      
-      // Try to get nonce from the backend
-      const nonceResult = await authService.getNonce();
-      
-      // Check if the request was successful
-      if (!nonceResult.success) {
-        const errorMessage = nonceResult.error || 'Failed to fetch nonce';
-        console.error('[AuthContext] getNonceForMiniKit: Request failed -', errorMessage);
-        setAuthState(prev => ({ ...prev, isLoading: false, error: errorMessage }));
+    // Create a new promise for the nonce request
+    const noncePromise = (async () => {
+      try {
+        // Log API environment variables for debugging
+        console.log('[AuthContext] API environment variables:', {
+          VITE_AMPLIFY_API: import.meta.env.VITE_AMPLIFY_API,
+          VITE_APP_BACKEND_API_URL: import.meta.env.VITE_APP_BACKEND_API_URL
+        });
         
-        // Convert to user-friendly message if it appears to be a URL or HTML
-        let userErrorMsg = errorMessage;
-        if (errorMessage.includes('Invalid response format') || 
-            errorMessage.includes('https://') ||
-            errorMessage.includes('<!DOCTYPE')) {
-          userErrorMsg = 'Backend connection error. Please check your network and API configuration.';
+        // Try to get nonce from the backend with retries
+        const nonceResult = await retryOperation(
+          () => authService.getNonce(),
+          MAX_RETRIES
+        );
+        
+        // Check if the request was successful
+        if (!nonceResult.success) {
+          const errorMessage = nonceResult.error || 'Failed to fetch nonce';
+          console.error('[AuthContext] getNonceForMiniKit: Request failed -', errorMessage);
+          setAuthState(prev => ({ ...prev, isLoading: false, error: errorMessage }));
+          
+          // Convert to user-friendly message if it appears to be a URL or HTML
+          let userErrorMsg = errorMessage;
+          if (errorMessage.includes('Invalid response format') || 
+              errorMessage.includes('https://') ||
+              errorMessage.includes('<!DOCTYPE')) {
+            userErrorMsg = 'Backend connection error. Please check your network and API configuration.';
+          }
+          
+          throw new Error(userErrorMsg);
         }
         
-        throw new Error(userErrorMsg);
-      }
-      
-      // Check if we actually got a nonce back
-      if (!nonceResult.nonce) {
-        const errorMessage = 'Backend did not return a nonce';
-        console.error('[AuthContext] getNonceForMiniKit:', errorMessage);
+        // Check if we actually got a nonce back
+        if (!nonceResult.nonce) {
+          const errorMessage = 'Backend did not return a nonce';
+          console.error('[AuthContext] getNonceForMiniKit:', errorMessage);
+          setAuthState(prev => ({ ...prev, isLoading: false, error: errorMessage }));
+          throw new Error(errorMessage);
+        }
+        
+        const fetchedNonce: string = nonceResult.nonce;
+        console.log('[AuthContext] getNonceForMiniKit: Nonce received successfully:', fetchedNonce);
+        setAuthState(prev => ({ ...prev, isLoading: false, nonce: fetchedNonce }));
+        return fetchedNonce;
+      } catch (error) {
+        console.error('[AuthContext] getNonceForMiniKit: Error fetching nonce.', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error fetching nonce';
         setAuthState(prev => ({ ...prev, isLoading: false, error: errorMessage }));
-        throw new Error(errorMessage);
+        throw error;
+      } finally {
+        // Clear the in-progress reference after completion
+        nonceRequestInProgressRef.current = null;
       }
-      
-      const fetchedNonce: string = nonceResult.nonce;
-      console.log('[AuthContext] getNonceForMiniKit: Nonce received successfully:', fetchedNonce);
-      setAuthState(prev => ({ ...prev, isLoading: false, nonce: fetchedNonce }));
-      return fetchedNonce;
-    } catch (error) {
-      console.error('[AuthContext] getNonceForMiniKit: Error fetching nonce.', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error fetching nonce';
-      setAuthState(prev => ({ ...prev, isLoading: false, error: errorMessage }));
-      throw error;
-    }
+    })();
+    
+    // Store the promise in the ref to deduplicate concurrent calls
+    nonceRequestInProgressRef.current = noncePromise;
+    
+    return noncePromise;
   }, []);
 
-  // Login with wallet
+  // Login with wallet with protection against concurrent calls
   const loginWithWallet = useCallback(async (authResult: MiniAppWalletAuthSuccessPayload) => {
     console.log('[AuthContext] loginWithWallet: Starting wallet login process');
+    
+    // Prevent concurrent login attempts
+    if (isLoginInProgressRef.current) {
+      console.warn('[AuthContext] Login already in progress, skipping new attempt');
+      throw new Error('Another login is already in progress');
+    }
+    
+    isLoginInProgressRef.current = true;
     setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
@@ -262,9 +335,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       console.log('[AuthContext] Extracted nonce from wallet message:', signedNonce);
 
-      // Verify signature with backend
+      // Verify signature with backend with retries
       console.log('[AuthContext] Verifying wallet signature with backend...');
-      const verifyResult = await authService.verifyWalletSignature(authResult, signedNonce);
+      const verifyResult = await retryOperation(
+        () => authService.verifyWalletSignature(authResult, signedNonce),
+        MAX_RETRIES,
+        500
+      );
       console.log('[AuthContext] Verification result:', verifyResult.success);
 
       if (verifyResult.success && verifyResult.walletAddress && verifyResult.token) {
@@ -288,6 +365,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         error: error.message || 'Wallet login failed',
       }));
       throw error;
+    } finally {
+      isLoginInProgressRef.current = false;
     }
   }, [login]);
 
