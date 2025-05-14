@@ -1,13 +1,22 @@
+// # ############################################################################ #
+// # #                   SECTION 1 - IMPORTS: CAMPAIGN LIST                     #
+// # ############################################################################ #
 // src/components/CampaignList.tsx
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { campaignService, Campaign } from '../services/CampaignService';
 
+// # ############################################################################ #
+// # #        SECTION 2 - COMPONENT: CAMPAIGNLIST - DEFINITION & STATE        #
+// # ############################################################################ #
 export const CampaignList: React.FC = () => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+// # ############################################################################ #
+// # #            SECTION 3 - COMPONENT: CAMPAIGNLIST - DATA FETCHING           #
+// # ############################################################################ #
   useEffect(() => {
     const fetchCampaigns = async () => {
       setLoading(true);
@@ -29,6 +38,9 @@ export const CampaignList: React.FC = () => {
     fetchCampaigns();
   }, []);
 
+// # ############################################################################ #
+// # #      SECTION 4 - COMPONENT: CAMPAIGNLIST - CONDITIONAL RENDERING       #
+// # ############################################################################ #
   if (loading) {
     return <div className="text-center py-10">Loading campaigns...</div>;
   }
@@ -45,6 +57,9 @@ export const CampaignList: React.FC = () => {
     return <div className="text-center py-10">No campaigns found. Create one!</div>;
   }
 
+// # ############################################################################ #
+// # #             SECTION 5 - COMPONENT: CAMPAIGNLIST - JSX RETURN             #
+// # ############################################################################ #
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {campaigns.map((campaign) => (
@@ -54,19 +69,29 @@ export const CampaignList: React.FC = () => {
   );
 };
 
+// # ############################################################################ #
+// # #       SECTION 6 - COMPONENT: CAMPAIGNCARD - DEFINITION & PROPS       #
+// # ############################################################################ #
 // src/components/CampaignCard.tsx
 export const CampaignCard: React.FC<{ campaign: Campaign }> = ({ campaign }) => {
+  
+// # ############################################################################ #
+// # #       SECTION 7 - COMPONENT: CAMPAIGNCARD - CALCULATED VALUES        #
+// # ############################################################################ #
   const progressPercentage = Math.min(
     Math.round((campaign.raised / campaign.goal) * 100),
     100
   );
 
+// # ############################################################################ #
+// # #            SECTION 8 - COMPONENT: CAMPAIGNCARD - JSX RETURN            #
+// # ############################################################################ #
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
       {campaign.image ? (
-        <img 
-          src={campaign.image} 
-          alt={campaign.title} 
+        <img
+          src={campaign.image}
+          alt={campaign.title}
           className="w-full h-40 object-cover"
           onError={(e) => {
             e.currentTarget.src = 'https://placehold.co/400x200/e5e7eb/5f6368?text=No+Image';
@@ -77,30 +102,30 @@ export const CampaignCard: React.FC<{ campaign: Campaign }> = ({ campaign }) => 
           No Image
         </div>
       )}
-      
+
       <div className="p-4">
         <h3 className="text-lg font-semibold mb-2 truncate">{campaign.title}</h3>
         <p className="text-gray-600 text-sm mb-3 line-clamp-2 h-10">
           {campaign.description || 'No description provided.'}
         </p>
-        
+
         <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-          <div 
-            className="bg-green-500 h-2 rounded-full" 
+          <div
+            className="bg-green-500 h-2 rounded-full"
             style={{ width: `${progressPercentage}%` }}
           ></div>
         </div>
-        
+
         <div className="flex justify-between text-sm text-gray-700 mb-3">
           <span>{campaign.raised} / {campaign.goal} WLD</span>
           <span>{progressPercentage}%</span>
         </div>
-        
+
         <div className="flex justify-between items-center">
           <div className="text-xs text-gray-500">
             {new Date(campaign.createdAt).toLocaleDateString()}
           </div>
-          <Link 
+          <Link
             to={`/campaigns/${campaign.id}`}
             className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
           >
@@ -112,6 +137,9 @@ export const CampaignCard: React.FC<{ campaign: Campaign }> = ({ campaign }) => 
   );
 };
 
+// # ############################################################################ #
+// # #        SECTION 9 - COMPONENT: CAMPAIGNDETAIL - DEFINITION & STATE        #
+// # ############################################################################ #
 // src/components/CampaignDetail.tsx
 export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
@@ -122,6 +150,9 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   const [donating, setDonating] = useState(false);
   const [donationSuccess, setDonationSuccess] = useState(false);
 
+// # ############################################################################ #
+// # #          SECTION 10 - COMPONENT: CAMPAIGNDETAIL - DATA FETCHING          #
+// # ############################################################################ #
   useEffect(() => {
     const fetchCampaign = async () => {
       setLoading(true);
@@ -143,9 +174,12 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
     fetchCampaign();
   }, [id]);
 
+// # ############################################################################ #
+// # #        SECTION 11 - COMPONENT: CAMPAIGNDETAIL - EVENT HANDLERS         #
+// # ############################################################################ #
   const handleDonate = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!donationAmount || donationAmount <= 0) {
       alert('Please enter a valid donation amount');
       return;
@@ -157,23 +191,23 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
     }
 
     setDonating(true);
-    
+
     try {
       const result = await campaignService.recordDonation(
-        id, 
+        id,
         donationAmount,
         donationTxHash
       );
-      
+
       if (result.success) {
         setDonationSuccess(true);
-        
+
         // Refresh campaign data
         const refreshResult = await campaignService.fetchCampaign(id);
         if (refreshResult.success && refreshResult.campaign) {
           setCampaign(refreshResult.campaign);
         }
-        
+
         // Reset form
         setDonationAmount(0);
         setDonationTxHash('');
@@ -188,6 +222,9 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
     }
   };
 
+// # ############################################################################ #
+// # #    SECTION 12 - COMPONENT: CAMPAIGNDETAIL - CONDITIONAL RENDERING    #
+// # ############################################################################ #
   if (loading) {
     return <div className="text-center py-10">Loading campaign details...</div>;
   }
@@ -204,18 +241,24 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
     return <div className="text-center py-10">Campaign not found</div>;
   }
 
+// # ############################################################################ #
+// # #       SECTION 13 - COMPONENT: CAMPAIGNDETAIL - CALCULATED VALUES       #
+// # ############################################################################ #
   const progressPercentage = Math.min(
     Math.round((campaign.raised / campaign.goal) * 100),
     100
   );
 
+// # ############################################################################ #
+// # #           SECTION 14 - COMPONENT: CAMPAIGNDETAIL - JSX RETURN            #
+// # ############################################################################ #
   return (
     <div className="max-w-4xl mx-auto p-4">
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         {campaign.image ? (
-          <img 
-            src={campaign.image} 
-            alt={campaign.title} 
+          <img
+            src={campaign.image}
+            alt={campaign.title}
             className="w-full h-64 object-cover"
             onError={(e) => {
               e.currentTarget.src = 'https://placehold.co/800x400/e5e7eb/5f6368?text=No+Image';
@@ -226,10 +269,10 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
             No Image
           </div>
         )}
-        
+
         <div className="p-6">
           <h1 className="text-2xl font-bold mb-2">{campaign.title}</h1>
-          
+
           <div className="flex items-center text-sm text-gray-600 mb-4">
             <span>Created by: {campaign.ownerId.slice(0, 6)}...{campaign.ownerId.slice(-4)}</span>
             <span className="mx-2">•</span>
@@ -243,36 +286,36 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
               {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
             </span>
           </div>
-          
+
           <p className="text-gray-700 mb-6 whitespace-pre-line">
             {campaign.description || 'No description provided.'}
           </p>
-          
+
           <div className="mb-6">
             <h2 className="text-lg font-semibold mb-2">Funding Progress</h2>
             <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
-              <div 
-                className="bg-green-500 h-4 rounded-full" 
+              <div
+                className="bg-green-500 h-4 rounded-full"
                 style={{ width: `${progressPercentage}%` }}
               ></div>
             </div>
-            
+
             <div className="flex justify-between text-sm font-medium">
               <span>{campaign.raised} WLD raised</span>
               <span>{campaign.goal} WLD goal</span>
             </div>
           </div>
-          
+
           {campaign.status === 'active' && (
             <div className="border-t border-gray-200 pt-6">
               <h2 className="text-lg font-semibold mb-4">Make a Donation</h2>
-              
+
               {donationSuccess && (
                 <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded relative mb-4">
                   Thank you for your donation! Your contribution has been recorded.
                 </div>
               )}
-              
+
               <form onSubmit={handleDonate} className="space-y-4">
                 <div>
                   <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
@@ -290,7 +333,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="txHash" className="block text-sm font-medium text-gray-700 mb-1">
                     Transaction Hash
@@ -308,7 +351,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
                     Enter the transaction hash after sending WLD tokens.
                   </p>
                 </div>
-                
+
                 <button
                   type="submit"
                   disabled={donating}
@@ -321,7 +364,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
               </form>
             </div>
           )}
-          
+
           {campaign.donations.length > 0 && (
             <div className="border-t border-gray-200 pt-6 mt-6">
               <h2 className="text-lg font-semibold mb-4">Recent Donations</h2>
@@ -350,16 +393,22 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   );
 };
 
+// # ############################################################################ #
+// # #                 SECTION 15 - IMPORTS: EDIT CAMPAIGN FORM                 #
+// # ############################################################################ #
 // src/components/EditCampaignForm.tsx
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom'; // React, useState, useEffect, Campaign, campaignService assumed from above
 
+// # ############################################################################ #
+// # #     SECTION 16 - COMPONENT: EDITCAMPAIGNFORM - DEFINITION & STATE      #
+// # ############################################################################ #
 export const EditCampaignForm: React.FC<{ id: string }> = ({ id }) => {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -368,6 +417,9 @@ export const EditCampaignForm: React.FC<{ id: string }> = ({ id }) => {
     status: ''
   });
 
+// # ############################################################################ #
+// # #         SECTION 17 - COMPONENT: EDITCAMPAIGNFORM - DATA FETCHING         #
+// # ############################################################################ #
   useEffect(() => {
     const fetchCampaign = async () => {
       setLoading(true);
@@ -396,6 +448,9 @@ export const EditCampaignForm: React.FC<{ id: string }> = ({ id }) => {
     fetchCampaign();
   }, [id]);
 
+// # ############################################################################ #
+// # #       SECTION 18 - COMPONENT: EDITCAMPAIGNFORM - EVENT HANDLERS        #
+// # ############################################################################ #
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     setFormData({
@@ -407,10 +462,10 @@ export const EditCampaignForm: React.FC<{ id: string }> = ({ id }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    
+
     try {
       const result = await campaignService.updateCampaign(id, formData);
-      
+
       if (result.success) {
         navigate(`/campaigns/${id}`);
       } else {
@@ -424,6 +479,9 @@ export const EditCampaignForm: React.FC<{ id: string }> = ({ id }) => {
     }
   };
 
+// # ############################################################################ #
+// # #  SECTION 19 - COMPONENT: EDITCAMPAIGNFORM - CONDITIONAL RENDERING  #
+// # ############################################################################ #
   if (loading) {
     return <div className="text-center py-10">Loading campaign...</div>;
   }
@@ -440,10 +498,13 @@ export const EditCampaignForm: React.FC<{ id: string }> = ({ id }) => {
     return <div className="text-center py-10">Campaign not found</div>;
   }
 
+// # ############################################################################ #
+// # #           SECTION 20 - COMPONENT: EDITCAMPAIGNFORM - JSX RETURN          #
+// # ############################################################################ #
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-6">Edit Campaign</h2>
-      
+
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
           <label htmlFor="title" className="block text-gray-700 text-sm font-bold mb-2">
@@ -533,7 +594,7 @@ export const EditCampaignForm: React.FC<{ id: string }> = ({ id }) => {
           >
             {submitting ? 'Saving...' : 'Save Changes'}
           </button>
-          
+
           <button
             type="button"
             onClick={() => navigate(`/campaigns/${id}`)}

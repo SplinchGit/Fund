@@ -1,15 +1,25 @@
 // src/components/CampaignDetail.tsx - Updated
+
+// # ############################################################################ #
+// # #                             SECTION 1 - IMPORTS                            #
+// # ############################################################################ #
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../components/AuthContext';
 import { campaignService, Campaign } from '../services/CampaignService';
 import { WLDDonationForm } from '../components/WLDDonationForm';
 
+// # ############################################################################ #
+// # #                SECTION 2 - COMPONENT: DEFINITION & STATE                 #
+// # ############################################################################ #
 export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   const { isAuthenticated } = useAuth();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+// # ############################################################################ #
+// # #                 SECTION 3 - EFFECT: FETCH CAMPAIGN DATA                  #
+// # ############################################################################ #
   useEffect(() => {
     const fetchCampaign = async () => {
       setLoading(true);
@@ -31,6 +41,9 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
     fetchCampaign();
   }, [id]);
 
+// # ############################################################################ #
+// # #             SECTION 4 - CALLBACK: HANDLE DONATION SUCCESS              #
+// # ############################################################################ #
   const handleDonationSuccess = async () => {
     // Refresh campaign data after successful donation
     try {
@@ -43,10 +56,16 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
     }
   };
 
+// # ############################################################################ #
+// # #            SECTION 5 - CONDITIONAL RENDERING: LOADING STATE            #
+// # ############################################################################ #
   if (loading) {
     return <div className="text-center py-10">Loading campaign details...</div>;
   }
 
+// # ############################################################################ #
+// # #             SECTION 6 - CONDITIONAL RENDERING: ERROR STATE             #
+// # ############################################################################ #
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative my-4">
@@ -55,22 +74,31 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
     );
   }
 
+// # ############################################################################ #
+// # #       SECTION 7 - CONDITIONAL RENDERING: CAMPAIGN NOT FOUND        #
+// # ############################################################################ #
   if (!campaign) {
     return <div className="text-center py-10">Campaign not found</div>;
   }
 
+// # ############################################################################ #
+// # #                        SECTION 8 - CALCULATED VALUES                       #
+// # ############################################################################ #
   const progressPercentage = Math.min(
     Math.round((campaign.raised / campaign.goal) * 100),
     100
   );
 
+// # ############################################################################ #
+// # #      SECTION 9 - MAIN JSX RETURN: CAMPAIGN DETAILS & DONATION      #
+// # ############################################################################ #
   return (
     <div className="max-w-4xl mx-auto p-4">
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         {campaign.image ? (
-          <img 
-            src={campaign.image} 
-            alt={campaign.title} 
+          <img
+            src={campaign.image}
+            alt={campaign.title}
             className="w-full h-64 object-cover"
             onError={(e) => {
               e.currentTarget.src = 'https://placehold.co/800x400/e5e7eb/5f6368?text=No+Image';
@@ -81,10 +109,10 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
             No Image
           </div>
         )}
-        
+
         <div className="p-6">
           <h1 className="text-2xl font-bold mb-2">{campaign.title}</h1>
-          
+
           <div className="flex items-center text-sm text-gray-600 mb-4">
             <span>Created by: {campaign.ownerId.slice(0, 6)}...{campaign.ownerId.slice(-4)}</span>
             <span className="mx-2">•</span>
@@ -98,33 +126,33 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
               {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
             </span>
           </div>
-          
+
           <p className="text-gray-700 mb-6 whitespace-pre-line">
             {campaign.description || 'No description provided.'}
           </p>
-          
+
           <div className="mb-6">
             <h2 className="text-lg font-semibold mb-2">Funding Progress</h2>
             <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
-              <div 
-                className="bg-green-500 h-4 rounded-full" 
+              <div
+                className="bg-green-500 h-4 rounded-full"
                 style={{ width: `${progressPercentage}%` }}
               ></div>
             </div>
-            
+
             <div className="flex justify-between text-sm font-medium">
               <span>{campaign.raised} WLD raised</span>
               <span>{campaign.goal} WLD goal</span>
             </div>
           </div>
-          
+
           {campaign.status === 'active' && (
             <div className="border-t border-gray-200 pt-6">
               <h2 className="text-lg font-semibold mb-4">Make a Donation</h2>
-              
+
               {isAuthenticated ? (
-                <WLDDonationForm 
-                  campaignId={id} 
+                <WLDDonationForm
+                  campaignId={id}
                   onDonationSuccess={handleDonationSuccess}
                 />
               ) : (
@@ -136,7 +164,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
               )}
             </div>
           )}
-          
+
           {campaign.donations.length > 0 && (
             <div className="border-t border-gray-200 pt-6 mt-6">
               <h2 className="text-lg font-semibold mb-4">Recent Donations</h2>

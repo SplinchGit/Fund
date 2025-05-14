@@ -1,7 +1,13 @@
 // src/services/CampaignService.ts
 
+// # ############################################################################ #
+// # #                             SECTION 1 - IMPORTS                            #
+// # ############################################################################ #
 import { authService } from './AuthService';
 
+// # ############################################################################ #
+// # #                     SECTION 2 - INTERFACE DEFINITIONS                    #
+// # ############################################################################ #
 export interface Donation {
   id: string;
   amount: number;
@@ -33,11 +39,17 @@ export interface CampaignPayload {
   image?: string;
 }
 
+// # ############################################################################ #
+// # #        SECTION 3 - SERVICE CLASS: CAMPAIGNSERVICE - DEFINITION         #
+// # ############################################################################ #
 class CampaignService {
   private static instance: CampaignService;
   private API_BASE: string;
   private API_KEY?: string;
 
+// # ############################################################################ #
+// # #        SECTION 4 - SERVICE CLASS: CAMPAIGNSERVICE - CONSTRUCTOR        #
+// # ############################################################################ #
   private constructor() {
     // Determine API base URL from env and fallback to /api
     const envApi = import.meta.env.VITE_AMPLIFY_API || import.meta.env.VITE_APP_BACKEND_API_URL;
@@ -52,6 +64,9 @@ class CampaignService {
     console.log('[CampaignService] Initialized with API base:', this.API_BASE);
   }
 
+// # ############################################################################ #
+// # #       SECTION 5 - SERVICE CLASS: CAMPAIGNSERVICE - GET INSTANCE      #
+// # ############################################################################ #
   /** Get singleton instance */
   public static getInstance(): CampaignService {
     if (!CampaignService.instance) {
@@ -60,6 +75,9 @@ class CampaignService {
     return CampaignService.instance;
   }
 
+// # ############################################################################ #
+// # #                 SECTION 6 - PRIVATE HELPER: GET HEADERS                  #
+// # ############################################################################ #
   /** Build headers including auth token and API key */
   private async getHeaders(): Promise<HeadersInit> {
     const headers: HeadersInit = {
@@ -77,6 +95,9 @@ class CampaignService {
     return headers;
   }
 
+// # ############################################################################ #
+// # #                SECTION 7 - PUBLIC METHOD: CREATE CAMPAIGN                #
+// # ############################################################################ #
   /** Create a new campaign */
   public async createCampaign(
     payload: CampaignPayload
@@ -99,6 +120,9 @@ class CampaignService {
     }
   }
 
+// # ############################################################################ #
+// # #            SECTION 8 - PUBLIC METHOD: FETCH ALL CAMPAIGNS            #
+// # ############################################################################ #
   /** Fetch all campaigns */
   public async fetchAllCampaigns(): Promise<{ success: boolean; campaigns?: Campaign[]; error?: string }> {
     try {
@@ -118,6 +142,9 @@ class CampaignService {
     }
   }
 
+// # ############################################################################ #
+// # #           SECTION 9 - PUBLIC METHOD: FETCH CAMPAIGN (BY ID)            #
+// # ############################################################################ #
   /** Fetch single campaign by ID */
   public async fetchCampaign(
     id: string
@@ -139,6 +166,9 @@ class CampaignService {
     }
   }
 
+// # ############################################################################ #
+// # #             SECTION 10 - PUBLIC METHOD: UPDATE CAMPAIGN              #
+// # ############################################################################ #
   /** Update an existing campaign */
   public async updateCampaign(
     id: string,
@@ -162,6 +192,9 @@ class CampaignService {
     }
   }
 
+// # ############################################################################ #
+// # #             SECTION 11 - PUBLIC METHOD: DELETE CAMPAIGN              #
+// # ############################################################################ #
   /** Delete a campaign by ID */
   public async deleteCampaign(
     id: string
@@ -183,6 +216,9 @@ class CampaignService {
     }
   }
 
+// # ############################################################################ #
+// # #             SECTION 12 - PUBLIC METHOD: RECORD DONATION              #
+// # ############################################################################ #
   /** Record a donation for a campaign */
   public async recordDonation(
     campaignId: string,
@@ -207,6 +243,9 @@ class CampaignService {
     }
   }
 
+// # ############################################################################ #
+// # #          SECTION 13 - PUBLIC METHOD: FETCH USER CAMPAIGNS          #
+// # ############################################################################ #
   /** Fetch campaigns belonging to a specific user */
   public async fetchUserCampaigns(
     walletAddress: string
@@ -229,4 +268,7 @@ class CampaignService {
   }
 }
 
+// # ############################################################################ #
+// # #                  SECTION 14 - SINGLETON INSTANCE EXPORT                  #
+// # ############################################################################ #
 export const campaignService = CampaignService.getInstance();

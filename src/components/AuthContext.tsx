@@ -1,4 +1,8 @@
 // src/components/AuthContext.tsx - Improved Version
+
+// # ############################################################################ #
+// # #                         SECTION 1 - PROJECT IMPORTS                        #
+// # ############################################################################ #
 import React, {
   createContext,
   useState,
@@ -12,6 +16,9 @@ import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/AuthService';
 import { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
 
+// # ############################################################################ #
+// # #                     SECTION 2 - CORE TYPE DEFINITIONS                    #
+// # ############################################################################ #
 // Auth state interface with additional fields
 interface AuthState {
   isAuthenticated: boolean;
@@ -32,25 +39,42 @@ interface AuthContextType extends AuthState {
   clearError: () => void; // New function to clear errors
 }
 
+// Provider component props interface
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+// # ############################################################################ #
+// # #                  SECTION 3 - AUTH CONTEXT INSTANTIATION                  #
+// # ############################################################################ #
 // Create context with undefined default value
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// # ############################################################################ #
+// # #                        SECTION 4 - GLOBAL CONSTANTS                        #
+// # ############################################################################ #
 // Storage keys with namespace
 const STORAGE_NAMESPACE = 'worldfund_';
 const SESSION_TOKEN_KEY = `${STORAGE_NAMESPACE}session_token`;
 const WALLET_ADDRESS_KEY = `${STORAGE_NAMESPACE}wallet_address`;
 
+// # ############################################################################ #
+// # #                   SECTION 5 - UTILITY: NONCE VALIDATION                  #
+// # ############################################################################ #
 // Improved nonce validation - strict hexadecimal format check
 const isValidNonce = (nonce: string): boolean => {
   return /^[a-f0-9]{8,64}$/i.test(nonce);
 };
 
+// # ############################################################################ #
+// # #                  SECTION 6 - UTILITY: NONCE EXTRACTION                   #
+// # ############################################################################ #
 /**
  * Helper to safely extract nonce from different message formats with enhanced SIWE handling
  */
 const extractNonceFromMessage = (message: string): string => {
   if (!message) return '';
-  
+
   // SIWE format - exactly matching the format seen in the logs
   // Look for "Nonce: [hexadecimal]" pattern
   const siweNonceMatch = message.match(/Nonce:\s*([a-f0-9]{8,64})/i);
@@ -58,7 +82,7 @@ const extractNonceFromMessage = (message: string): string => {
     console.log('[AuthContext] Extracted nonce from SIWE message format:', siweNonceMatch[1]);
     return siweNonceMatch[1];
   }
-  
+
   // Try line-by-line scanning for SIWE format (which is often multi-line)
   const lines = message.split(/\r?\n/);
   for (const line of lines) {
@@ -68,7 +92,7 @@ const extractNonceFromMessage = (message: string): string => {
       return lineMatch[1];
     }
   }
-  
+
   // Try parsing as JSON
   try {
     const parsed = JSON.parse(message);
@@ -79,27 +103,30 @@ const extractNonceFromMessage = (message: string): string => {
   } catch (e) {
     // Not JSON, continue with other methods
   }
-  
+
   // Check if the message itself looks like a nonce (hexadecimal string)
   if (isValidNonce(message)) {
     console.log('[AuthContext] Message is a hex string nonce:', message);
     return message;
   }
-  
+
   // Look for nonce pattern in the message with more generic format
   const nonceMatch = message.match(/nonce["']?\s*[:=]\s*["']?([a-f0-9]{8,64})["']?/i);
   if (nonceMatch && nonceMatch[1] && isValidNonce(nonceMatch[1])) {
     console.log('[AuthContext] Extracted nonce from generic pattern:', nonceMatch[1]);
     return nonceMatch[1];
   }
-  
-  console.warn('[AuthContext] Could not extract nonce from message:', 
+
+  console.warn('[AuthContext] Could not extract nonce from message:',
     message.substring(0, 100) + (message.length > 100 ? '...' : ''));
-  
+
   // If all extraction methods fail, return empty string
   return '';
 };
 
+// # ############################################################################ #
+// # #                 SECTION 7 - UTILITY: SESSION DATA STORAGE                #
+// # ############################################################################ #
 // Store session data helper - Using sessionStorage for tokens for better security
 const storeSessionData = (token: string, address: string): void => {
   try {
@@ -124,7 +151,7 @@ const getStoredSessionData = (): { token: string | null, address: string | null 
         localStorage.removeItem(SESSION_TOKEN_KEY);
       }
     }
-    
+
     const address = localStorage.getItem(WALLET_ADDRESS_KEY);
     return { token, address };
   } catch (error) {
@@ -145,11 +172,9 @@ const clearStoredSessionData = (): void => {
   }
 };
 
-// Provider component
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
+// # ############################################################################ #
+// # #                 SECTION 8 - AUTHPROVIDER: INITIALIZATION                 #
+// # ############################################################################ #
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const navigate = useNavigate();
 
@@ -167,13 +192,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Active operation tracking refs to prevent race conditions
   const isLoginInProgressRef = useRef(false);
   const nonceRequestInProgressRef = useRef<Promise<string> | null>(null);
-  
+
   // Maximum retries for API calls
   const MAX_RETRIES = 2;
-  
+
+// # ############################################################################ #
+// # #                SECTION 9 - AUTHPROVIDER: STATE MANAGEMENT                #
+// # ############################################################################ #
   // Function to safely update state that prevents race conditions
   const updateAuthState = useCallback((
-    updates: Partial<AuthState>, 
+    updates: Partial<AuthState>,
     resetError: boolean = false
   ) => {
     setAuthState(prev => {
@@ -182,29 +210,61 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return { ...prev, ...updates, ...errorUpdate };
     });
   }, []);
-  
+
   // Clear error function
   const clearError = useCallback(() => {
     updateAuthState({ error: null });
   }, [updateAuthState]);
 
+// # ############################################################################ #
+// # #          SECTION 10 - AUTHPROVIDER: ASYNC OPERATION UTILITY          #
+// # ############################################################################ #
+  // Helper function to retry an async operation with improved error handling
+  const retryOperation = async <T,>(
+    operation: () => Promise<T>,
+    maxRetries: number,
+    delayMs: number = 300,
+    operationName: string = 'Operation'
+  ): Promise<T> => {
+    let lastError: Error | unknown;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        console.warn(`[AuthContext] ${operationName} failed (attempt ${attempt + 1}/${maxRetries + 1}):`, error);
+
+        if (attempt < maxRetries) {
+          // Wait before retrying with increasing backoff
+          await new Promise(resolve => setTimeout(resolve, delayMs * Math.pow(1.5, attempt)));
+        }
+      }
+    }
+
+    throw lastError;
+  };
+
+// # ############################################################################ #
+// # #             SECTION 11 - AUTHPROVIDER: CORE LOGIN FUNCTION             #
+// # ############################################################################ #
   // Login function - Improved with atomic state updates
   const login = useCallback((token: string, address: string, shouldNavigate: boolean = true) => {
     console.log('[AuthContext] Login called with:', { hasToken: !!token, address, shouldNavigate });
-    
+
     if (!token || !address) {
       console.error('[AuthContext] Invalid login parameters', { hasToken: !!token, hasAddress: !!address });
-      updateAuthState({ 
-        isLoading: false, 
+      updateAuthState({
+        isLoading: false,
         error: 'Invalid login credentials',
-        lastAuthAttempt: Date.now() 
+        lastAuthAttempt: Date.now()
       });
       return;
     }
-    
+
     // Store session data
     storeSessionData(token, address);
-    
+
     // Update auth state atomically
     updateAuthState({
       isAuthenticated: true,
@@ -213,9 +273,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       isLoading: false,
       lastAuthAttempt: Date.now()
     }, true);
-    
+
     console.log('[AuthContext] Auth state updated, user is now authenticated');
-    
+
     // Navigate to dashboard if requested
     if (shouldNavigate) {
       console.log('[AuthContext] Navigating to dashboard after login');
@@ -226,45 +286,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [navigate, updateAuthState]);
 
-  // Helper function to retry an async operation with improved error handling
-  const retryOperation = async <T,>(
-    operation: () => Promise<T>, 
-    maxRetries: number, 
-    delayMs: number = 300,
-    operationName: string = 'Operation'
-  ): Promise<T> => {
-    let lastError: Error | unknown;
-    
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        return await operation();
-      } catch (error) {
-        lastError = error;
-        console.warn(`[AuthContext] ${operationName} failed (attempt ${attempt + 1}/${maxRetries + 1}):`, error);
-        
-        if (attempt < maxRetries) {
-          // Wait before retrying with increasing backoff
-          await new Promise(resolve => setTimeout(resolve, delayMs * Math.pow(1.5, attempt)));
-        }
-      }
-    }
-    
-    throw lastError;
-  };
-
+// # ############################################################################ #
+// # #                SECTION 12 - AUTHPROVIDER: NONCE RETRIEVAL                #
+// # ############################################################################ #
   // Get nonce for MiniKit with deduplication to prevent race conditions
   const getNonceForMiniKit = useCallback(async (): Promise<string> => {
     console.log('[AuthContext] getNonceForMiniKit: Fetching nonce...');
-    
+
     // If a nonce request is already in progress, return the existing promise
     if (nonceRequestInProgressRef.current) {
       console.log('[AuthContext] Reusing in-progress nonce request');
       return nonceRequestInProgressRef.current;
     }
-    
+
     // Start loading state
     updateAuthState({ isLoading: true }, true);
-    
+
     // Create a new promise for the nonce request
     const noncePromise = (async () => {
       try {
@@ -273,7 +310,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           VITE_AMPLIFY_API: import.meta.env.VITE_AMPLIFY_API,
           VITE_APP_BACKEND_API_URL: import.meta.env.VITE_APP_BACKEND_API_URL
         });
-        
+
         // Try to get nonce from the backend with retries
         const nonceResult = await retryOperation(
           () => authService.getNonce(),
@@ -281,24 +318,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           300,
           'Get nonce'
         );
-        
+
         // Check if the request was successful
         if (!nonceResult.success) {
           const errorMessage = nonceResult.error || 'Failed to fetch nonce';
           console.error('[AuthContext] getNonceForMiniKit: Request failed -', errorMessage);
           updateAuthState({ isLoading: false, error: errorMessage });
-          
+
           // Convert to user-friendly message if it appears to be a URL or HTML
           let userErrorMsg = errorMessage;
-          if (errorMessage.includes('Invalid response format') || 
+          if (errorMessage.includes('Invalid response format') ||
               errorMessage.includes('https://') ||
               errorMessage.includes('<!DOCTYPE')) {
             userErrorMsg = 'Backend connection error. Please check your network and API configuration.';
           }
-          
+
           throw new Error(userErrorMsg);
         }
-        
+
         // Check if we actually got a nonce back and validate it
         const fetchedNonce = nonceResult.nonce;
         if (!fetchedNonce || !isValidNonce(fetchedNonce)) {
@@ -307,7 +344,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           updateAuthState({ isLoading: false, error: errorMessage });
           throw new Error(errorMessage);
         }
-        
+
         console.log('[AuthContext] getNonceForMiniKit: Nonce received successfully:', fetchedNonce);
         updateAuthState({ isLoading: false, nonce: fetchedNonce });
         return fetchedNonce;
@@ -321,23 +358,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         nonceRequestInProgressRef.current = null;
       }
     })();
-    
+
     // Store the promise in the ref to deduplicate concurrent calls
     nonceRequestInProgressRef.current = noncePromise;
-    
+
     return noncePromise;
   }, [updateAuthState]);
 
+// # ############################################################################ #
+// # #                  SECTION 13 - AUTHPROVIDER: WALLET LOGIN                 #
+// # ############################################################################ #
   // Login with wallet with protection against concurrent calls
   const loginWithWallet = useCallback(async (authResult: MiniAppWalletAuthSuccessPayload) => {
     console.log('[AuthContext] loginWithWallet: Starting wallet login process');
-    
+
     // Prevent concurrent login attempts
     if (isLoginInProgressRef.current) {
       console.warn('[AuthContext] Login already in progress, skipping new attempt');
       throw new Error('Another login is already in progress');
     }
-    
+
     isLoginInProgressRef.current = true;
     updateAuthState({ isLoading: true }, true);
 
@@ -369,17 +409,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Extract nonce from the SIWE message
       const signedNonce = extractNonceFromMessage(authResult.message);
-      
+
       if (!signedNonce) {
         console.error('[AuthContext] Could not extract nonce from message');
         // Log a snippet of the message to help with debugging
-        console.error('[AuthContext] Message snippet:', 
-          typeof authResult.message === 'string' 
-            ? authResult.message.substring(0, 100) + '...' 
+        console.error('[AuthContext] Message snippet:',
+          typeof authResult.message === 'string'
+            ? authResult.message.substring(0, 100) + '...'
             : String(authResult.message).substring(0, 100) + '...');
         throw new Error('Failed to parse authentication message from wallet');
       }
-      
+
       console.log('[AuthContext] Extracted nonce from wallet message:', signedNonce);
 
       // Verify signature with backend with retries
@@ -398,7 +438,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else {
         // Enhanced error with clearer user message
         let errorMsg = verifyResult.error || 'Wallet signature verification failed';
-        if (errorMsg.includes('Invalid response format') || 
+        if (errorMsg.includes('Invalid response format') ||
             errorMsg.includes('https://') ||
             errorMsg.includes('<!DOCTYPE')) {
           errorMsg = 'Backend connection error. Please check API configuration.';
@@ -418,22 +458,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [login, updateAuthState]);
 
+// # ############################################################################ #
+// # #                SECTION 14 - AUTHPROVIDER: LOGOUT FUNCTION                #
+// # ############################################################################ #
   // Logout function with improved error handling
   const logout = useCallback(async (): Promise<void> => {
     console.log('[AuthContext] Logging out...');
     updateAuthState({ isLoading: true }, true);
-    
+
     try {
       // Clear local storage
       clearStoredSessionData();
-      
+
       // Try backend logout, continue if it fails
       try {
         await authService.logout();
       } catch (logoutError) {
         console.warn('[AuthContext] Backend logout failed, continuing local logout:', logoutError);
       }
-      
+
       // Update auth state atomically
       updateAuthState({
         isAuthenticated: false,
@@ -442,13 +485,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isLoading: false,
         nonce: null,
       }, true);
-      
+
       console.log('[AuthContext] User logged out successfully, redirecting to landing');
       navigate('/landing', { replace: true });
     } catch (error: any) {
       console.error('[AuthContext] Logout failed:', error);
-      updateAuthState({ 
-        isLoading: false, 
+      updateAuthState({
+        isLoading: false,
         error: error.message || 'Logout failed',
         lastAuthAttempt: Date.now()
       });
@@ -457,11 +500,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [navigate, updateAuthState]);
 
+// # ############################################################################ #
+// # #             SECTION 15 - AUTHPROVIDER: SESSION CHECK LOGIC             #
+// # ############################################################################ #
   // Check session on mount with improved validation
   const checkSession = useCallback(async () => {
     console.log('[AuthContext] Checking session...');
     updateAuthState({ isLoading: true }, true);
-    
+
     try {
       const { token, address } = getStoredSessionData();
 
@@ -475,9 +521,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }, true);
         return;
       }
-      
+
       console.log('[AuthContext] Session data found in storage');
-      
+
       // First set authenticated state for quick UI update
       updateAuthState({
         isAuthenticated: true,
@@ -485,7 +531,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         sessionToken: token,
         isLoading: true, // Keep loading while we verify
       }, true);
-      
+
       // Then validate token asynchronously
       try {
         const verifyResult = await retryOperation(
@@ -494,32 +540,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           200,
           'Verify token'
         );
-        
+
         if (!verifyResult.isValid) {
           console.log('[AuthContext] Session token invalid, logging out:', verifyResult.error);
           clearStoredSessionData();
-          
+
           updateAuthState({
             isAuthenticated: false,
             walletAddress: null,
-            sessionToken: null, 
+            sessionToken: null,
             isLoading: false,
             error: 'Session expired. Please login again.'
           });
-          
+
           // Optional - navigate to login page
           // navigate('/login', { replace: true });
           return;
         }
-        
+
         // Token is valid, update final state
         updateAuthState({ isLoading: false });
         console.log('[AuthContext] Session token verified successfully');
-        
+
       } catch (verifyError) {
         console.error('[AuthContext] Error verifying token:', verifyError);
         // Continue with authentication on network errors, but set a warning
-        updateAuthState({ 
+        updateAuthState({
           isLoading: false,
           error: 'Could not verify session. You may need to login again if you encounter issues.'
         });
@@ -534,12 +580,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         error: 'Failed to check authentication status'
       });
     }
-  }, [updateAuthState]);
+  }, [updateAuthState]); // Removed navigate from dependencies as it's not directly used here for navigation on error
 
+// # ############################################################################ #
+// # #             SECTION 16 - AUTHPROVIDER: LIFECYCLE & EFFECTS             #
+// # ############################################################################ #
   // Check session on mount and when storage changes
   useEffect(() => {
     checkSession();
-    
+
     // Listen for storage events (e.g. other tabs)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === SESSION_TOKEN_KEY || e.key === WALLET_ADDRESS_KEY) {
@@ -547,9 +596,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         checkSession();
       }
     };
-    
+
     window.addEventListener('storage', handleStorageChange);
-    
+
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
@@ -568,6 +617,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
   }, [authState]);
 
+// # ############################################################################ #
+// # #          SECTION 17 - AUTHPROVIDER: CONTEXT VALUE & RETURN           #
+// # ############################################################################ #
   // Provide context value
   const contextValue: AuthContextType = {
     ...authState,
@@ -581,13 +633,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 };
 
+// # ############################################################################ #
+// # #                       SECTION 18 - CUSTOM AUTH HOOK                      #
+// # ############################################################################ #
 // Hook for using auth context
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  
+
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  
+
   return context;
 };

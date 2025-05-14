@@ -1,5 +1,8 @@
 // src/MiniKitProvider.tsx
 
+// # ############################################################################ #
+// # #        SECTION 1 - VITE CLIENT REFERENCE & TYPE DEFINITIONS (ENV)        #
+// # ############################################################################ #
 /// <reference types="vite/client" />
 
 // Define Vite environment variables type
@@ -13,23 +16,35 @@ interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
 
+// # ############################################################################ #
+// # #                          SECTION 2 - TYPE IMPORTS                          #
+// # ############################################################################ #
 import type { ReactNode } from 'react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 // Import MiniKit and necessary types
 import { MiniKit, MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
 // Import the useAuth hook to access context methods
 import { useAuth } from './components/AuthContext';
 
+// # ############################################################################ #
+// # #                        SECTION 3 - GLOBAL CONSTANTS                        #
+// # ############################################################################ #
 // Constants
 const DEFAULT_APP_ID = 'app_0de9312869c4818fc1a1ec64306551b69';
 const MAX_RETRIES = 2;
 const AUTH_EXPIRY_MINUTES = 10;
 
+// # ############################################################################ #
+// # #                  SECTION 4 - INTERFACE: PROVIDER PROPS                   #
+// # ############################################################################ #
 interface MiniKitProviderProps {
   children: ReactNode;
   appId?: string; // Allow passing App ID via prop as fallback
 }
 
+// # ############################################################################ #
+// # #               SECTION 5 - INTERFACE: MINIKIT FINAL PAYLOAD               #
+// # ############################################################################ #
 // Define a more general type for the finalPayload to handle success and error cases better for TS
 // This is a presumed structure for non-success cases. Refer to MiniKit docs for actual error payload type.
 interface MiniKitFinalPayload {
@@ -43,6 +58,9 @@ interface MiniKitFinalPayload {
   [key: string]: any; // Allow other properties
 }
 
+// # ############################################################################ #
+// # #                 SECTION 6 - UTILITY FUNCTION: ENSURE STRING                #
+// # ############################################################################ #
 /**
  * Safely extract a string from various types
  */
@@ -54,6 +72,9 @@ function ensureString(value: any): string {
   return '';
 }
 
+// # ############################################################################ #
+// # #               SECTION 7 - UTILITY FUNCTION: IS VALID NONCE               #
+// # ############################################################################ #
 /**
  * Validate nonce format - must be a hexadecimal string of proper length
  */
@@ -61,12 +82,15 @@ function isValidNonce(nonce: string): boolean {
   return /^[a-f0-9]{8,64}$/i.test(nonce);
 }
 
+// # ############################################################################ #
+// # #         SECTION 8 - UTILITY FUNCTION: SANITIZE WALLET PAYLOAD          #
+// # ############################################################################ #
 /**
  * Sanitize wallet payload for security
  */
 function sanitizeWalletPayload(payload: any): MiniKitFinalPayload {
   if (!payload) return { status: 'error', error_code: 'empty_payload' };
-  
+
   const sanitized: MiniKitFinalPayload = {
     status: typeof payload.status === 'string' ? payload.status : 'error'
   };
@@ -75,33 +99,36 @@ function sanitizeWalletPayload(payload: any): MiniKitFinalPayload {
   if (payload.message !== undefined) {
     sanitized.message = payload.message;
   }
-  
+
   // Add all properties needed for MiniAppWalletAuthSuccessPayload
   if (typeof payload.signature === 'string') {
     sanitized.signature = payload.signature;
   }
-  
+
   if (typeof payload.address === 'string') {
     sanitized.address = payload.address;
   }
-  
+
   if (typeof payload.version === 'string') {
     sanitized.version = payload.version;
   }
-  
+
   if (typeof payload.error_code === 'string') {
     sanitized.error_code = payload.error_code;
   }
-  
+
   return sanitized;
 }
 
+// # ############################################################################ #
+// # #        SECTION 9 - UTILITY FUNCTION: EXTRACT NONCE FROM MESSAGE        #
+// # ############################################################################ #
 /**
  * Extract nonce from wallet message in different formats
  */
 function extractNonceFromMessage(message: any): string {
   if (!message) return '';
-  
+
   console.log('[extractNonceFromMessage] Attempting to extract nonce, message type:', typeof message);
 
   // Direct string case
@@ -122,14 +149,14 @@ function extractNonceFromMessage(message: any): string {
         return lineMatch[1];
       }
     }
-    
+
     // Fallback to general patterns
     const patterns = [
       /nonce["']?\s*[:=]\s*["']?([a-f0-9]{8,64})["']?/i,  // JSON format
       /nonce=([a-f0-9]{8,64})/i,  // URL param format
       /\bnonce\b[^a-f0-9]*([a-f0-9]{8,64})/i  // General format with word boundary
     ];
-    
+
     for (const pattern of patterns) {
       const match = message.match(pattern);
       if (match && match[1]) {
@@ -137,7 +164,7 @@ function extractNonceFromMessage(message: any): string {
         return match[1];
       }
     }
-    
+
     // Try parsing as JSON if it looks like JSON
     try {
       const parsed = JSON.parse(message);
@@ -152,7 +179,7 @@ function extractNonceFromMessage(message: any): string {
         return message;
       }
     }
-  } 
+  }
   // Object case
   else if (typeof message === 'object' && message !== null) {
     // Standard nonce property
@@ -160,43 +187,46 @@ function extractNonceFromMessage(message: any): string {
       console.log('[extractNonceFromMessage] Found nonce in object property:', message.nonce);
       return message.nonce;
     }
-    
+
     // SIWE format
     if (message.domain && message.nonce && typeof message.nonce === 'string') {
       console.log('[extractNonceFromMessage] Found nonce in SIWE object:', message.nonce);
       return message.nonce;
     }
   }
-  
-  console.warn('[extractNonceFromMessage] Could not extract nonce from message:', 
+
+  console.warn('[extractNonceFromMessage] Could not extract nonce from message:',
     typeof message === 'object' ? JSON.stringify(message).substring(0, 100) : message);
   return '';
 }
 
+// # ############################################################################ #
+// # #              SECTION 10 - UTILITY FUNCTION: EXTRACT ADDRESS              #
+// # ############################################################################ #
 /**
  * Extract wallet address from message or payload in different formats
  */
 function extractAddress(payload: any): string {
   if (!payload) return '';
-  
+
   // Direct address property
   if (payload.address && typeof payload.address === 'string') {
     return payload.address;
   }
-  
+
   // Try to extract from message object
   if (payload.message && typeof payload.message === 'object') {
     // EIP-4361 (SIWE) format may include address
     if (payload.message.address && typeof payload.message.address === 'string') {
       return payload.message.address;
     }
-    
+
     // Other possible formats
     if (payload.message.wallet && typeof payload.message.wallet === 'string') {
       return payload.message.wallet;
     }
   }
-  
+
   // Try to parse message if it's a string
   if (payload.message && typeof payload.message === 'string') {
     try {
@@ -213,7 +243,7 @@ function extractAddress(payload: any): string {
       // Not valid JSON, continue with other methods
     }
   }
-  
+
   // If all else fails, try to extract an Ethereum address pattern from message
   if (payload.message && typeof payload.message === 'string') {
     const ethAddressMatch = payload.message.match(/0x[a-fA-F0-9]{40}/);
@@ -221,10 +251,13 @@ function extractAddress(payload: any): string {
       return ethAddressMatch[0];
     }
   }
-  
+
   return '';
 }
 
+// # ############################################################################ #
+// # #                 SECTION 11 - UTILITY FUNCTION: SAFE PROMISE                #
+// # ############################################################################ #
 /**
  * Helper function to handle both Promise and non-Promise returns
  */
@@ -240,6 +273,9 @@ function safePromise<T>(fn: () => T | Promise<T>): Promise<T> {
   }
 }
 
+// # ############################################################################ #
+// # #               SECTION 12 - UTILITY FUNCTION: RETRY OPERATION             #
+// # ############################################################################ #
 /**
  * Utility function to retry an operation with exponential backoff
  */
@@ -256,16 +292,16 @@ async function retryOperation<T>(
     initialDelayMs = 300,
     operationName = 'Operation',
   } = options;
-  
+
   let lastError: Error | unknown;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await safePromise(operation);
     } catch (error) {
       lastError = error;
       console.warn(`[retryOperation] ${operationName} failed (attempt ${attempt + 1}/${maxRetries + 1}):`, error);
-      
+
       if (attempt < maxRetries) {
         // Wait before retrying with increasing backoff
         const delayMs = initialDelayMs * Math.pow(1.5, attempt);
@@ -273,10 +309,13 @@ async function retryOperation<T>(
       }
     }
   }
-  
+
   throw lastError;
 }
 
+// # ############################################################################ #
+// # #         SECTION 13 - UTILITY FUNCTION: INSTALL MINIKIT HELPER          #
+// # ############################################################################ #
 /**
  * Helper for safer MiniKit installation that handles specific MiniKit return types
  */
@@ -285,10 +324,10 @@ async function installMiniKit(appId: string): Promise<void> {
     try {
       // Get the result from MiniKit.install
       const installResult = MiniKit.install(String(appId));
-      
+
       // Case 1: If it's a Promise
-      if (installResult && 
-          typeof installResult === 'object' && 
+      if (installResult &&
+          typeof installResult === 'object' &&
           typeof (installResult as any).then === 'function') {
         // Cast to unknown first to satisfy TypeScript
         (installResult as unknown as Promise<any>)
@@ -296,18 +335,18 @@ async function installMiniKit(appId: string): Promise<void> {
           .catch(reject);
         return;
       }
-      
+
       // Case 2: If it's a synchronous success/error object
       if (installResult && typeof installResult === 'object') {
         // Check for error indicators in the object
         if ('success' in installResult) {
           if (installResult.success === false) {
             // It's an error object
-            const errorMessage = 
-              (installResult as any).errorMessage || 
-              'MiniKit installation failed with error code: ' + 
+            const errorMessage =
+              (installResult as any).errorMessage ||
+              'MiniKit installation failed with error code: ' +
               ((installResult as any).errorCode || 'unknown');
-              
+
             reject(new Error(errorMessage));
             return;
           }
@@ -316,7 +355,7 @@ async function installMiniKit(appId: string): Promise<void> {
           return;
         }
       }
-      
+
       // Case 3: Any other return type - assume success
       resolve();
     } catch (error) {
@@ -325,6 +364,9 @@ async function installMiniKit(appId: string): Promise<void> {
   });
 }
 
+// # ############################################################################ #
+// # #      SECTION 14 - EXPORTED FUNCTION: TRIGGER MINIKIT WALLET AUTH       #
+// # ############################################################################ #
 // Export a function to manually trigger wallet auth from anywhere in the app
 export const triggerMiniKitWalletAuth = async (
   serverNonce: string,
@@ -336,11 +378,11 @@ export const triggerMiniKitWalletAuth = async (
     console.error('[triggerMiniKitWalletAuth] Invalid nonce format:', serverNonce);
     throw new Error('A valid server-issued nonce is required to trigger wallet auth.');
   }
-  
+
   if (serverNonce.length < 8) {
     console.warn('[triggerMiniKitWalletAuth] Nonce seems suspiciously short:', serverNonce);
   }
-  
+
   if (typeof MiniKit === 'undefined') {
     console.error('[triggerMiniKitWalletAuth] MiniKit is undefined (not loaded)');
     throw new Error('MiniKit script is not available. Please ensure it is properly loaded.');
@@ -349,12 +391,12 @@ export const triggerMiniKitWalletAuth = async (
   // Added better retry handling for installation
   let retryCount = 0;
   let isInstalled = false;
-  
+
   // Check if MiniKit is installed with retries
   while (retryCount <= maxRetries) {
     try {
       console.log(`[triggerMiniKitWalletAuth] Checking if MiniKit is installed (attempt ${retryCount + 1})...`);
-      
+
       if (typeof MiniKit.isInstalled !== 'function') {
         console.error('[triggerMiniKitWalletAuth] MiniKit.isInstalled is not a function');
         // Added short delay before retrying
@@ -362,11 +404,11 @@ export const triggerMiniKitWalletAuth = async (
         retryCount++;
         continue;
       }
-      
+
       isInstalled = MiniKit.isInstalled();
       console.log(`[triggerMiniKitWalletAuth] MiniKit.isInstalled() check returned: ${isInstalled}`);
       if (isInstalled) break;
-      
+
       // Added delay between retries
       await new Promise(resolve => setTimeout(resolve, 300));
       retryCount++;
@@ -381,13 +423,13 @@ export const triggerMiniKitWalletAuth = async (
   if (!isInstalled) {
     try {
       // Get App ID with more robust fallback chain and logging
-      const envAppId = import.meta.env.VITE_WORLD_APP_ID || 
-                    import.meta.env.VITE_WORLD_ID_APP_ID;
+      const envAppId = import.meta.env.VITE_WORLD_APP_ID ||
+                       import.meta.env.VITE_WORLD_ID_APP_ID;
       const globalEnvAppId = (window as any).__ENV__?.WORLD_APP_ID;
-      
+
       // Use the first available App ID, with default as last resort
       const appId = envAppId || globalEnvAppId || DEFAULT_APP_ID;
-      
+
       console.log('[triggerMiniKitWalletAuth] Installing MiniKit with appId:', appId);
       console.log('[triggerMiniKitWalletAuth] Environment variables available:', {
         VITE_WORLD_APP_ID: import.meta.env.VITE_WORLD_APP_ID,
@@ -395,7 +437,7 @@ export const triggerMiniKitWalletAuth = async (
         WORLD_APP_ID: import.meta.env.WORLD_APP_ID,
         windowEnvVar: (window as any).__ENV__?.WORLD_APP_ID
       });
-      
+
       // Install MiniKit with retries
       let installRetryCount = 0;
       while (installRetryCount <= maxRetries) {
@@ -407,7 +449,7 @@ export const triggerMiniKitWalletAuth = async (
         } catch (installError) {
           console.error(`[triggerMiniKitWalletAuth] Failed to install MiniKit (attempt ${installRetryCount + 1}):`, installError);
           if (installRetryCount >= maxRetries) {
-            throw new Error('Failed to initialize MiniKit after multiple attempts: ' + 
+            throw new Error('Failed to initialize MiniKit after multiple attempts: ' +
               (installError instanceof Error ? installError.message : String(installError)));
           }
           // Wait before retry
@@ -431,12 +473,12 @@ export const triggerMiniKitWalletAuth = async (
       await new Promise(resolve => setTimeout(resolve, 300));
       apiRetryCount++;
     }
-    
+
     if (!MiniKit.commandsAsync) {
       console.error('[triggerMiniKitWalletAuth] MiniKit.commandsAsync is undefined after waiting');
       throw new Error('MiniKit is initialized but commandsAsync API is not available. Check MiniKit version compatibility.');
     }
-    
+
     // Check for walletAuth command
     if (!MiniKit.commandsAsync.walletAuth) {
       console.error('[triggerMiniKitWalletAuth] MiniKit.commandsAsync.walletAuth is undefined');
@@ -444,14 +486,14 @@ export const triggerMiniKitWalletAuth = async (
     }
 
     console.log('[triggerMiniKitWalletAuth] Calling MiniKit.commandsAsync.walletAuth with serverNonce:', serverNonce);
-    
+
     // Add statement and timeout for better UX
     const result = await MiniKit.commandsAsync.walletAuth({
       nonce: serverNonce,
       statement: 'Sign in to WorldFund to create and support campaigns.',
       expirationTime: new Date(Date.now() + 1000 * 60 * AUTH_EXPIRY_MINUTES), // expiry
     });
-    
+
     console.log('[triggerMiniKitWalletAuth] Wallet auth result:', JSON.stringify(result, null, 2));
 
     // Better null/undefined handling
@@ -459,7 +501,7 @@ export const triggerMiniKitWalletAuth = async (
       console.error('[triggerMiniKitWalletAuth] MiniKit.commandsAsync.walletAuth returned null/undefined');
       throw new Error('MiniKit wallet authentication returned an empty result');
     }
-    
+
     if (!result.finalPayload) {
       console.error('[triggerMiniKitWalletAuth] MiniKit.commandsAsync.walletAuth returned no finalPayload');
       throw new Error('MiniKit wallet authentication did not return a payload. User might have cancelled.');
@@ -467,19 +509,19 @@ export const triggerMiniKitWalletAuth = async (
 
     // Sanitize the wallet payload for security
     const sanitizedPayload = sanitizeWalletPayload(result.finalPayload);
-    
+
     // More detailed error handling with specific error types
     if (sanitizedPayload.status !== 'success') {
       // Access error_code more safely
       const errorCode = sanitizedPayload.error_code;
       const status = sanitizedPayload.status;
-      
+
       console.error('[triggerMiniKitWalletAuth] MiniKit auth returned non-success status:', {
         status,
         errorCode,
         payload: JSON.stringify(sanitizedPayload, null, 2)
       });
-      
+
       if (status === 'cancelled') {
         throw new Error('Wallet authentication was cancelled by the user.');
       } else if (status === 'error') {
@@ -494,29 +536,29 @@ export const triggerMiniKitWalletAuth = async (
       console.error('[triggerMiniKitWalletAuth] MiniKit auth successful but missing expected message in payload');
       throw new Error('MiniKit auth successful but returned an incomplete payload without signature data');
     }
-    
+
     if (!sanitizedPayload.signature) {
       console.error('[triggerMiniKitWalletAuth] MiniKit auth successful but missing signature in payload');
       throw new Error('MiniKit auth successful but returned an incomplete payload without signature');
     }
-    
+
     // Extract nonce for validation
     const extractedNonce = extractNonceFromMessage(sanitizedPayload.message);
     if (!extractedNonce) {
       console.warn('[triggerMiniKitWalletAuth] Could not extract nonce from message:',
-        typeof sanitizedPayload.message === 'object' 
-          ? JSON.stringify(sanitizedPayload.message) 
+        typeof sanitizedPayload.message === 'object'
+          ? JSON.stringify(sanitizedPayload.message)
           : sanitizedPayload.message);
     }
 
     // Extract address from payload
     const extractedAddress = extractAddress(sanitizedPayload);
-    
+
     // IMPORTANT: Ensure message is a string for MiniAppWalletAuthSuccessPayload
     const messageString = typeof sanitizedPayload.message === 'string'
       ? sanitizedPayload.message
       : JSON.stringify(sanitizedPayload.message);
-    
+
     // Return properly formatted success payload with ALL required properties
     const successPayload: MiniAppWalletAuthSuccessPayload = {
       status: 'success',
@@ -524,8 +566,8 @@ export const triggerMiniKitWalletAuth = async (
       signature: sanitizedPayload.signature,
       address: extractedAddress || '',
       // Handle different version formats - ensure it's a number
-      version: typeof sanitizedPayload.version === 'number' 
-        ? sanitizedPayload.version 
+      version: typeof sanitizedPayload.version === 'number'
+        ? sanitizedPayload.version
         : parseInt(String(sanitizedPayload.version || '1'), 10) || 1
     };
 
@@ -537,6 +579,9 @@ export const triggerMiniKitWalletAuth = async (
   }
 };
 
+// # ############################################################################ #
+// # #          SECTION 15 - PROVIDER COMPONENT: DEFINITION & STATE           #
+// # ############################################################################ #
 export default function MiniKitProvider({
   children,
   appId
@@ -545,9 +590,15 @@ export default function MiniKitProvider({
   const [isMiniKitInitialized, setIsMiniKitInitialized] = useState(false);
   const [isAttemptingAuthViaWindow, setIsAttemptingAuthViaWindow] = useState(false);
 
+// # ############################################################################ #
+// # #           SECTION 16 - PROVIDER COMPONENT: AUTH CONTEXT HOOK           #
+// # ############################################################################ #
   // Ensure getNonceForMiniKit is available from AuthContext
   const { loginWithWallet, getNonceForMiniKit } = useAuth();
 
+// # ############################################################################ #
+// # #         SECTION 17 - PROVIDER COMPONENT: EFFECT - APP ID SETUP         #
+// # ############################################################################ #
   // Better environment variable handling
   useEffect(() => {
     try {
@@ -556,7 +607,7 @@ export default function MiniKitProvider({
         setAppIdToUse(appId);
         return;
       }
-      
+
       // Log all possible environment variables for debugging
       console.log('[MiniKitProvider] Environment variables check:', {
         VITE_WORLD_APP_ID: import.meta.env.VITE_WORLD_APP_ID,
@@ -564,7 +615,7 @@ export default function MiniKitProvider({
         WORLD_APP_ID: import.meta.env.WORLD_APP_ID,
         windowEnvVar: (window as any).__ENV__?.WORLD_APP_ID,
       });
-      
+
       const envAppId = import.meta.env.VITE_WORLD_APP_ID ||
                        import.meta.env.VITE_WORLD_ID_APP_ID ||
                        import.meta.env.WORLD_APP_ID;
@@ -586,16 +637,19 @@ export default function MiniKitProvider({
     }
   }, [appId]);
 
+// # ############################################################################ #
+// # #    SECTION 18 - PROVIDER COMPONENT: EFFECT - MINIKIT INITIALIZATION    #
+// # ############################################################################ #
   // Better initialization handling with retry
   useEffect(() => {
     if (!appIdToUse) {
       console.warn('[MiniKitProvider] Cannot initialize MiniKit: No App ID available yet.');
       return;
     }
-    
+
     let isMounted = true;
     console.log('[MiniKitProvider] Attempting to initialize MiniKit with App ID:', appIdToUse);
-    
+
     const initializeMiniKit = async () => {
       try {
         // Check if MiniKit is defined
@@ -603,9 +657,9 @@ export default function MiniKitProvider({
           console.error('[MiniKitProvider] MiniKit is undefined. Cannot initialize.');
           return;
         }
-        
+
         console.log('[MiniKitProvider] MiniKit object available with keys:', Object.keys(MiniKit));
-        
+
         // Check if already installed
         let isInstalled = false;
         try {
@@ -646,7 +700,7 @@ export default function MiniKitProvider({
           console.error('[MiniKitProvider] Error verifying MiniKit installation:', err);
           return;
         }
-        
+
         if (verifyInstalled) {
           console.log('[MiniKitProvider] MiniKit is active and ready');
           if (isMounted) setIsMiniKitInitialized(true);
@@ -657,30 +711,33 @@ export default function MiniKitProvider({
         console.error('[MiniKitProvider] Failed to initialize/install MiniKit:', error);
       }
     };
-    
+
     initializeMiniKit();
     return () => { isMounted = false; };
   }, [appIdToUse]);
 
+// # ############################################################################ #
+// # #  SECTION 19 - PROVIDER COMPONENT: EFFECT - WINDOW AUTH FUNCTION SETUP  #
+// # ############################################################################ #
   // Better window auth function handling
   useEffect(() => {
     // Check if auth functions are available
-    if (isMiniKitInitialized && 
-        typeof getNonceForMiniKit === 'function' && 
+    if (isMiniKitInitialized &&
+        typeof getNonceForMiniKit === 'function' &&
         typeof loginWithWallet === 'function') {
-      
+
       // Set up global auth trigger function
       (window as any).__triggerWalletAuth = async (): Promise<boolean> => {
         console.log('[window.__triggerWalletAuth] Direct wallet auth trigger called');
-        
+
         // Prevent concurrent auth attempts
         if (isAttemptingAuthViaWindow) {
           console.warn('[window.__triggerWalletAuth] Auth already in progress, skipping');
           return false;
         }
-        
+
         setIsAttemptingAuthViaWindow(true);
-        
+
         try {
           // Get nonce from backend
           console.log('[window.__triggerWalletAuth] Fetching nonce via AuthContext...');
@@ -722,7 +779,7 @@ export default function MiniKitProvider({
           setIsAttemptingAuthViaWindow(false);
         }
       };
-      
+
       console.log('[MiniKitProvider] Exposed wallet auth function to window.__triggerWalletAuth');
     } else if (isMiniKitInitialized) {
         console.warn('[MiniKitProvider] MiniKit initialized, but auth functions not available:', {
@@ -730,7 +787,7 @@ export default function MiniKitProvider({
           loginWithWalletAvailable: typeof loginWithWallet === 'function'
         });
     }
-    
+
     // Cleanup
     return () => {
       if ((window as any).__triggerWalletAuth) {
@@ -740,12 +797,26 @@ export default function MiniKitProvider({
     };
   }, [isMiniKitInitialized, isAttemptingAuthViaWindow, getNonceForMiniKit, loginWithWallet]);
 
+// # ############################################################################ #
+// # #                SECTION 20 - PROVIDER COMPONENT: JSX RETURN               #
+// # ############################################################################ #
   return <>{children}</>;
 }
 
+// # ############################################################################ #
+// # #             SECTION 21 - GLOBAL TYPE DECLARATION (WINDOW)              #
+// # ############################################################################ #
 declare global {
   interface Window {
     __triggerWalletAuth?: () => Promise<boolean>; // Returns boolean for success/failure
     __ENV__?: Record<string, string>;
   }
 }
+
+// # ############################################################################ #
+// # #            SECTION 22 - DEFAULT EXPORT (MINIKITPROVIDER)             #
+// # ############################################################################ #
+// Default export is the MiniKitProvider function itself, covered by its definition section.
+// If this was a separate named export, it would go here.
+// The actual export is `export default function MiniKitProvider...`
+// which is handled by the component definition itself.

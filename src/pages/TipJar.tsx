@@ -1,8 +1,15 @@
-// src/pages/TipJar.tsx  
+// src/pages/TipJar.tsx
+
+// # ############################################################################ #
+// # #                             SECTION 1 - IMPORTS                            #
+// # ############################################################################ #
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IDKitWidget, VerificationLevel } from '@worldcoin/idkit';
 
+// # ############################################################################ #
+// # #                        SECTION 2 - TYPE DEFINITIONS                        #
+// # ############################################################################ #
 type TipCurrency = 'USDC' | 'BTC';
 
 interface TipJarProps {
@@ -10,6 +17,9 @@ interface TipJarProps {
   onNavigate?: (route: string) => void;
 }
 
+// # ############################################################################ #
+// # #                SECTION 3 - COMPONENT: DEFINITION & STATE                 #
+// # ############################################################################ #
 const TipJar: React.FC<TipJarProps> = ({ onNavigate }) => {
   const [isVerified, setIsVerified] = useState(false);
   const [verificationLoading, setVerificationLoading] = useState(false);
@@ -20,15 +30,24 @@ const TipJar: React.FC<TipJarProps> = ({ onNavigate }) => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false); // for bottom nav modal example
   const navigate = useNavigate();
 
+// # ############################################################################ #
+// # #                SECTION 4 - CONSTANTS: DONATION ADDRESSES                 #
+// # ############################################################################ #
   // Your donation addresses hardcoded
   const USDC_ADDRESS = '0x5816E346C014e4BE06bA48de8c0Bf08A61f9033F';
   const BTC_ADDRESS = 'bc1ql4jewr8xndqtn90k58n5lky42gjf3tas26u58j';
 
+// # ############################################################################ #
+// # #            SECTION 5 - EFFECT: INITIAL VERIFICATION CHECK            #
+// # ############################################################################ #
   // Optionally check for existing verification at mount here
   useEffect(() => {
     // Placeholder: check if the user is already verified (e.g., via your authService)
   }, []);
 
+// # ############################################################################ #
+// # #        SECTION 6 - CALLBACK: WORLD ID VERIFICATION SUCCESS         #
+// # ############################################################################ #
   // Handler for successful World ID verification
   const handleVerificationSuccess = useCallback(() => {
     setVerificationLoading(false);
@@ -36,6 +55,9 @@ const TipJar: React.FC<TipJarProps> = ({ onNavigate }) => {
     setErrorMessage('');
   }, []);
 
+// # ############################################################################ #
+// # #         SECTION 7 - CALLBACK: WORLD ID VERIFICATION ERROR          #
+// # ############################################################################ #
   // Handler for World ID verification error
   const handleVerificationError = useCallback((error: unknown) => {
     console.error('World ID verification error:', error);
@@ -43,12 +65,18 @@ const TipJar: React.FC<TipJarProps> = ({ onNavigate }) => {
     setVerificationLoading(false);
   }, []);
 
+// # ############################################################################ #
+// # #            SECTION 8 - EVENT HANDLER: PRESET TIP SELECTION             #
+// # ############################################################################ #
   // Preset tip handler
   const handlePresetTip = (amount: number) => {
     setTipAmount(amount);
     setErrorMessage('');
   };
 
+// # ############################################################################ #
+// # #                SECTION 9 - EVENT HANDLER: TIP SUBMISSION                 #
+// # ############################################################################ #
   // Submit tip handler; in production replace with API call
   const handleTipSubmit = async () => {
     if (!isVerified) {
@@ -76,6 +104,9 @@ const TipJar: React.FC<TipJarProps> = ({ onNavigate }) => {
     }
   };
 
+// # ############################################################################ #
+// # #          SECTION 10 - JSX RETURN: PAGE LAYOUT & CONTENT            #
+// # ############################################################################ #
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <div className="flex-grow">
@@ -273,4 +304,7 @@ const TipJar: React.FC<TipJarProps> = ({ onNavigate }) => {
   );
 };
 
+// # ############################################################################ #
+// # #                         SECTION 11 - DEFAULT EXPORT                        #
+// # ############################################################################ #
 export default TipJar;

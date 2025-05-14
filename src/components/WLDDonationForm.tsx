@@ -1,14 +1,24 @@
 // src/components/WLDDonationForm.tsx
+
+// # ############################################################################ #
+// # #                             SECTION 1 - IMPORTS                            #
+// # ############################################################################ #
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { wldPaymentService, TransactionStatus } from '../services/WLDPaymentService';
 
+// # ############################################################################ #
+// # #                  SECTION 2 - INTERFACE: COMPONENT PROPS                  #
+// # ############################################################################ #
 interface WLDDonationFormProps {
   campaignId: string;
   onDonationSuccess?: () => void;
 }
 
-export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({ 
+// # ############################################################################ #
+// # #                SECTION 3 - COMPONENT: DEFINITION & STATE                 #
+// # ############################################################################ #
+export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
   campaignId,
   onDonationSuccess
 }) => {
@@ -25,6 +35,9 @@ export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
     minAmount: number;
   } | null>(null);
 
+// # ############################################################################ #
+// # #            SECTION 4 - EFFECT: FETCH DONATION INSTRUCTIONS             #
+// # ############################################################################ #
   useEffect(() => {
     const fetchInstructions = async () => {
       try {
@@ -39,6 +52,9 @@ export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
     fetchInstructions();
   }, [campaignId]);
 
+// # ############################################################################ #
+// # #                 SECTION 5 - EVENT HANDLER: AMOUNT CHANGE                 #
+// # ############################################################################ #
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     // Allow only numbers and decimal point
@@ -47,6 +63,9 @@ export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
     }
   };
 
+// # ############################################################################ #
+// # #             SECTION 6 - EVENT HANDLER: VERIFY TRANSACTION              #
+// # ############################################################################ #
   const handleVerifyTransaction = async () => {
     if (!txHash) {
       setError('Please enter a transaction hash');
@@ -58,20 +77,20 @@ export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
 
     try {
       const result = await wldPaymentService.verifyTransaction(txHash);
-      
+
       if (!result.success) {
         throw new Error(result.error || 'Transaction verification failed');
       }
-      
+
       if (result.transaction?.status !== TransactionStatus.CONFIRMED) {
         throw new Error('Transaction is not confirmed yet. Please wait and try again.');
       }
-      
+
       // Set verified amount from transaction
       if (result.transaction?.amount) {
         setAmount(result.transaction.amount.toString());
       }
-      
+
       // Proceed with donation (no error thrown)
     } catch (err: any) {
       console.error('Transaction verification error:', err);
@@ -81,47 +100,50 @@ export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
     }
   };
 
+// # ############################################################################ #
+// # #                  SECTION 7 - EVENT HANDLER: FORM SUBMIT                  #
+// # ############################################################################ #
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isAuthenticated) {
       setError('Please sign in to donate');
       return;
     }
-    
+
     if (!amount || parseFloat(amount) <= 0) {
       setError('Please enter a valid amount');
       return;
     }
-    
+
     if (!txHash) {
       setError('Please enter a transaction hash');
       return;
     }
-    
+
     if (instructions?.minAmount && parseFloat(amount) < instructions.minAmount) {
       setError(`Minimum donation amount is ${instructions.minAmount} WLD`);
       return;
     }
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const result = await wldPaymentService.donateWLD(
         campaignId,
         parseFloat(amount),
         txHash
       );
-      
+
       if (!result.success) {
         throw new Error(result.error || 'Donation failed');
       }
-      
+
       setSuccess(true);
       setAmount('');
       setTxHash('');
-      
+
       // Call the success callback if provided
       if (onDonationSuccess) {
         onDonationSuccess();
@@ -134,6 +156,9 @@ export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
     }
   };
 
+// # ############################################################################ #
+// # #                 SECTION 8 - UTILITY FUNCTION: RESET FORM                 #
+// # ############################################################################ #
   const resetForm = () => {
     setAmount('');
     setTxHash('');
@@ -141,6 +166,9 @@ export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
     setError(null);
   };
 
+// # ############################################################################ #
+// # #       SECTION 9 - CONDITIONAL RENDERING: LOADING INSTRUCTIONS        #
+// # ############################################################################ #
   if (!instructions) {
     return (
       <div className="p-4 text-center">
@@ -150,6 +178,9 @@ export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
     );
   }
 
+// # ############################################################################ #
+// # #          SECTION 10 - CONDITIONAL RENDERING: DONATION SUCCESS          #
+// # ############################################################################ #
   if (success) {
     return (
       <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
@@ -170,13 +201,16 @@ export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
     );
   }
 
+// # ############################################################################ #
+// # #              SECTION 11 - MAIN JSX RETURN: DONATION FORM               #
+// # ############################################################################ #
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       <div className="p-4 border-b bg-blue-50">
         <h3 className="text-lg font-medium text-blue-800">Donate with WLD</h3>
         <p className="mt-1 text-sm text-blue-600">Support this campaign with WLD tokens</p>
       </div>
-      
+
       <div className="p-4">
         <div className="mb-4">
           <p className="text-sm font-medium text-gray-700 mb-2">Campaign Address:</p>
@@ -193,7 +227,7 @@ export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
             Copy Address
           </button>
         </div>
-        
+
         <div className="mb-4">
           <p className="text-sm font-medium text-gray-700 mb-2">Instructions:</p>
           <ol className="list-decimal list-inside text-sm space-y-1 text-gray-600">
@@ -202,7 +236,7 @@ export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
             ))}
           </ol>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
@@ -220,7 +254,7 @@ export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
               />
             </div>
           </div>
-          
+
           <div>
             <label htmlFor="txHash" className="block text-sm font-medium text-gray-700">
               Transaction Hash
@@ -257,7 +291,7 @@ export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
               </button>
             )}
           </div>
-          
+
           {error && (
             <div className="rounded-md bg-red-50 p-3">
               <div className="flex">
@@ -272,7 +306,7 @@ export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
               </div>
             </div>
           )}
-          
+
           <button
             type="submit"
             disabled={loading}

@@ -1,4 +1,8 @@
 // src/pages/LandingPage.tsx
+
+// # ############################################################################ #
+// # #                             SECTION 1 - IMPORTS                            #
+// # ############################################################################ #
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../components/AuthContext';
 import { campaignService, Campaign as CampaignData } from '../services/CampaignService';
@@ -6,6 +10,9 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { triggerMiniKitWalletAuth } from '../MiniKitProvider';
 import { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
 
+// # ############################################################################ #
+// # #               SECTION 2 - INTERFACE: CAMPAIGN DISPLAY DATA               #
+// # ############################################################################ #
 // Campaign Interface
 interface CampaignDisplay extends CampaignData {
   daysLeft: number;
@@ -13,6 +20,9 @@ interface CampaignDisplay extends CampaignData {
   isVerified: boolean;
 }
 
+// # ############################################################################ #
+// # #      SECTION 3 - COMPONENT: PAGE DEFINITION & INITIALIZATION       #
+// # ############################################################################ #
 const LandingPage: React.FC = () => {
   // Log environment variables for debugging
   useEffect(() => {
@@ -28,12 +38,18 @@ const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+// # ############################################################################ #
+// # #                  SECTION 4 - COMPONENT: STATE MANAGEMENT                 #
+// # ############################################################################ #
   const [campaigns, setCampaigns] = useState<CampaignDisplay[]>([]);
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
   const [isConnectingWallet, setIsConnectingWallet] = useState(false);
   const [connectionAttempts, setConnectionAttempts] = useState(0); // Track connection attempts
 
+// # ############################################################################ #
+// # #                 SECTION 5 - EFFECT: AUTH ERROR HANDLING                  #
+// # ############################################################################ #
   // Effect to display auth errors from context
   useEffect(() => {
     if (authError) {
@@ -42,22 +58,28 @@ const LandingPage: React.FC = () => {
     }
   }, [authError]);
 
+// # ############################################################################ #
+// # #                 SECTION 6 - EFFECT: AUTH STATUS LOGGING                  #
+// # ############################################################################ #
   // Log authentication status changes
   useEffect(() => {
-    console.log('[LandingPage] Auth state from context changed:', { 
-      isAuthenticated, 
-      walletAddress: walletAddress ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}` : null, 
-      authIsLoading 
+    console.log('[LandingPage] Auth state from context changed:', {
+      isAuthenticated,
+      walletAddress: walletAddress ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}` : null,
+      authIsLoading
     });
   }, [isAuthenticated, walletAddress, authIsLoading]);
 
+// # ############################################################################ #
+// # #                    SECTION 7 - EFFECT: FETCH CAMPAIGNS                   #
+// # ############################################################################ #
   // Fetch campaigns on component mount
   useEffect(() => {
     const fetchCampaigns = async () => {
       console.log('[LandingPage] Attempting to fetch campaigns...');
       setLoadingCampaigns(true);
       setPageError(null);
-      
+
       try {
         // Only attempt to fetch if we're not in a test environment
         if (import.meta.env.MODE === 'test') {
@@ -65,7 +87,7 @@ const LandingPage: React.FC = () => {
           setCampaigns([]);
           return;
         }
-        
+
         const result = await campaignService.fetchAllCampaigns();
         if (result.success && result.campaigns) {
           const displayCampaigns: CampaignDisplay[] = result.campaigns.map(campaign => ({
@@ -88,10 +110,13 @@ const LandingPage: React.FC = () => {
         setLoadingCampaigns(false);
       }
     };
-    
+
     fetchCampaigns();
   }, []);
 
+// # ############################################################################ #
+// # #                    SECTION 8 - CALLBACK: CONNECT WALLET                    #
+// # ############################################################################ #
   // Enhanced wallet connection with retries and improved error handling
   const handleConnectWallet = useCallback(async () => {
     if (isConnectingWallet || authIsLoading) {
@@ -117,9 +142,9 @@ const LandingPage: React.FC = () => {
         // Log API base URL before making any requests
         console.log("[LandingPage] API URL check:", {
           VITE_AMPLIFY_API: import.meta.env.VITE_AMPLIFY_API,
-          VITE_APP_BACKEND_API_URL: import.meta.env.VITE_APP_BACKEND_API_URL 
+          VITE_APP_BACKEND_API_URL: import.meta.env.VITE_APP_BACKEND_API_URL
         });
-        
+
         // Standard production flow
         console.log("[LandingPage] handleConnectWallet: Fetching nonce for MiniKit auth...");
         let serverNonce;
@@ -139,7 +164,7 @@ const LandingPage: React.FC = () => {
         let authPayload;
         try {
           authPayload = await triggerMiniKitWalletAuth(serverNonce);
-          console.log("[LandingPage] handleConnectWallet: Auth payload received:", 
+          console.log("[LandingPage] handleConnectWallet: Auth payload received:",
             authPayload ? "Valid payload" : "Invalid/empty payload");
         } catch (walletError) {
           console.error("[LandingPage] Wallet auth failed:", walletError);
@@ -158,11 +183,11 @@ const LandingPage: React.FC = () => {
           throw new Error(`Login failed: ${loginError instanceof Error ? loginError.message : 'Unknown error'}`);
         }
       }
-      
+
       console.log("[LandingPage] handleConnectWallet: Wallet connection and login process successfully completed.");
     } catch (error) {
       console.error("[LandingPage] handleConnectWallet: Error during wallet connection/login process:", error);
-      
+
       // Format a more user-friendly error message
       let userErrorMessage = "Connection failed";
       if (error instanceof Error) {
@@ -173,9 +198,9 @@ const LandingPage: React.FC = () => {
           userErrorMessage = error.message;
         }
       }
-      
+
       setPageError(userErrorMessage);
-      
+
       // Suggest refresh if multiple attempts have failed
       if (connectionAttempts > 2) {
         setPageError(`${userErrorMessage}. You may need to refresh the page.`);
@@ -185,6 +210,9 @@ const LandingPage: React.FC = () => {
     }
   }, [isConnectingWallet, authIsLoading, getNonceForMiniKit, loginWithWallet, connectionAttempts]);
 
+// # ############################################################################ #
+// # #                 SECTION 9 - CALLBACK: ACCOUNT NAVIGATION                 #
+// # ############################################################################ #
   // Navigation handler for the Account tab
   const handleAccountNavigation = useCallback(async (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
@@ -204,38 +232,47 @@ const LandingPage: React.FC = () => {
     }
   }, [isAuthenticated, authIsLoading, navigate, handleConnectWallet]);
 
+// # ############################################################################ #
+// # #        SECTION 10 - CALLBACK: DASHBOARD HEADER NAVIGATION          #
+// # ############################################################################ #
   // Direct navigation for the Dashboard button
   const goToDashboardHeader = useCallback(() => {
     console.log('[LandingPage] goToDashboardHeader: Navigating to /dashboard.');
     navigate('/dashboard', { replace: true });
   }, [navigate]);
 
+// # ############################################################################ #
+// # #                       SECTION 11 - HELPER FUNCTIONS                      #
+// # ############################################################################ #
   // --- Helper Functions ---
-  const calculateProgressPercentage = (raised: number, goal: number): string => { 
-    if (goal <= 0) return '0%'; 
-    return Math.min(Math.round((raised / goal) * 100), 100) + '%'; 
+  const calculateProgressPercentage = (raised: number, goal: number): string => {
+    if (goal <= 0) return '0%';
+    return Math.min(Math.round((raised / goal) * 100), 100) + '%';
   };
-  
-  const calculateDaysLeft = (createdAt: string): number => { 
-    const created = new Date(createdAt); 
-    const now = new Date(); 
-    const diffTime = 30 * 24 * 60 * 60 * 1000 - (now.getTime() - created.getTime()); 
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-    return Math.max(0, diffDays); 
+
+  const calculateDaysLeft = (createdAt: string): number => {
+    const created = new Date(createdAt);
+    const now = new Date();
+    const diffTime = 30 * 24 * 60 * 60 * 1000 - (now.getTime() - created.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
   };
-  
-  const formatAddress = (address: string): string => { 
-    if (!address) return 'Anonymous'; 
-    return `${address.slice(0, 6)}...${address.slice(-4)}`; 
+
+  const formatAddress = (address: string): string => {
+    if (!address) return 'Anonymous';
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
-  
-  const isActivePath = (path: string): boolean => 
-    location.pathname === path || 
-    (path === '/' && location.pathname === '/landing') || 
+
+  const isActivePath = (path: string): boolean =>
+    location.pathname === path ||
+    (path === '/' && location.pathname === '/landing') ||
     (path === '/campaigns' && location.pathname.startsWith('/campaigns/'));
 
+// # ############################################################################ #
+// # #                    SECTION 12 - INLINE STYLES OBJECT                     #
+// # ############################################################################ #
   // --- Styles object (keeping the existing implementation) ---
-  const styles: { [key: string]: React.CSSProperties } = { /* ... Your full styles object ... */ 
+  const styles: { [key: string]: React.CSSProperties } = { /* ... Your full styles object ... */
     page: { textAlign: 'center' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif', color: '#202124', backgroundColor: '#ffffff', margin: 0, padding: 0, overflowX: 'hidden' as const, width: '100%', maxWidth: '100vw', minHeight: '100vh', display: 'flex', flexDirection: 'column' as const },
     container: { margin: '0 auto', width: '100%', padding: '0 0.5rem', boxSizing: 'border-box' as const, maxWidth: '1200px', flexGrow: 1 },
     header: { background: 'white', padding: '0.5rem 0', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', position: 'sticky' as const, top: 0, zIndex: 100 },
@@ -274,6 +311,9 @@ const LandingPage: React.FC = () => {
 
   const responsiveStyles = ` html, body { font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'}; } `;
 
+// # ############################################################################ #
+// # #          SECTION 13 - JSX RETURN: PAGE STRUCTURE & CONTENT           #
+// # ############################################################################ #
   return (
     <div style={styles.page}>
       <style>{responsiveStyles}</style>
@@ -286,9 +326,9 @@ const LandingPage: React.FC = () => {
               Dashboard
             </button>
           ) : (
-            <button 
-              onClick={handleConnectWallet} 
-              disabled={isConnectingWallet || authIsLoading} 
+            <button
+              onClick={handleConnectWallet}
+              disabled={isConnectingWallet || authIsLoading}
               style={{ ...styles.button, ...styles.buttonPrimary }}
             >
               {(isConnectingWallet || authIsLoading) ? 'Connecting...' : 'Connect Wallet'}
@@ -308,14 +348,14 @@ const LandingPage: React.FC = () => {
             <h2 style={styles.sectionTitle}>Featured Campaigns</h2>
             <p style={styles.sectionSubtitle}>Discover projects making a difference</p>
           </div>
-          
+
           {/* Error display with more helpful messages */}
           {pageError && (
             <div style={styles.errorMessage}>
               <p>{pageError}</p>
               {connectionAttempts > 2 && (
-                <button 
-                  onClick={() => window.location.reload()} 
+                <button
+                  onClick={() => window.location.reload()}
                   style={{
                     marginTop: '0.5rem',
                     padding: '0.3rem 0.6rem',
@@ -332,12 +372,12 @@ const LandingPage: React.FC = () => {
               )}
             </div>
           )}
-          
+
           {loadingCampaigns && <div style={{ textAlign: 'center', padding: '2rem' }}>Loading campaigns...</div>}
-          
+
           {!loadingCampaigns && !pageError && (
             <div style={styles.campaignsGrid}>
-              {campaigns.length > 0 ? 
+              {campaigns.length > 0 ?
                 campaigns.map(campaign => (
                   <div key={campaign.id} style={styles.campaignCard}>
                     {campaign.image ? (
@@ -366,8 +406,8 @@ const LandingPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                )) 
-                : 
+                ))
+                :
                 <p style={{textAlign: 'center', padding: '2rem', color: '#5f6368'}}>No campaigns found. Check back soon!</p>
               }
             </div>
@@ -408,4 +448,7 @@ const LandingPage: React.FC = () => {
   );
 };
 
+// # ############################################################################ #
+// # #                         SECTION 14 - DEFAULT EXPORT                        #
+// # ############################################################################ #
 export default LandingPage;

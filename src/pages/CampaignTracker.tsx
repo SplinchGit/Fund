@@ -1,9 +1,16 @@
 // src/components/CampaignTracker.tsx
+
+// # ############################################################################ #
+// # #                             SECTION 1 - IMPORTS                            #
+// # ############################################################################ #
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext';
 import { campaignService, Campaign } from '../services/CampaignService';
 
+// # ############################################################################ #
+// # #                SECTION 2 - COMPONENT: DEFINITION & STATE                 #
+// # ############################################################################ #
 export const CampaignTracker: React.FC = () => {
   const { walletAddress } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -16,21 +23,24 @@ export const CampaignTracker: React.FC = () => {
     totalContributors: 0
   });
 
+// # ############################################################################ #
+// # #      SECTION 3 - EFFECT: FETCH USER CAMPAIGNS & CALCULATE STATS      #
+// # ############################################################################ #
   useEffect(() => {
     const fetchUserCampaigns = async () => {
       if (!walletAddress) return;
-      
+
       setLoading(true);
       try {
         const result = await campaignService.fetchUserCampaigns(walletAddress);
-        
+
         if (result.success && result.campaigns) {
           setCampaigns(result.campaigns);
-          
+
           // Calculate stats
           const totalRaised = result.campaigns.reduce((sum, c) => sum + (c.raised || 0), 0);
           const activeCampaigns = result.campaigns.filter(c => c.status === 'active').length;
-          
+
           // Count unique contributors across all campaigns
           const allContributors = new Set<string>();
           result.campaigns.forEach(campaign => {
@@ -38,7 +48,7 @@ export const CampaignTracker: React.FC = () => {
               allContributors.add(donation.donor);
             });
           });
-          
+
           setStats({
             totalCampaigns: result.campaigns.length,
             totalRaised,
@@ -59,6 +69,9 @@ export const CampaignTracker: React.FC = () => {
     fetchUserCampaigns();
   }, [walletAddress]);
 
+// # ############################################################################ #
+// # #            SECTION 4 - CONDITIONAL RENDERING: LOADING STATE            #
+// # ############################################################################ #
   if (loading) {
     return (
       <div className="text-center py-8">
@@ -68,11 +81,14 @@ export const CampaignTracker: React.FC = () => {
     );
   }
 
+// # ############################################################################ #
+// # #             SECTION 5 - CONDITIONAL RENDERING: ERROR STATE             #
+// # ############################################################################ #
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md my-4">
         <p>{error}</p>
-        <button 
+        <button
           onClick={() => window.location.reload()}
           className="mt-2 text-sm text-red-700 underline hover:text-red-800"
         >
@@ -82,6 +98,9 @@ export const CampaignTracker: React.FC = () => {
     );
   }
 
+// # ############################################################################ #
+// # #      SECTION 6 - JSX RETURN: STATS OVERVIEW & CAMPAIGNS TABLE      #
+// # ############################################################################ #
   return (
     <div>
       {/* Stats Overview */}
@@ -90,17 +109,17 @@ export const CampaignTracker: React.FC = () => {
           <p className="text-sm text-gray-500 mb-1">Total Campaigns</p>
           <p className="text-2xl font-bold text-gray-800">{stats.totalCampaigns}</p>
         </div>
-        
+
         <div className="bg-white p-4 rounded-lg shadow">
           <p className="text-sm text-gray-500 mb-1">Active Campaigns</p>
           <p className="text-2xl font-bold text-green-600">{stats.activeCampaigns}</p>
         </div>
-        
+
         <div className="bg-white p-4 rounded-lg shadow">
           <p className="text-sm text-gray-500 mb-1">Total Raised</p>
           <p className="text-2xl font-bold text-blue-600">{stats.totalRaised.toLocaleString()} WLD</p>
         </div>
-        
+
         <div className="bg-white p-4 rounded-lg shadow">
           <p className="text-sm text-gray-500 mb-1">Contributors</p>
           <p className="text-2xl font-bold text-purple-600">{stats.totalContributors}</p>
@@ -112,11 +131,11 @@ export const CampaignTracker: React.FC = () => {
         <div className="p-4 border-b">
           <h2 className="text-lg font-semibold text-gray-800">Your Campaigns</h2>
         </div>
-        
+
         {campaigns.length === 0 ? (
           <div className="p-8 text-center">
             <p className="text-gray-600 mb-4">You haven't created any campaigns yet.</p>
-            <Link 
+            <Link
               to="/new-campaign"
               className="inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
             >
@@ -151,17 +170,17 @@ export const CampaignTracker: React.FC = () => {
                     Math.round((campaign.raised / campaign.goal) * 100),
                     100
                   );
-                  
+
                   return (
                     <tr key={campaign.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="h-10 w-10 flex-shrink-0">
                             {campaign.image ? (
-                              <img 
-                                className="h-10 w-10 rounded-full object-cover" 
-                                src={campaign.image} 
-                                alt="" 
+                              <img
+                                className="h-10 w-10 rounded-full object-cover"
+                                src={campaign.image}
+                                alt=""
                                 onError={(e) => {
                                   e.currentTarget.src = 'https://placehold.co/40x40/e5e7eb/5f6368?text=N/A';
                                 }}
@@ -181,8 +200,8 @@ export const CampaignTracker: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="w-full bg-gray-200 rounded-full h-2.5 mb-1">
-                          <div 
-                            className="bg-blue-600 h-2.5 rounded-full" 
+                          <div
+                            className="bg-blue-600 h-2.5 rounded-full"
                             style={{ width: `${progressPercentage}%` }}
                           ></div>
                         </div>
@@ -204,13 +223,13 @@ export const CampaignTracker: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          <Link 
+                          <Link
                             to={`/campaigns/${campaign.id}`}
                             className="text-blue-600 hover:text-blue-900"
                           >
                             View
                           </Link>
-                          <Link 
+                          <Link
                             to={`/campaigns/${campaign.id}/edit`}
                             className="text-indigo-600 hover:text-indigo-900"
                           >

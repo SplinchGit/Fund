@@ -1,7 +1,13 @@
 // src/components/AdminPanel.tsx
 
+// # ############################################################################ #
+// # #                      SECTION 1 - VITE CLIENT REFERENCE                     #
+// # ############################################################################ #
 /// <reference types="vite/client" />
 
+// # ############################################################################ #
+// # #                 SECTION 2 - ENVIRONMENT TYPE DEFINITIONS                 #
+// # ############################################################################ #
 // Define ImportMetaEnv and ImportMeta interfaces for Vite environment variables
 interface ImportMetaEnv {
   MODE: string
@@ -15,9 +21,6 @@ interface ImportMeta {
   readonly env: ImportMetaEnv
 }
 
-import React, { useState, useCallback } from 'react';
-// Removed import for userStore and UserData as they are not used / implemented with backend
-
 // Define a placeholder type for user data if needed later
 // interface UserData {
 //   walletAddress: string; // Assuming walletAddress is the ID from DynamoDB
@@ -28,6 +31,15 @@ import React, { useState, useCallback } from 'react';
 //   lastLoginAt?: string;
 // }
 
+// # ############################################################################ #
+// # #                         SECTION 3 - PROJECT IMPORTS                        #
+// # ############################################################################ #
+import React, { useState, useCallback } from 'react';
+// Removed import for userStore and UserData as they are not used / implemented with backend
+
+// # ############################################################################ #
+// # #                 SECTION 4 - COMPONENT DEFINITION & STATE                 #
+// # ############################################################################ #
 const AdminPanel: React.FunctionComponent = () => {
   // State to manage if the panel is open or closed
   const [isOpen, setIsOpen] = useState(false);
@@ -36,6 +48,9 @@ const AdminPanel: React.FunctionComponent = () => {
   const [isLoading, setIsLoading] = useState(false); // Example loading state
   const [error, setError] = useState<string | null>(null); // Example error state
 
+// # ############################################################################ #
+// # #                      SECTION 5 - USER ACTION CALLBACKS                     #
+// # ############################################################################ #
   // Placeholder function for refreshing users - needs backend integration
   const refreshUsers = useCallback(async () => {
     setIsLoading(true);
@@ -78,11 +93,17 @@ const AdminPanel: React.FunctionComponent = () => {
     }
   }, []); // Removed dependency on refreshUsers for now
 
+// # ############################################################################ #
+// # #                     SECTION 6 - DEVELOPMENT MODE GUARD                     #
+// # ############################################################################ #
   // Only render the panel in development mode
   if (import.meta.env.MODE !== 'development') {
     return null;
   }
 
+// # ############################################################################ #
+// # #                   SECTION 7 - COMPONENT RENDERING (JSX)                  #
+// # ############################################################################ #
   // Render the Admin Panel UI
   return (
     <div style={styles.adminPanel}>
@@ -143,6 +164,9 @@ const AdminPanel: React.FunctionComponent = () => {
   );
 };
 
+// # ############################################################################ #
+// # #                      SECTION 8 - INLINE STYLES OBJECT                      #
+// # ############################################################################ #
 // Basic inline styles for demonstration - consider moving to CSS modules or Tailwind
 const styles: { [key: string]: React.CSSProperties } = {
   adminPanel: {
@@ -210,5 +234,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   // Add styles for userItem, userDetails etc. if implementing the list later
 };
 
-
+// # ############################################################################ #
+// # #                         SECTION 9 - DEFAULT EXPORT                         #
+// # ############################################################################ #
 export default AdminPanel;

@@ -1,4 +1,8 @@
 // src/App.tsx
+
+// # ############################################################################ #
+// # #                             SECTION 1 - IMPORTS                            #
+// # ############################################################################ #
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 
@@ -14,6 +18,9 @@ import EditCampaignPage from './pages/EditCampaignPage'; // Your existing compon
 import { CampaignDetail } from './pages/CampaignDetailPage';
 import { CreateCampaignForm } from './components/CreateCampaignForm';
 
+// # ############################################################################ #
+// # #             SECTION 2 - HELPER COMPONENT: LOADING FALLBACK             #
+// # ############################################################################ #
 // Loading fallback component
 const LoadingFallback: React.FC = () => {
   console.log('[App] Showing loading fallback');
@@ -24,6 +31,9 @@ const LoadingFallback: React.FC = () => {
   );
 };
 
+// # ############################################################################ #
+// # #        SECTION 3 - HELPER COMPONENT: CAMPAIGN DETAIL WRAPPER         #
+// # ############################################################################ #
 // Wrapper component to provide 'id' prop to CampaignDetail (if it still needs it)
 const CampaignDetailWrapper: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -34,9 +44,15 @@ const CampaignDetailWrapper: React.FC = () => {
   return <CampaignDetail id={id} />; // Assuming CampaignDetail still requires 'id' prop
 };
 
+// # ############################################################################ #
+// # #               SECTION 4 - MAIN APP COMPONENT: DEFINITION               #
+// # ############################################################################ #
 const App: React.FC = () => {
   console.log('[App] Rendering App component');
 
+// # ############################################################################ #
+// # #             SECTION 5 - MAIN APP COMPONENT: ROUTING SETUP              #
+// # ############################################################################ #
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
@@ -79,18 +95,18 @@ const App: React.FC = () => {
           element={
             <ProtectedRoute>
               {/*
-                MODIFIED: Render EditCampaignPage directly.
-                This assumes EditCampaignPage uses the useParams() hook internally
-                to get the ':id' from the URL, like this:
+                  MODIFIED: Render EditCampaignPage directly.
+                  This assumes EditCampaignPage uses the useParams() hook internally
+                  to get the ':id' from the URL, like this:
 
-                // Inside your src/pages/EditCampaignPage.tsx
-                // import { useParams } from 'react-router-dom';
-                // const EditCampaignPage: React.FC = () => {
-                //   const { id } = useParams<{id: string}>();
-                //   // ... use id to fetch campaign data for editing ...
-                //   return <div>Editing Campaign ID: {id}</div>;
-                // };
-              */}
+                  // Inside your src/pages/EditCampaignPage.tsx
+                  // import { useParams } from 'react-router-dom';
+                  // const EditCampaignPage: React.FC = () => {
+                  //   const { id } = useParams<{id: string}>();
+                  //   // ... use id to fetch campaign data for editing ...
+                  //   // return <div>Editing Campaign ID: {id}</div>;
+                  // };
+                */}
               <EditCampaignPage />
             </ProtectedRoute>
           }
@@ -103,4 +119,7 @@ const App: React.FC = () => {
   );
 };
 
+// # ############################################################################ #
+// # #                        SECTION 6 - DEFAULT EXPORT                        #
+// # ############################################################################ #
 export default App;

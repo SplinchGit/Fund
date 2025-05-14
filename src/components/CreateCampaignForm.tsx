@@ -1,11 +1,18 @@
 // Fixed CreateCampaignForm.tsx
+
+// # ############################################################################ #
+// # #                             SECTION 1 - IMPORTS                            #
+// # ############################################################################ #
 import React, { useState, ChangeEvent, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { campaignService, CampaignPayload } from "../services/CampaignService";
 
+// # ############################################################################ #
+// # #                 SECTION 2 - COMPONENT DEFINITION & STATE                 #
+// # ############################################################################ #
 export function CreateCampaignForm() {
   const navigate = useNavigate();
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<CampaignPayload>({
@@ -15,23 +22,32 @@ export function CreateCampaignForm() {
     image: "",
   });
 
+// # ############################################################################ #
+// # #                            SECTION 3 - CONSTANTS                           #
+// # ############################################################################ #
   // Define character limits
   const MAX_TITLE_LENGTH = 70;
   const MAX_DESCRIPTION_LENGTH = 750;
 
+// # ############################################################################ #
+// # #                     SECTION 4 - EVENT HANDLER: ONCHANGE                    #
+// # ############################################################################ #
   const onChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    
+
     // Skip if max length is reached for title and description
     if (name === 'title' && value.length > MAX_TITLE_LENGTH) return;
     if (name === 'description' && value.length > MAX_DESCRIPTION_LENGTH) return;
-    
+
     setForm(prev => ({
       ...prev,
       [name]: type === "number" ? Number(value) : value,
     }));
   };
 
+// # ############################################################################ #
+// # #                    SECTION 5 - EVENT HANDLER: ONSUBMIT                   #
+// # ############################################################################ #
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -42,13 +58,13 @@ export function CreateCampaignForm() {
       if (!form.title) {
         throw new Error('Campaign title is required');
       }
-      
+
       if (form.goal <= 0) {
         throw new Error('Funding goal must be greater than 0');
       }
 
       const result = await campaignService.createCampaign(form);
-      
+
       if (result.success && result.id) {
         navigate(`/campaigns/${result.id}`);
       } else {
@@ -63,17 +79,20 @@ export function CreateCampaignForm() {
     }
   };
 
+// # ############################################################################ #
+// # #                 SECTION 6 - JSX RETURN & FORM STRUCTURE                #
+// # ############################################################################ #
   return (
     <form onSubmit={onSubmit} className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-6">Create New Campaign</h2>
-      
+
       {/* Display error if any */}
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
           {error}
         </div>
       )}
-      
+
       <div className="mb-4">
         <label className="block text-gray-700 text-sm font-bold mb-2">
           Campaign Title
