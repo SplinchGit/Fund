@@ -14,11 +14,16 @@ interface ImportMeta {
 }
 
 import type { ReactNode } from 'react';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 // Import MiniKit and necessary types
 import { MiniKit, MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
 // Import the useAuth hook to access context methods
 import { useAuth } from './components/AuthContext';
+
+// Constants
+const DEFAULT_APP_ID = 'app_0de9312869c4818fc1a1ec64306551b69';
+const MAX_RETRIES = 2;
+const AUTH_EXPIRY_MINUTES = 10;
 
 interface MiniKitProviderProps {
   children: ReactNode;
@@ -47,6 +52,13 @@ function ensureString(value: any): string {
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   if (typeof value === 'object') return JSON.stringify(value);
   return '';
+}
+
+/**
+ * Validate nonce format - must be a hexadecimal string of proper length
+ */
+function isValidNonce(nonce: string): boolean {
+  return /^[a-f0-9]{8,64}$/i.test(nonce);
 }
 
 /**
@@ -86,7 +98,6 @@ function sanitizeWalletPayload(payload: any): MiniKitFinalPayload {
 
 /**
  * Extract nonce from wallet message in different formats
- * FIXED: Added proper handling for SIWE message format with multiple regex patterns
  */
 function extractNonceFromMessage(message: any): string {
   if (!message) return '';
@@ -214,6 +225,106 @@ function extractAddress(payload: any): string {
   return '';
 }
 
+/**
+ * Helper function to handle both Promise and non-Promise returns
+ */
+function safePromise<T>(fn: () => T | Promise<T>): Promise<T> {
+  try {
+    const result = fn();
+    if (result && typeof (result as any).then === 'function') {
+      return result as Promise<T>;
+    }
+    return Promise.resolve(result);
+  } catch (error) {
+    return Promise.reject(error);
+  }
+}
+
+/**
+ * Utility function to retry an operation with exponential backoff
+ */
+async function retryOperation<T>(
+  operation: () => T | Promise<T>,
+  options: {
+    maxRetries?: number;
+    initialDelayMs?: number;
+    operationName?: string;
+  } = {}
+): Promise<T> {
+  const {
+    maxRetries = MAX_RETRIES,
+    initialDelayMs = 300,
+    operationName = 'Operation',
+  } = options;
+  
+  let lastError: Error | unknown;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await safePromise(operation);
+    } catch (error) {
+      lastError = error;
+      console.warn(`[retryOperation] ${operationName} failed (attempt ${attempt + 1}/${maxRetries + 1}):`, error);
+      
+      if (attempt < maxRetries) {
+        // Wait before retrying with increasing backoff
+        const delayMs = initialDelayMs * Math.pow(1.5, attempt);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
+/**
+ * Helper for safer MiniKit installation that handles specific MiniKit return types
+ */
+async function installMiniKit(appId: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    try {
+      // Get the result from MiniKit.install
+      const installResult = MiniKit.install(String(appId));
+      
+      // Case 1: If it's a Promise
+      if (installResult && 
+          typeof installResult === 'object' && 
+          typeof (installResult as any).then === 'function') {
+        // Cast to unknown first to satisfy TypeScript
+        (installResult as unknown as Promise<any>)
+          .then(() => resolve())
+          .catch(reject);
+        return;
+      }
+      
+      // Case 2: If it's a synchronous success/error object
+      if (installResult && typeof installResult === 'object') {
+        // Check for error indicators in the object
+        if ('success' in installResult) {
+          if (installResult.success === false) {
+            // It's an error object
+            const errorMessage = 
+              (installResult as any).errorMessage || 
+              'MiniKit installation failed with error code: ' + 
+              ((installResult as any).errorCode || 'unknown');
+              
+            reject(new Error(errorMessage));
+            return;
+          }
+          // Otherwise it's a success object
+          resolve();
+          return;
+        }
+      }
+      
+      // Case 3: Any other return type - assume success
+      resolve();
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
 // Export a function to manually trigger wallet auth from anywhere in the app
 export const triggerMiniKitWalletAuth = async (
   serverNonce: string,
@@ -238,10 +349,11 @@ export const triggerMiniKitWalletAuth = async (
   // Added better retry handling for installation
   let retryCount = 0;
   let isInstalled = false;
+  
+  // Check if MiniKit is installed with retries
   while (retryCount <= maxRetries) {
     try {
       console.log(`[triggerMiniKitWalletAuth] Checking if MiniKit is installed (attempt ${retryCount + 1})...`);
-      console.log('[triggerMiniKitWalletAuth] MiniKit object keys:', Object.keys(MiniKit));
       
       if (typeof MiniKit.isInstalled !== 'function') {
         console.error('[triggerMiniKitWalletAuth] MiniKit.isInstalled is not a function');
@@ -274,7 +386,7 @@ export const triggerMiniKitWalletAuth = async (
       const globalEnvAppId = (window as any).__ENV__?.WORLD_APP_ID;
       
       // Use the first available App ID, with default as last resort
-      const appId = envAppId || globalEnvAppId || 'app_0de9312869c4818fc1a1ec64306551b69';
+      const appId = envAppId || globalEnvAppId || DEFAULT_APP_ID;
       
       console.log('[triggerMiniKitWalletAuth] Installing MiniKit with appId:', appId);
       console.log('[triggerMiniKitWalletAuth] Environment variables available:', {
@@ -288,7 +400,8 @@ export const triggerMiniKitWalletAuth = async (
       let installRetryCount = 0;
       while (installRetryCount <= maxRetries) {
         try {
-          await MiniKit.install(String(appId));
+          // Use our safer installation method
+          await installMiniKit(appId);
           console.log('[triggerMiniKitWalletAuth] MiniKit installed successfully');
           break;
         } catch (installError) {
@@ -336,7 +449,7 @@ export const triggerMiniKitWalletAuth = async (
     const result = await MiniKit.commandsAsync.walletAuth({
       nonce: serverNonce,
       statement: 'Sign in to WorldFund to create and support campaigns.',
-      expirationTime: new Date(Date.now() + 1000 * 60 * 10), // 10 minutes expiry
+      expirationTime: new Date(Date.now() + 1000 * 60 * AUTH_EXPIRY_MINUTES), // expiry
     });
     
     console.log('[triggerMiniKitWalletAuth] Wallet auth result:', JSON.stringify(result, null, 2));
@@ -456,7 +569,7 @@ export default function MiniKitProvider({
                        import.meta.env.VITE_WORLD_ID_APP_ID ||
                        import.meta.env.WORLD_APP_ID;
       const globalEnvAppId = (window as any).__ENV__?.WORLD_APP_ID;
-      let determinedAppId = 'app_0de9312869c4818fc1a1ec64306551b69'; // Default
+      let determinedAppId = DEFAULT_APP_ID; // Default
 
       if (globalEnvAppId) {
         console.log('[MiniKitProvider] Using World App ID from global window.__ENV__:', globalEnvAppId);
@@ -484,92 +597,64 @@ export default function MiniKitProvider({
     console.log('[MiniKitProvider] Attempting to initialize MiniKit with App ID:', appIdToUse);
     
     const initializeMiniKit = async () => {
-      const maxRetries = 2;
-      let retryCount = 0;
-      
-      while (retryCount <= maxRetries) {
-        try {
-          // Check if MiniKit is defined
-          if (typeof MiniKit === 'undefined') {
-            console.error(`[MiniKitProvider] MiniKit is undefined (attempt ${retryCount + 1}). Cannot initialize.`);
-            await new Promise(resolve => setTimeout(resolve, 500));
-            retryCount++;
-            continue;
-          }
-          
-          console.log('[MiniKitProvider] MiniKit object available with keys:', Object.keys(MiniKit));
-          
-          // Check if already installed
-          let isInstalled = false;
-          try {
-            if (typeof MiniKit.isInstalled === 'function') {
-              isInstalled = MiniKit.isInstalled();
-              console.log('[MiniKitProvider] MiniKit.isInstalled() check returned:', isInstalled);
-            } else {
-              console.error('[MiniKitProvider] MiniKit.isInstalled is not a function');
-              await new Promise(resolve => setTimeout(resolve, 300));
-              retryCount++;
-              continue;
-            }
-          } catch (err) {
-            console.error(`[MiniKitProvider] Error checking if MiniKit is installed (attempt ${retryCount + 1}):`, err);
-            await new Promise(resolve => setTimeout(resolve, 300));
-            retryCount++;
-            continue;
-          }
-
-          // Install if needed
-          if (!isInstalled) {
-            console.log('[MiniKitProvider] Installing MiniKit with appId:', appIdToUse);
-            try {
-              await MiniKit.install(String(appIdToUse));
-              console.log('[MiniKitProvider] MiniKit Install command finished successfully');
-            } catch (installError) {
-              console.error(`[MiniKitProvider] Error installing MiniKit (attempt ${retryCount + 1}):`, installError);
-              if (retryCount >= maxRetries) {
-                throw installError;
-              }
-              await new Promise(resolve => setTimeout(resolve, 500));
-              retryCount++;
-              continue;
-            }
-          } else {
-            console.log('[MiniKitProvider] MiniKit already installed (provider check).');
-          }
-
-          // Verify installation was successful
-          let verifyInstalled = false;
-          try {
-            if (typeof MiniKit.isInstalled === 'function') {
-              verifyInstalled = MiniKit.isInstalled();
-            }
-          } catch (err) {
-            console.error(`[MiniKitProvider] Error verifying MiniKit installation (attempt ${retryCount + 1}):`, err);
-            await new Promise(resolve => setTimeout(resolve, 300));
-            retryCount++;
-            continue;
-          }
-          
-          if (verifyInstalled) {
-            console.log('[MiniKitProvider] MiniKit is active and ready');
-            if (isMounted) setIsMiniKitInitialized(true);
-            break; // Success, exit retry loop
-          } else {
-            console.error(`[MiniKitProvider] MiniKit installation check failed (attempt ${retryCount + 1}).`);
-            if (retryCount >= maxRetries) {
-              throw new Error('Failed to verify MiniKit installation after multiple attempts');
-            }
-            await new Promise(resolve => setTimeout(resolve, 500));
-            retryCount++;
-          }
-        } catch (error) {
-          console.error(`[MiniKitProvider] Failed to initialize/install MiniKit (attempt ${retryCount + 1}):`, error);
-          if (retryCount >= maxRetries) {
-            break; // Give up after max retries
-          }
-          await new Promise(resolve => setTimeout(resolve, 500));
-          retryCount++;
+      try {
+        // Check if MiniKit is defined
+        if (typeof MiniKit === 'undefined') {
+          console.error('[MiniKitProvider] MiniKit is undefined. Cannot initialize.');
+          return;
         }
+        
+        console.log('[MiniKitProvider] MiniKit object available with keys:', Object.keys(MiniKit));
+        
+        // Check if already installed
+        let isInstalled = false;
+        try {
+          if (typeof MiniKit.isInstalled === 'function') {
+            isInstalled = MiniKit.isInstalled();
+            console.log('[MiniKitProvider] MiniKit.isInstalled() check returned:', isInstalled);
+          } else {
+            console.error('[MiniKitProvider] MiniKit.isInstalled is not a function');
+            return;
+          }
+        } catch (err) {
+          console.error('[MiniKitProvider] Error checking if MiniKit is installed:', err);
+          return;
+        }
+
+        // Install if needed
+        if (!isInstalled) {
+          console.log('[MiniKitProvider] Installing MiniKit with appId:', appIdToUse);
+          try {
+            // Use our safer installation method
+            await installMiniKit(appIdToUse);
+            console.log('[MiniKitProvider] MiniKit Install command finished successfully');
+          } catch (installError) {
+            console.error('[MiniKitProvider] Error installing MiniKit:', installError);
+            return;
+          }
+        } else {
+          console.log('[MiniKitProvider] MiniKit already installed (provider check).');
+        }
+
+        // Verify installation was successful
+        let verifyInstalled = false;
+        try {
+          if (typeof MiniKit.isInstalled === 'function') {
+            verifyInstalled = MiniKit.isInstalled();
+          }
+        } catch (err) {
+          console.error('[MiniKitProvider] Error verifying MiniKit installation:', err);
+          return;
+        }
+        
+        if (verifyInstalled) {
+          console.log('[MiniKitProvider] MiniKit is active and ready');
+          if (isMounted) setIsMiniKitInitialized(true);
+        } else {
+          console.error('[MiniKitProvider] MiniKit installation verification failed.');
+        }
+      } catch (error) {
+        console.error('[MiniKitProvider] Failed to initialize/install MiniKit:', error);
       }
     };
     

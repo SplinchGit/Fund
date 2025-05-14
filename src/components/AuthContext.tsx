@@ -1,4 +1,4 @@
-// src/components/AuthContext.tsx
+// src/components/AuthContext.tsx - Improved Version
 import React, {
   createContext,
   useState,
@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/AuthService';
 import { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
 
-// Auth state interface
+// Auth state interface with additional fields
 interface AuthState {
   isAuthenticated: boolean;
   walletAddress: string | null;
@@ -20,6 +20,7 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   nonce: string | null;
+  lastAuthAttempt: number | null; // Track last auth attempt timestamp
 }
 
 // Auth context interface
@@ -28,14 +29,21 @@ interface AuthContextType extends AuthState {
   logout: () => Promise<void>;
   loginWithWallet: (authResult: MiniAppWalletAuthSuccessPayload) => Promise<void>;
   getNonceForMiniKit: () => Promise<string>;
+  clearError: () => void; // New function to clear errors
 }
 
 // Create context with undefined default value
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Session storage keys
-const SESSION_TOKEN_KEY = 'worldfund_session_token';
-const WALLET_ADDRESS_KEY = 'worldfund_wallet_address';
+// Storage keys with namespace
+const STORAGE_NAMESPACE = 'worldfund_';
+const SESSION_TOKEN_KEY = `${STORAGE_NAMESPACE}session_token`;
+const WALLET_ADDRESS_KEY = `${STORAGE_NAMESPACE}wallet_address`;
+
+// Improved nonce validation - strict hexadecimal format check
+const isValidNonce = (nonce: string): boolean => {
+  return /^[a-f0-9]{8,64}$/i.test(nonce);
+};
 
 /**
  * Helper to safely extract nonce from different message formats with enhanced SIWE handling
@@ -46,7 +54,7 @@ const extractNonceFromMessage = (message: string): string => {
   // SIWE format - exactly matching the format seen in the logs
   // Look for "Nonce: [hexadecimal]" pattern
   const siweNonceMatch = message.match(/Nonce:\s*([a-f0-9]{8,64})/i);
-  if (siweNonceMatch && siweNonceMatch[1]) {
+  if (siweNonceMatch && siweNonceMatch[1] && isValidNonce(siweNonceMatch[1])) {
     console.log('[AuthContext] Extracted nonce from SIWE message format:', siweNonceMatch[1]);
     return siweNonceMatch[1];
   }
@@ -55,7 +63,7 @@ const extractNonceFromMessage = (message: string): string => {
   const lines = message.split(/\r?\n/);
   for (const line of lines) {
     const lineMatch = line.match(/^\s*Nonce:\s*([a-f0-9]{8,64})\s*$/i);
-    if (lineMatch && lineMatch[1]) {
+    if (lineMatch && lineMatch[1] && isValidNonce(lineMatch[1])) {
       console.log('[AuthContext] Extracted nonce from multiline SIWE message:', lineMatch[1]);
       return lineMatch[1];
     }
@@ -64,7 +72,7 @@ const extractNonceFromMessage = (message: string): string => {
   // Try parsing as JSON
   try {
     const parsed = JSON.parse(message);
-    if (parsed && typeof parsed === 'object' && parsed.nonce) {
+    if (parsed && typeof parsed === 'object' && parsed.nonce && isValidNonce(String(parsed.nonce))) {
       console.log('[AuthContext] Extracted nonce from JSON message:', parsed.nonce);
       return String(parsed.nonce);
     }
@@ -73,14 +81,14 @@ const extractNonceFromMessage = (message: string): string => {
   }
   
   // Check if the message itself looks like a nonce (hexadecimal string)
-  if (/^[a-f0-9]{8,64}$/i.test(message)) {
+  if (isValidNonce(message)) {
     console.log('[AuthContext] Message is a hex string nonce:', message);
     return message;
   }
   
   // Look for nonce pattern in the message with more generic format
   const nonceMatch = message.match(/nonce["']?\s*[:=]\s*["']?([a-f0-9]{8,64})["']?/i);
-  if (nonceMatch && nonceMatch[1]) {
+  if (nonceMatch && nonceMatch[1] && isValidNonce(nonceMatch[1])) {
     console.log('[AuthContext] Extracted nonce from generic pattern:', nonceMatch[1]);
     return nonceMatch[1];
   }
@@ -92,12 +100,12 @@ const extractNonceFromMessage = (message: string): string => {
   return '';
 };
 
-// Store session data helper
+// Store session data helper - Using sessionStorage for tokens for better security
 const storeSessionData = (token: string, address: string): void => {
   try {
-    localStorage.setItem(SESSION_TOKEN_KEY, token);
+    sessionStorage.setItem(SESSION_TOKEN_KEY, token);
     localStorage.setItem(WALLET_ADDRESS_KEY, address);
-    console.log('[AuthContext] Session data stored in localStorage');
+    console.log('[AuthContext] Session data stored in storage');
   } catch (error) {
     console.error("[AuthContext] Error storing session data:", error);
   }
@@ -106,7 +114,17 @@ const storeSessionData = (token: string, address: string): void => {
 // Get stored session data helper
 const getStoredSessionData = (): { token: string | null, address: string | null } => {
   try {
-    const token = localStorage.getItem(SESSION_TOKEN_KEY);
+    // Try sessionStorage first, then fall back to localStorage for backwards compatibility
+    let token = sessionStorage.getItem(SESSION_TOKEN_KEY);
+    if (!token) {
+      token = localStorage.getItem(SESSION_TOKEN_KEY);
+      // Migrate to sessionStorage if found in localStorage
+      if (token) {
+        sessionStorage.setItem(SESSION_TOKEN_KEY, token);
+        localStorage.removeItem(SESSION_TOKEN_KEY);
+      }
+    }
+    
     const address = localStorage.getItem(WALLET_ADDRESS_KEY);
     return { token, address };
   } catch (error) {
@@ -119,8 +137,9 @@ const getStoredSessionData = (): { token: string | null, address: string | null 
 const clearStoredSessionData = (): void => {
   try {
     localStorage.removeItem(SESSION_TOKEN_KEY);
+    sessionStorage.removeItem(SESSION_TOKEN_KEY);
     localStorage.removeItem(WALLET_ADDRESS_KEY);
-    console.log('[AuthContext] Session data cleared from localStorage');
+    console.log('[AuthContext] Session data cleared from storage');
   } catch (error) {
     console.error("[AuthContext] Error clearing session data:", error);
   }
@@ -134,7 +153,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const navigate = useNavigate();
 
-  // Initial auth state
+  // Initial auth state with new lastAuthAttempt field
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
     walletAddress: null,
@@ -142,6 +161,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading: true, // Start loading until we check session
     error: null,
     nonce: null,
+    lastAuthAttempt: null,
   });
 
   // Active operation tracking refs to prevent race conditions
@@ -150,43 +170,68 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   
   // Maximum retries for API calls
   const MAX_RETRIES = 2;
+  
+  // Function to safely update state that prevents race conditions
+  const updateAuthState = useCallback((
+    updates: Partial<AuthState>, 
+    resetError: boolean = false
+  ) => {
+    setAuthState(prev => {
+      // Always reset error if requested
+      const errorUpdate = resetError ? { error: null } : {};
+      return { ...prev, ...updates, ...errorUpdate };
+    });
+  }, []);
+  
+  // Clear error function
+  const clearError = useCallback(() => {
+    updateAuthState({ error: null });
+  }, [updateAuthState]);
 
-  // Login function
+  // Login function - Improved with atomic state updates
   const login = useCallback((token: string, address: string, shouldNavigate: boolean = true) => {
     console.log('[AuthContext] Login called with:', { hasToken: !!token, address, shouldNavigate });
+    
+    if (!token || !address) {
+      console.error('[AuthContext] Invalid login parameters', { hasToken: !!token, hasAddress: !!address });
+      updateAuthState({ 
+        isLoading: false, 
+        error: 'Invalid login credentials',
+        lastAuthAttempt: Date.now() 
+      });
+      return;
+    }
     
     // Store session data
     storeSessionData(token, address);
     
-    // Update auth state
-    setAuthState({
+    // Update auth state atomically
+    updateAuthState({
       isAuthenticated: true,
       walletAddress: address,
       sessionToken: token,
       isLoading: false,
-      error: null,
-      nonce: null,
-    });
+      lastAuthAttempt: Date.now()
+    }, true);
     
     console.log('[AuthContext] Auth state updated, user is now authenticated');
     
     // Navigate to dashboard if requested
     if (shouldNavigate) {
-      // Allow state update to complete first
-      setTimeout(() => {
-        console.log('[AuthContext] Navigating to dashboard after login');
-        navigate('/dashboard', { replace: true });
-      }, 0);
+      console.log('[AuthContext] Navigating to dashboard after login');
+      // Use navigate directly - no need for setTimeout
+      navigate('/dashboard', { replace: true });
     } else {
       console.log('[AuthContext] Navigation skipped as shouldNavigate is false');
     }
-  }, [navigate]);
+  }, [navigate, updateAuthState]);
 
-  // Helper function to retry an async operation
+  // Helper function to retry an async operation with improved error handling
   const retryOperation = async <T,>(
     operation: () => Promise<T>, 
     maxRetries: number, 
-    delayMs: number = 300
+    delayMs: number = 300,
+    operationName: string = 'Operation'
   ): Promise<T> => {
     let lastError: Error | unknown;
     
@@ -195,7 +240,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return await operation();
       } catch (error) {
         lastError = error;
-        console.warn(`[AuthContext] Operation failed (attempt ${attempt + 1}/${maxRetries + 1}):`, error);
+        console.warn(`[AuthContext] ${operationName} failed (attempt ${attempt + 1}/${maxRetries + 1}):`, error);
         
         if (attempt < maxRetries) {
           // Wait before retrying with increasing backoff
@@ -218,7 +263,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
     
     // Start loading state
-    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+    updateAuthState({ isLoading: true }, true);
     
     // Create a new promise for the nonce request
     const noncePromise = (async () => {
@@ -232,14 +277,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Try to get nonce from the backend with retries
         const nonceResult = await retryOperation(
           () => authService.getNonce(),
-          MAX_RETRIES
+          MAX_RETRIES,
+          300,
+          'Get nonce'
         );
         
         // Check if the request was successful
         if (!nonceResult.success) {
           const errorMessage = nonceResult.error || 'Failed to fetch nonce';
           console.error('[AuthContext] getNonceForMiniKit: Request failed -', errorMessage);
-          setAuthState(prev => ({ ...prev, isLoading: false, error: errorMessage }));
+          updateAuthState({ isLoading: false, error: errorMessage });
           
           // Convert to user-friendly message if it appears to be a URL or HTML
           let userErrorMsg = errorMessage;
@@ -252,22 +299,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           throw new Error(userErrorMsg);
         }
         
-        // Check if we actually got a nonce back
-        if (!nonceResult.nonce) {
-          const errorMessage = 'Backend did not return a nonce';
-          console.error('[AuthContext] getNonceForMiniKit:', errorMessage);
-          setAuthState(prev => ({ ...prev, isLoading: false, error: errorMessage }));
+        // Check if we actually got a nonce back and validate it
+        const fetchedNonce = nonceResult.nonce;
+        if (!fetchedNonce || !isValidNonce(fetchedNonce)) {
+          const errorMessage = 'Backend returned invalid nonce format';
+          console.error('[AuthContext] getNonceForMiniKit:', errorMessage, fetchedNonce);
+          updateAuthState({ isLoading: false, error: errorMessage });
           throw new Error(errorMessage);
         }
         
-        const fetchedNonce: string = nonceResult.nonce;
         console.log('[AuthContext] getNonceForMiniKit: Nonce received successfully:', fetchedNonce);
-        setAuthState(prev => ({ ...prev, isLoading: false, nonce: fetchedNonce }));
+        updateAuthState({ isLoading: false, nonce: fetchedNonce });
         return fetchedNonce;
       } catch (error) {
         console.error('[AuthContext] getNonceForMiniKit: Error fetching nonce.', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error fetching nonce';
-        setAuthState(prev => ({ ...prev, isLoading: false, error: errorMessage }));
+        updateAuthState({ isLoading: false, error: errorMessage });
         throw error;
       } finally {
         // Clear the in-progress reference after completion
@@ -279,7 +326,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     nonceRequestInProgressRef.current = noncePromise;
     
     return noncePromise;
-  }, []);
+  }, [updateAuthState]);
 
   // Login with wallet with protection against concurrent calls
   const loginWithWallet = useCallback(async (authResult: MiniAppWalletAuthSuccessPayload) => {
@@ -292,7 +339,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
     
     isLoginInProgressRef.current = true;
-    setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+    updateAuthState({ isLoading: true }, true);
 
     try {
       // Validate the wallet auth result
@@ -340,7 +387,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const verifyResult = await retryOperation(
         () => authService.verifyWalletSignature(authResult, signedNonce),
         MAX_RETRIES,
-        500
+        500,
+        'Verify wallet signature'
       );
       console.log('[AuthContext] Verification result:', verifyResult.success);
 
@@ -359,21 +407,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error: any) {
       console.error('[AuthContext] Wallet login failed:', error);
-      setAuthState(prev => ({
-        ...prev,
+      updateAuthState({
         isLoading: false,
         error: error.message || 'Wallet login failed',
-      }));
+        lastAuthAttempt: Date.now()
+      });
       throw error;
     } finally {
       isLoginInProgressRef.current = false;
     }
-  }, [login]);
+  }, [login, updateAuthState]);
 
-  // Logout function
+  // Logout function with improved error handling
   const logout = useCallback(async (): Promise<void> => {
     console.log('[AuthContext] Logging out...');
-    setAuthState(prevState => ({ ...prevState, isLoading: true }));
+    updateAuthState({ isLoading: true }, true);
     
     try {
       // Clear local storage
@@ -386,83 +434,107 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.warn('[AuthContext] Backend logout failed, continuing local logout:', logoutError);
       }
       
-      // Update auth state
-      setAuthState({
+      // Update auth state atomically
+      updateAuthState({
         isAuthenticated: false,
         walletAddress: null,
         sessionToken: null,
         isLoading: false,
-        error: null,
         nonce: null,
-      });
+      }, true);
       
       console.log('[AuthContext] User logged out successfully, redirecting to landing');
       navigate('/landing', { replace: true });
     } catch (error: any) {
       console.error('[AuthContext] Logout failed:', error);
-      setAuthState(prevState => ({ 
-        ...prevState, 
+      updateAuthState({ 
         isLoading: false, 
-        error: error.message || 'Logout failed' 
-      }));
+        error: error.message || 'Logout failed',
+        lastAuthAttempt: Date.now()
+      });
       // Re-throw the error to maintain the Promise rejection
       throw error;
     }
-  }, [navigate]);
+  }, [navigate, updateAuthState]);
 
-  // Check session on mount
+  // Check session on mount with improved validation
   const checkSession = useCallback(async () => {
     console.log('[AuthContext] Checking session...');
-    setAuthState(prevState => ({ ...prevState, isLoading: true, error: null }));
+    updateAuthState({ isLoading: true }, true);
     
-    const { token, address } = getStoredSessionData();
+    try {
+      const { token, address } = getStoredSessionData();
 
-    if (token && address) {
-      console.log('[AuthContext] Session data found in localStorage');
+      if (!token || !address) {
+        console.log('[AuthContext] No session data found');
+        updateAuthState({
+          isAuthenticated: false,
+          walletAddress: null,
+          sessionToken: null,
+          isLoading: false,
+        }, true);
+        return;
+      }
       
-      // For quick initial load, set authenticated first
-      setAuthState({
+      console.log('[AuthContext] Session data found in storage');
+      
+      // First set authenticated state for quick UI update
+      updateAuthState({
         isAuthenticated: true,
         walletAddress: address,
         sessionToken: token,
-        isLoading: false,
-        error: null,
-        nonce: null,
-      });
+        isLoading: true, // Keep loading while we verify
+      }, true);
       
-      // Then validate token asynchronously to ensure it's still valid
+      // Then validate token asynchronously
       try {
-        const verifyResult = await authService.verifyToken(token);
+        const verifyResult = await retryOperation(
+          () => authService.verifyToken(token),
+          1, // Fewer retries for token verification
+          200,
+          'Verify token'
+        );
         
         if (!verifyResult.isValid) {
           console.log('[AuthContext] Session token invalid, logging out:', verifyResult.error);
           clearStoredSessionData();
           
-          setAuthState({
+          updateAuthState({
             isAuthenticated: false,
             walletAddress: null,
             sessionToken: null, 
             isLoading: false,
-            error: null,
-            nonce: null,
+            error: 'Session expired. Please login again.'
           });
+          
+          // Optional - navigate to login page
+          // navigate('/login', { replace: true });
+          return;
         }
+        
+        // Token is valid, update final state
+        updateAuthState({ isLoading: false });
+        console.log('[AuthContext] Session token verified successfully');
+        
       } catch (verifyError) {
         console.error('[AuthContext] Error verifying token:', verifyError);
-        // Continue with authentication on error - we can try again next time
+        // Continue with authentication on network errors, but set a warning
+        updateAuthState({ 
+          isLoading: false,
+          error: 'Could not verify session. You may need to login again if you encounter issues.'
+        });
       }
-    } else {
-      console.log('[AuthContext] No session data found');
-      setAuthState({
+    } catch (error) {
+      console.error('[AuthContext] Session check failed:', error);
+      updateAuthState({
         isAuthenticated: false,
         walletAddress: null,
         sessionToken: null,
         isLoading: false,
-        error: null,
-        nonce: null,
+        error: 'Failed to check authentication status'
       });
     }
-  }, []);
+  }, [updateAuthState]);
 
   // Check session on mount and when storage changes
   useEffect(() => {
@@ -492,6 +564,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       isLoading: authState.isLoading,
       hasError: !!authState.error,
       hasNonce: !!authState.nonce,
+      lastAuthAttempt: authState.lastAuthAttempt,
     });
   }, [authState]);
 
@@ -502,6 +575,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     loginWithWallet,
     getNonceForMiniKit,
+    clearError,
   };
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

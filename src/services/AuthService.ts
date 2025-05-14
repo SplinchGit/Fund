@@ -16,11 +16,11 @@ interface RetryConfig {
   timeoutMs: number;
 }
 
-// Default configuration values
+// Default configuration values - reduce default retries
 const DEFAULT_RETRY_CONFIG: RetryConfig = {
-  maxRetries: 3,
+  maxRetries: 1, // Reduced from 3 to 1
   baseDelayMs: 300,
-  maxDelayMs: 5000,
+  maxDelayMs: 2000, // Reduced from 5000 to 2000
   timeoutMs: 15000
 };
 
@@ -52,17 +52,6 @@ class AuthService {
   private retryConfig: RetryConfig;
 
   private constructor() {
-    // Log all environment variables for debugging
-    console.log('[AuthService] Environment variables:', {
-      VITE_AMPLIFY_API: import.meta.env.VITE_AMPLIFY_API,
-      VITE_APP_BACKEND_API_URL: import.meta.env.VITE_APP_BACKEND_API_URL,
-      VITE_WORLD_APP_API: import.meta.env.VITE_WORLD_APP_API,
-      VITE_APP_BACKEND_API_KEY: import.meta.env.VITE_APP_BACKEND_API_KEY,
-      MODE: import.meta.env.MODE,
-      DEV: import.meta.env.DEV,
-      BASE_URL: import.meta.env.BASE_URL
-    });
-
     // Determine API base URL from env vars, fallback to '/api'
     const envUrl =
       import.meta.env.VITE_AMPLIFY_API ||
@@ -115,73 +104,39 @@ class AuthService {
     console.log('[AuthService] Retry configuration updated:', this.retryConfig);
   }
 
-  /** Try to access the API using a simple health check */
-  public async checkApiConnection(): Promise<{ success: boolean; error?: string; latencyMs?: number }> {
-    const requestId = this.generateRequestId();
-    console.log(`[AuthService] ${requestId} - Testing API connection to: ${this.API_BASE}`);
-    
-    try {
-      // Attempt a simple OPTIONS request first as it's lightweight
-      const startTime = Date.now();
-      const response = await fetch(`${this.API_BASE}/auth/nonce`, {
-        method: 'OPTIONS',
-        mode: 'cors',
-        headers: {
-          'X-Request-ID': requestId
-        },
-        // Short timeout for health check
-        signal: AbortSignal.timeout(5000)
-      });
-      
-      const latencyMs = Date.now() - startTime;
-      
-      // Check CORS headers
-      const corsHeaders = {
-        'access-control-allow-origin': response.headers.get('access-control-allow-origin'),
-        'access-control-allow-methods': response.headers.get('access-control-allow-methods'),
-        'access-control-allow-headers': response.headers.get('access-control-allow-headers')
-      };
-      
-      console.log(`[AuthService] ${requestId} - API health check results:`, {
-        status: response.status,
-        latencyMs,
-        corsHeaders
-      });
-      
-      // Consider any response a success for connection test
-      return { 
-        success: true,
-        latencyMs
-      };
-    } catch (error: any) {
-      const errorType = this.parseErrorType(error);
-      let errorMessage = error.message || 'Unknown connection error';
-      
-      console.error(`[AuthService] ${requestId} - API connection test failed:`, {
-        error: errorMessage,
-        type: errorType,
-        apiBase: this.API_BASE
-      });
-      
-      // Provide a helpful message based on error type
-      if (errorType === ErrorType.TIMEOUT) {
-        errorMessage = `API endpoint did not respond within timeout period. The server might be overloaded or unreachable.`;
-      } else if (errorType === ErrorType.CORS) {
-        errorMessage = `Cross-origin request blocked. This app is not allowed to access the API endpoint.`;
-      } else if (errorType === ErrorType.NETWORK) {
-        errorMessage = `Could not connect to the API endpoint. Please check your internet connection and API URL.`;
+  /** Safely access localStorage with error handling */
+  private safeLocalStorage = {
+    getItem: (key: string): string | null => {
+      try {
+        return localStorage.getItem(key);
+      } catch (error) {
+        console.warn(`[AuthService] Error getting ${key} from localStorage:`, error);
+        return null;
       }
-      
-      return {
-        success: false,
-        error: errorMessage
-      };
+    },
+    setItem: (key: string, value: string): boolean => {
+      try {
+        localStorage.setItem(key, value);
+        return true;
+      } catch (error) {
+        console.warn(`[AuthService] Error setting ${key} in localStorage:`, error);
+        return false;
+      }
+    },
+    removeItem: (key: string): boolean => {
+      try {
+        localStorage.removeItem(key);
+        return true;
+      } catch (error) {
+        console.warn(`[AuthService] Error removing ${key} from localStorage:`, error);
+        return false;
+      }
     }
-  }
+  };
 
   /** Generate a unique request ID */
   private generateRequestId(): string {
-    return `req_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    return `req_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
   }
 
   /** Track a new request */
@@ -299,7 +254,7 @@ class AuthService {
     }
 
     if (includeAuth) {
-      const token = localStorage.getItem(SESSION_TOKEN_KEY);
+      const token = this.safeLocalStorage.getItem(SESSION_TOKEN_KEY);
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
@@ -325,18 +280,23 @@ class AuthService {
     while (attempt <= this.retryConfig.maxRetries) {
       this.updateRequestAttempt(requestId);
       
+      // Define timeoutId at the loop level so it's accessible in both try and catch blocks
+      let timeoutId: number | undefined = undefined;
+      
       try {
         console.log(`[AuthService] ${requestId} - Attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1} for ${endpoint}`);
         
         // Create abort controller for this attempt
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
+        
+        // Set timeout to abort request after specified time
+        timeoutId = window.setTimeout(() => {
           controller.abort();
           console.warn(`[AuthService] ${requestId} - Request timeout after ${this.retryConfig.timeoutMs}ms`);
         }, this.retryConfig.timeoutMs);
         
-        // Create a safe copy of options to prevent reference issues
-        const safeOptions = {
+        // Prepare fetch options
+        const fetchOptions = {
           ...options,
           signal: controller.signal,
           headers: {
@@ -345,77 +305,34 @@ class AuthService {
           }
         };
         
-        // Add CORS mode explicitly if not already set
-        if (!safeOptions.mode) {
-          safeOptions.mode = 'cors';
+        // If mode is not specified, set it to cors
+        if (!fetchOptions.mode) {
+          fetchOptions.mode = 'cors';
         }
         
-        // Log the full request details for debugging
-        console.log(`[AuthService] ${requestId} - Request details:`, {
-          url,
-          method: safeOptions.method,
-          mode: safeOptions.mode,
-          headers: Object.keys(safeOptions.headers || {}),
-          hasBody: !!safeOptions.body
+        // Log the request details
+        console.log(`[AuthService] ${requestId} - Request to ${endpoint}:`, {
+          method: fetchOptions.method,
+          hasBody: !!fetchOptions.body
         });
         
-        // Attempt the fetch with a try/catch to better handle network errors
-        let response;
+        // Attempt the fetch
         const startTime = Date.now();
-        
-        try {
-          response = await fetch(url, safeOptions);
-        } catch (fetchError: any) {
-          // Clear the timeout since fetch already failed
-          clearTimeout(timeoutId);
-          
-          const errorMessage = fetchError.message || 'Network request failed';
-          console.error(`[AuthService] ${requestId} - Fetch operation failed:`, {
-            error: errorMessage,
-            type: fetchError.name || 'Unknown',
-            stack: fetchError.stack || 'No stack trace'
-          });
-          
-          // Create a better error message
-          let enhancedError;
-          if (fetchError.name === 'TypeError' && errorMessage.includes('Failed to fetch')) {
-            enhancedError = new Error(
-              `Network error: Could not connect to ${new URL(url).hostname}. Please check your connection and API endpoint.`
-            );
-          } else if (errorMessage.includes('NetworkError')) {
-            enhancedError = new Error(
-              `CORS error: The API endpoint at ${new URL(url).hostname} is not allowing requests from this origin. Check your CORS configuration.`
-            );
-          } else {
-            enhancedError = new Error(`Network error: ${errorMessage}`);
-          }
-          
-          // Always consider network errors as retryable
-          const backoffMs = this.calculateBackoff(attempt);
-          console.warn(`[AuthService] ${requestId} - Network error, retrying in ${backoffMs}ms: ${enhancedError.message}`);
-          await new Promise(resolve => setTimeout(resolve, backoffMs));
-          attempt++;
-          continue;
-        }
+        const response = await fetch(url, fetchOptions);
         
         // Clear the timeout since we got a response
-        clearTimeout(timeoutId);
+        if (timeoutId !== undefined) {
+          window.clearTimeout(timeoutId);
+          timeoutId = undefined; // Set to undefined to indicate it's been cleared
+        }
         
         const duration = Date.now() - startTime;
         console.log(`[AuthService] ${requestId} - Response received in ${duration}ms with status ${response.status}`);
         
-        // Log response headers for debugging CORS issues
-        const corsHeaders = {
-          'access-control-allow-origin': response.headers.get('access-control-allow-origin'),
-          'access-control-allow-methods': response.headers.get('access-control-allow-methods'),
-          'access-control-allow-headers': response.headers.get('access-control-allow-headers')
-        };
-        console.log(`[AuthService] ${requestId} - CORS headers:`, corsHeaders);
-        
         // Check for error status
         if (!response.ok) {
           lastStatus = response.status;
-          const errorBody = await response.text();
+          const errorBody = await response.text().catch(() => '');
           let errorMessage: string;
           
           try {
@@ -424,14 +341,6 @@ class AuthService {
           } catch (e) {
             errorMessage = errorBody || `HTTP error ${response.status}`;
           }
-          
-          // Log the full error response for debugging
-          console.error(`[AuthService] ${requestId} - Error response:`, {
-            status: response.status,
-            statusText: response.statusText,
-            headers: Object.fromEntries([...response.headers.entries()]),
-            body: errorBody.substring(0, 500) // Log first 500 chars to avoid huge logs
-          });
           
           const error = new Error(errorMessage);
           lastError = error;
@@ -460,14 +369,11 @@ class AuthService {
         if (response.status === 204 || !contentType) {
           data = {} as T;
         } else if (contentType && contentType.includes('application/json')) {
-          // Parse JSON response
           try {
             data = await response.json() as T;
           } catch (jsonError) {
             console.error(`[AuthService] ${requestId} - Failed to parse JSON response:`, jsonError);
-            // Try to get text response as fallback
-            const text = await response.text();
-            console.log(`[AuthService] ${requestId} - Raw response text:`, text.substring(0, 500));
+            const text = await response.text().catch(() => '');
             throw new Error(`Invalid JSON response: ${(jsonError as Error)?.message || 'Parse error'}`);
           }
         } else {
@@ -483,12 +389,16 @@ class AuthService {
         this.completeRequest(requestId, true);
         return data;
       } catch (error: any) {
-        // Prevent undefined errors in logs
-        lastError = error || new Error('Unknown error occurred');
+        // Clear any pending timeout if it exists
+        if (timeoutId !== undefined) {
+          window.clearTimeout(timeoutId);
+          timeoutId = undefined; // Set to undefined to indicate it's been cleared
+        }
         
-        // Ensure error has a message
+        // Ensure error has message property
+        lastError = error || new Error('Unknown error');
         if (!lastError.message) {
-          lastError.message = 'An unknown error occurred during request processing';
+          lastError.message = 'Unknown error';
         }
         
         // Handle abort/timeout errors specially
@@ -496,18 +406,6 @@ class AuthService {
           console.error(`[AuthService] ${requestId} - Request aborted (timeout)`);
           lastError = new Error(`Request timeout after ${this.retryConfig.timeoutMs}ms`);
         }
-        
-        // Log the error with all properties for debugging
-        console.error(`[AuthService] ${requestId} - Error details:`, {
-          message: lastError.message,
-          name: lastError.name,
-          stack: lastError.stack,
-          code: lastError.code,
-          errno: lastError.errno,
-          syscall: lastError.syscall,
-          address: lastError.address,
-          port: lastError.port
-        });
         
         // Determine error type and if we should retry
         const errorType = this.parseErrorType(lastError);
@@ -559,35 +457,12 @@ class AuthService {
       return false;
     }
     
-    // Verify the message contains the nonce (simple check)
-    if (typeof payload.message === 'string' && !payload.message.includes(nonce)) {
-      console.warn('[AuthService] validateWalletPayload: Nonce not found in message, this could indicate a potential replay attack');
-      // We're not failing validation here, just warning, as the message format might vary
-    }
-    
     return true;
   }
 
   /** Fetches a unique nonce from the backend. */
   public async getNonce(): Promise<{ success: boolean; nonce?: string; error?: string }> {
     console.log('[AuthService] Fetching nonce...');
-    
-    // First check API connectivity to fail fast if there's a connection issue
-    try {
-      const connectionCheck = await this.checkApiConnection();
-      if (!connectionCheck.success) {
-        console.error('[AuthService] Connection check failed before getNonce:', connectionCheck.error);
-        return {
-          success: false,
-          error: connectionCheck.error || 'Could not connect to authentication service'
-        };
-      }
-      console.log('[AuthService] Connection check successful, latency:', connectionCheck.latencyMs, 'ms');
-    } catch (checkError) {
-      console.error('[AuthService] Error during connection check:', checkError);
-      // Continue with the request even if the check fails
-    }
-    
     const requestId = this.generateRequestId();
     const endpoint = '/auth/nonce';
     
@@ -605,21 +480,20 @@ class AuthService {
             ...this.getHeaders(false),
             'X-Request-ID': requestId
           },
-          mode: 'cors', // Explicit CORS mode
+          mode: 'cors',
           credentials: 'same-origin',
-          // Set cache to no-store to prevent caching of nonce
-          cache: 'no-store'
+          cache: 'no-store' // Prevent caching of nonce
         },
         requestId,
         endpoint
       );
       
-      if (!data.nonce) {
+      if (!data || !data.nonce) {
         console.error(`[AuthService] ${requestId} - Nonce missing in response`, data);
         return { success: false, error: 'Nonce not found in response' };
       }
       
-      console.log(`[AuthService] ${requestId} - Nonce received successfully`);
+      console.log(`[AuthService] ${requestId} - Nonce received successfully: ${data.nonce}`);
       return { success: true, nonce: data.nonce };
     } catch (error: any) {
       const errorMessage = error.message || 'Network error while fetching nonce';
@@ -666,12 +540,10 @@ class AuthService {
     const endpoint = '/auth/verify-signature';
     
     try {
-      // Build properly formatted request body with nonce included
+      // Build properly formatted request body
       const requestBody = {
         payload,
-        nonce,
-        // Add correlation for request tracking
-        requestId
+        nonce
       };
       
       const url = this.buildUrl(endpoint);
@@ -694,7 +566,7 @@ class AuthService {
         endpoint
       );
 
-      if (!data.token || !data.walletAddress) {
+      if (!data || !data.token || !data.walletAddress) {
         console.error(`[AuthService] ${requestId} - Missing token or walletAddress in:`, data);
         return {
           success: false,
@@ -703,14 +575,8 @@ class AuthService {
       }
 
       // Persist session
-      try {
-        localStorage.setItem(SESSION_TOKEN_KEY, data.token);
-        localStorage.setItem(WALLET_ADDRESS_KEY, data.walletAddress);
-        console.log(`[AuthService] ${requestId} - Session data stored successfully`);
-      } catch (storageError) {
-        console.error(`[AuthService] ${requestId} - Error storing session data:`, storageError);
-        // Continue even if storage fails - might be in incognito mode
-      }
+      this.safeLocalStorage.setItem(SESSION_TOKEN_KEY, data.token);
+      this.safeLocalStorage.setItem(WALLET_ADDRESS_KEY, data.walletAddress);
 
       console.log(`[AuthService] ${requestId} - Signature verified successfully`);
       return {
@@ -768,7 +634,7 @@ class AuthService {
       console.log(`[AuthService] ${requestId} - Posting to: ${url}`);
       
       // Execute fetch with retry logic
-      const data = await this.fetchWithRetry<any>(
+      await this.fetchWithRetry<any>(
         url, 
         {
           method: 'POST',
@@ -776,11 +642,7 @@ class AuthService {
             ...this.getHeaders(true),
             'X-Request-ID': requestId
           },
-          body: JSON.stringify({
-            ...proof,
-            // Add correlation for request tracking
-            requestId
-          }),
+          body: JSON.stringify(proof),
           mode: 'cors',
           credentials: 'same-origin',
         },
@@ -821,22 +683,15 @@ class AuthService {
   public async logout(): Promise<{ success: boolean; error?: string }> {
     console.log('[AuthService] Logging out...');
     
-    const requestId = this.generateRequestId();
-    
     try {
       // Clear local session
-      try {
-        localStorage.removeItem(SESSION_TOKEN_KEY);
-        localStorage.removeItem(WALLET_ADDRESS_KEY);
-      } catch (storageError) {
-        console.warn(`[AuthService] ${requestId} - Error removing items from localStorage:`, storageError);
-        // Continue even if this fails
-      }
+      this.safeLocalStorage.removeItem(SESSION_TOKEN_KEY);
+      this.safeLocalStorage.removeItem(WALLET_ADDRESS_KEY);
       
-      console.log(`[AuthService] ${requestId} - Logout successful`);
+      console.log('[AuthService] Logout successful');
       return { success: true };
     } catch (error: any) {
-      console.error(`[AuthService] ${requestId} - Error during logout:`, error);
+      console.error('[AuthService] Error during logout:', error);
       return {
         success: false,
         error: error.message || 'Logout failed',
@@ -852,40 +707,17 @@ class AuthService {
   }> {
     console.log('[AuthService] Checking auth status...');
     
-    const requestId = this.generateRequestId();
+    const token = this.safeLocalStorage.getItem(SESSION_TOKEN_KEY);
+    const walletAddress = this.safeLocalStorage.getItem(WALLET_ADDRESS_KEY);
     
-    try {
-      let token = null;
-      let walletAddress = null;
-      
-      try {
-        token = localStorage.getItem(SESSION_TOKEN_KEY);
-        walletAddress = localStorage.getItem(WALLET_ADDRESS_KEY);
-      } catch (storageError) {
-        console.warn(`[AuthService] ${requestId} - Error accessing localStorage:`, storageError);
-        // Continue with null values if this fails
-      }
-      
-      const ok = Boolean(token && walletAddress);
-      console.log(`[AuthService] ${requestId} - Auth status → ${ok ? 'Authenticated' : 'Not authenticated'}`);
-      
-      return {
-        isAuthenticated: ok,
-        token,
-        walletAddress,
-      };
-    } catch (error: any) {
-      console.error(`[AuthService] ${requestId} - Error checking auth status:`, error);
-      
-      try {
-        localStorage.removeItem(SESSION_TOKEN_KEY);
-        localStorage.removeItem(WALLET_ADDRESS_KEY);
-      } catch (storageError) {
-        console.warn(`[AuthService] ${requestId} - Error removing items from localStorage:`, storageError);
-      }
-      
-      return { isAuthenticated: false, token: null, walletAddress: null };
-    }
+    const isAuthenticated = Boolean(token && walletAddress);
+    console.log(`[AuthService] Auth status → ${isAuthenticated ? 'Authenticated' : 'Not authenticated'}`);
+    
+    return {
+      isAuthenticated,
+      token,
+      walletAddress
+    };
   }
 
   /** Verifies that a token is valid */
@@ -895,8 +727,6 @@ class AuthService {
     walletAddress?: string;
   }> {
     console.log('[AuthService] Verifying token validity...');
-    
-    const requestId = this.generateRequestId();
     
     try {
       // Basic validation
@@ -926,14 +756,13 @@ class AuthService {
           return { isValid: false, error: 'Token missing wallet address' };
         }
 
-        console.log(`[AuthService] ${requestId} - Token validated successfully`);
         return { isValid: true, walletAddress: payload.walletAddress };
       } catch (decodeError) {
-        console.error(`[AuthService] ${requestId} - Error decoding token payload:`, decodeError);
+        console.error('[AuthService] Error decoding token payload:', decodeError);
         return { isValid: false, error: 'Invalid token format (cannot decode payload)' };
       }
     } catch (error: any) {
-      console.error(`[AuthService] ${requestId} - Error verifying token:`, error);
+      console.error('[AuthService] Error verifying token:', error);
       return { isValid: false, error: error.message || 'Error validating token' };
     }
   }
