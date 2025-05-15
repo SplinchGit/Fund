@@ -5,25 +5,26 @@
 // # ############################################################################ #
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../components/AuthContext'; // Assuming AuthContext is here
+import { useAuth } from '../components/AuthContext'; // Corrected path
 import { campaignService, Campaign } from '../services/CampaignService';
 
 // Helper to format date
 const formatDate = (dateString: string) => {
   if (!dateString) return 'N/A';
   try {
-    return new Date(dateString).toLocaleDateString('en-GB', { // Example: DD/MM/YYYY
+    return new Date(dateString).toLocaleDateString('en-GB', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
     });
   } catch (e) {
+    console.error("Error formatting date:", dateString, e);
     return 'Invalid Date';
   }
 };
 
 // Helper for status badge styling
-const getStatusStyles = (status: 'active' | 'completed' | 'cancelled' | string) => { // Allow string for safety
+const getStatusStyles = (status: Campaign['status'] | string) => { // Allow string for safety
   switch (status) {
     case 'active':
       return 'bg-green-100 text-green-700';
@@ -32,7 +33,7 @@ const getStatusStyles = (status: 'active' | 'completed' | 'cancelled' | string) 
     case 'cancelled':
       return 'bg-red-100 text-red-700';
     default:
-      return 'bg-gray-100 text-gray-700'; // Fallback for unknown statuses
+      return 'bg-gray-100 text-gray-700';
   }
 };
 
@@ -53,15 +54,15 @@ export const CampaignTracker: React.FC = () => {
   useEffect(() => {
     const fetchUserCampaigns = async () => {
       if (!walletAddress) {
-        setCampaigns([]); // Clear campaigns if no wallet address
+        setCampaigns([]);
         setLoading(false);
-        // setError("Please connect your wallet to view your campaigns."); // Optional: specific message
+        // setError("Please connect your wallet to view your campaigns."); // Consider if this message is desired
         return;
       }
 
       setLoading(true);
       setError(null);
-      setDeleteError(null); // Clear previous delete errors on fetch
+      setDeleteError(null);
       try {
         const result = await campaignService.fetchUserCampaigns(walletAddress);
         if (result.success && result.campaigns) {
@@ -95,7 +96,6 @@ export const CampaignTracker: React.FC = () => {
       const result = await campaignService.deleteCampaign(id);
       if (result.success) {
         setCampaigns(prevCampaigns => prevCampaigns.filter(campaign => campaign.id !== id));
-        // Optionally, show a success toast/notification here
       } else {
         setDeleteError(result.error || 'Failed to delete the campaign. Please try again.');
       }
@@ -112,7 +112,7 @@ export const CampaignTracker: React.FC = () => {
 // # ############################################################################ #
   if (loading) {
     return (
-      <div className="text-center py-10">
+      <div className="text-center py-10 px-4">
         <div className="inline-block animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-600"></div>
         <p className="mt-3 text-gray-700">Loading your campaigns...</p>
       </div>
@@ -122,21 +122,29 @@ export const CampaignTracker: React.FC = () => {
 // # ############################################################################ #
 // # #                 SECTION 6 - CONDITIONAL RENDERING: ERROR STATE                 #
 // # ############################################################################ #
-  if (error && !loading) { // Show general fetch error if not loading
+  if (error && !loading) {
     return (
       <div className="bg-red-50 border border-red-300 text-red-800 px-4 py-3 rounded-lg my-4 shadow-sm text-left">
         <p className="font-medium">Error Loading Campaigns</p>
         <p className="text-sm">{error}</p>
-        {/* Button to re-trigger fetch, simplified */}
         <button
           onClick={() => {
-            if (walletAddress) { // Ensure walletAddress is still valid for re-fetch
-              setLoading(true); // Re-trigger loading animation
-              // Call effect's core logic again by re-triggering or calling a memoized function
-              // For simplicity, just resetting state to re-trigger useEffect if walletAddress is stable
-              // This is a bit of a hack; a dedicated refetch function is better.
-              // Or, just reload for now.
-              window.location.reload(); // Simplest retry for now
+            if (walletAddress) {
+              setLoading(true);
+              // Re-call the fetch logic, ensuring useEffect will run or calling a dedicated function
+              // For now, simple reload for brevity, but a dedicated refetch function is better.
+              // This effect re-runs if walletAddress changes; if it's stable, need another trigger or function.
+              // A quick way to re-trigger useEffect is to pass a "retry" state to its dependency array.
+              campaignService.fetchUserCampaigns(walletAddress).then(result => {
+                    if (result.success && result.campaigns) {
+                        setCampaigns(result.campaigns);
+                        setError(null);
+                    } else {
+                        setError(result.error || 'Failed to reload campaigns.');
+                    }
+                }).catch(err => {
+                    setError('Failed to reload campaigns.');
+                }).finally(() => setLoading(false));
             }
           }}
           className="mt-2 text-sm font-semibold text-red-700 hover:text-red-900 transition-colors"
@@ -151,25 +159,27 @@ export const CampaignTracker: React.FC = () => {
 // # #                 SECTION 7 - JSX RETURN: CAMPAIGNS LIST                 #
 // # ############################################################################ #
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <div className="p-4 sm:p-6 border-b border-gray-200">
+    // Removed the outer bg-white, shadow, etc. as this component is now placed within `styles.contentSection` in Dashboard.tsx
+    // which already provides a card-like container.
+    <div>
+      <div className="border-b border-gray-200 pb-3 mb-3"> {/* Removed p-4 sm:p-6 from here */}
         <h2 className="text-xl font-semibold text-gray-800 text-left">Your Campaigns</h2>
       </div>
 
-      {deleteError && ( // Display delete error prominently if it occurs
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 m-4 rounded-md" role="alert">
+      {deleteError && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded-md" role="alert">
           <p className="font-bold">Could not delete campaign:</p>
           <p>{deleteError}</p>
         </div>
       )}
 
-      {campaigns.length === 0 && !loading ? ( // Ensure not loading before showing "no campaigns"
-        <div className="p-6 sm:p-8 text-center">
+      {campaigns.length === 0 && !loading ? (
+        <div className="py-6 text-center"> {/* Adjusted padding */}
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
           </svg>
           <h3 className="mt-2 text-lg font-medium text-gray-900">No campaigns yet</h3>
-          <p className="mt-1 text-sm text-gray-500">Ready to make an impact? Create your first campaign.</p>
+          <p className="mt-1 text-sm text-gray-500">Ready to make an impact?</p>
           <div className="mt-6">
             <Link
               to="/new-campaign"
@@ -178,12 +188,13 @@ export const CampaignTracker: React.FC = () => {
               <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
               </svg>
-              Create Campaign
+              Create Your First Campaign
             </Link>
           </div>
         </div>
       ) : (
-        <ul role="list" className="divide-y divide-gray-200">
+        // Use 'list-none' to remove any default list styling (like dots)
+        <ul role="list" className="divide-y divide-gray-200 list-none p-0 m-0">
           {campaigns.map((campaign) => {
             const progressPercentage = campaign.goal > 0 ? Math.min(
               Math.round((campaign.raised / campaign.goal) * 100),
@@ -191,35 +202,28 @@ export const CampaignTracker: React.FC = () => {
             ) : 0;
 
             return (
-              <li key={campaign.id} className="p-4 hover:bg-gray-50 transition-colors">
+              <li key={campaign.id} className="py-4 px-1 hover:bg-gray-50 transition-colors"> {/* Added px-1 for slight horizontal padding within items */}
                 {/* Main Info: Image (or placeholder) + Title + Created Date (as link) */}
-                <Link to={`/campaigns/${campaign.id}`} className="block">
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0">
+                <Link to={`/campaigns/${campaign.id}`} className="block group"> {/* group for hover effects if needed */}
+                  <div className="flex items-center space-x-3"> {/* Dot removed by list-none on ul */}
+                    <div className="flex-shrink-0 h-10 w-10 rounded-md bg-gray-200 flex items-center justify-center text-gray-400 text-xs overflow-hidden">
                       {campaign.image ? (
                         <img
-                          className="h-12 w-12 rounded-md object-cover" // Square with rounded corners
+                          className="h-full w-full object-cover" // Ensure image covers the placeholder area
                           src={campaign.image}
-                          alt="" // Alt text should be descriptive or empty if purely decorative
-                          onError={(e) => {
-                            // Simple fallback to a styled div
-                            const parent = e.currentTarget.parentNode;
-                            if (parent) {
-                                const placeholder = document.createElement('div');
-                                placeholder.className = "h-12 w-12 rounded-md bg-gray-200 flex items-center justify-center text-gray-400 text-xs";
-                                placeholder.textContent = "No Img";
-                                parent.replaceChild(placeholder, e.currentTarget);
-                            }
+                          alt="" // Decorative, or provide campaign.title
+                          onError={(e) => { // Fallback for broken image links
+                            e.currentTarget.style.display = 'none'; // Hide broken img
+                            // Optionally, show a text placeholder if the div is still visible
+                            // e.currentTarget.insertAdjacentHTML('afterend', '<div class="h-10 w-10 rounded-md bg-gray-200 flex items-center justify-center text-gray-400 text-xs">Err</div>');
                           }}
                         />
                       ) : (
-                        <div className="h-12 w-12 rounded-md bg-gray-200 flex items-center justify-center text-gray-400 text-xs">
-                          No Image
-                        </div>
+                        <span>No Img</span> // Simple text placeholder
                       )}
                     </div>
-                    <div className="flex-1 min-w-0"> {/* For truncation */}
-                      <p className="text-sm font-semibold text-blue-600 truncate hover:underline">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-blue-600 truncate group-hover:underline">
                         {campaign.title || 'Untitled Campaign'}
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">
@@ -230,9 +234,9 @@ export const CampaignTracker: React.FC = () => {
                 </Link>
 
                 {/* Details Section: Status, Progress */}
-                <div className="mt-3 space-y-2">
-                  <div>
-                    <span className="text-xs font-medium text-gray-500 mr-2">Status:</span>
+                <div className="mt-3 space-y-2 pl-0 pr-0 md:pl-13"> {/* Indent content to align with title if image is present, or remove md:pl-13 */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-500">Status:</span>
                     <span
                       className={`px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusStyles(campaign.status)}`}
                     >
@@ -258,9 +262,10 @@ export const CampaignTracker: React.FC = () => {
                 </div>
 
                 {/* Actions: Edit & Delete */}
-                <div className="mt-4 flex justify-end space-x-3">
+                <div className="mt-4 flex justify-end space-x-2"> {/* space-x-2 for spacing between buttons */}
                   <Link
                     to={`/campaigns/${campaign.id}/edit`}
+                    // Consistent button styling: padding, text size, rounding, transition
                     className="px-3 py-1.5 text-xs font-medium text-center text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
                   >
                     Edit
@@ -268,6 +273,7 @@ export const CampaignTracker: React.FC = () => {
                   <button
                     onClick={() => handleDeleteCampaign(campaign.id, campaign.title)}
                     disabled={isDeleting === campaign.id}
+                    // MODIFIED: Delete button styling to be red but similar form factor
                     className={`px-3 py-1.5 text-xs font-medium text-center text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors ${
                       isDeleting === campaign.id ? 'opacity-70 cursor-not-allowed' : ''
                     }`}
