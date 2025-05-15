@@ -3,14 +3,14 @@
 // # ############################################################################ #
 // # #                               SECTION 1 - IMPORTS                                #
 // # ############################################################################ #
-import React, { useState, useEffect, useMemo } from 'react'; // Added useMemo
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext';
 import { campaignService, Campaign } from '../services/CampaignService';
 
 // Import Swiper React components and styles
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Pagination, A11y } from 'swiper/modules'; // Import necessary modules
+import { Navigation, Pagination, A11y } from 'swiper/modules';
 
 import 'swiper/css';
 import 'swiper/css/navigation';
@@ -34,15 +34,16 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: 'column' as const,
     boxSizing: 'border-box' as const,
   },
-  container: { // Main content area for campaigns list/carousel
+  container: {
     margin: '0 auto',
     width: '100%',
-    padding: '0 0.5rem 1rem 0.5rem', // Added bottom padding
+    // MODIFIED: Increased bottom padding significantly to create space above fixed tabs
+    padding: '0 0.5rem 6rem 0.5rem', // e.g., 6rem (approx 96px), adjust as needed
     boxSizing: 'border-box' as const,
-    maxWidth: '1200px', // Max width for the content area
+    maxWidth: '1200px',
     flexGrow: 1,
-    display: 'flex', // Added to help center content if needed
-    flexDirection: 'column' as const, // Stack search and carousel
+    display: 'flex',
+    flexDirection: 'column' as const,
   },
   header: {
     background: 'white',
@@ -63,59 +64,55 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: '0 0.5rem',
     boxSizing: 'border-box' as const,
   },
-  logo: { /* ... (no change) ... */ display: 'flex', alignItems: 'center', color: '#1a73e8', fontWeight: 700, fontSize: '1.125rem', textDecoration: 'none' },
-  logoSpan: { /* ... (no change) ... */ color: '#202124' },
-  button: { /* ... (no change from previous fixes, ensure textAlign: 'center' as const) ... */ padding: '0.5rem 0.75rem', borderRadius: '0.25rem', fontWeight: 500, cursor: 'pointer', textDecoration: 'none', textAlign: 'center' as const, fontSize: '0.875rem', transition: 'background-color 0.2s, border-color 0.2s', border: '1px solid transparent', minHeight: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
-  buttonPrimary: { /* ... (no change) ... */ backgroundColor: '#1a73e8', color: 'white', borderColor: '#1a73e8' },
-  buttonSecondary: { /* ... (no change) ... */ backgroundColor: '#f1f3f4', color: '#202124', borderColor: '#dadce0' },
-  navItem: { /* ... (no change) ... */ marginLeft: '1rem', fontSize: '0.875rem', color: '#5f6368', textDecoration: 'none', transition: 'color 0.2s'},
-  navItemActive: { /* ... (no change) ... */ color: '#1a73e8', fontWeight: 500 },
-  hero: { // This section contains the page title and search bar
+  logo: { display: 'flex', alignItems: 'center', color: '#1a73e8', fontWeight: 700, fontSize: '1.125rem', textDecoration: 'none' },
+  logoSpan: { color: '#202124' },
+  button: { padding: '0.5rem 0.75rem', borderRadius: '0.25rem', fontWeight: 500, cursor: 'pointer', textDecoration: 'none', textAlign: 'center' as const, fontSize: '0.875rem', transition: 'background-color 0.2s, border-color 0.2s', border: '1px solid transparent', minHeight: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
+  buttonPrimary: { backgroundColor: '#1a73e8', color: 'white', borderColor: '#1a73e8' },
+  buttonSecondary: { backgroundColor: '#f1f3f4', color: '#202124', borderColor: '#dadce0' },
+  navItem: { marginLeft: '1rem', fontSize: '0.875rem', color: '#5f6368', textDecoration: 'none', transition: 'color 0.2s'},
+  navItemActive: { color: '#1a73e8', fontWeight: 500 },
+  hero: {
     backgroundColor: 'white',
-    padding: '1.5rem 1rem', // Adjusted padding
+    padding: '1.5rem 1rem',
     textAlign: 'center' as const,
-    marginBottom: '1rem', // Reduced margin before carousel
-    boxShadow: '0 1px 3px rgba(0,0,0,0.05)', // Softer shadow
+    marginBottom: '1rem',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
     width: '100%',
     boxSizing: 'border-box' as const,
   },
-  heroTitle: { /* ... (no change) ... */ fontSize: '2rem', fontWeight: 700, color: '#202124', marginBottom: '0.5rem' },
-  heroSubtitle: { /* ... (no change) ... */ fontSize: '1.125rem', color: '#5f6368', maxWidth: '800px', margin: '0 auto 1rem' }, // Added bottom margin for search
-
-  searchContainer: { // NEW: For the search input
-    margin: '0 auto 1rem auto', // Centered with bottom margin
+  heroTitle: { fontSize: '2rem', fontWeight: 700, color: '#202124', marginBottom: '0.5rem' },
+  heroSubtitle: { fontSize: '1.125rem', color: '#5f6368', maxWidth: '800px', margin: '0 auto 1rem' },
+  searchContainer: {
+    margin: '0 auto 1rem auto',
     width: '100%',
-    maxWidth: '500px', // Limit width of search bar
+    maxWidth: '500px',
     padding: '0 0.5rem',
     boxSizing: 'border-box' as const,
   },
-  searchInput: { // NEW: Style for the search input
+  searchInput: {
     width: '100%',
     padding: '0.75rem 1rem',
     fontSize: '1rem',
     border: '1px solid #dadce0',
-    borderRadius: '2rem', // Pill shape
+    borderRadius: '2rem',
     boxSizing: 'border-box' as const,
     transition: 'border-color 0.2s, box-shadow 0.2s',
   },
-  // REMOVED: campaignsGrid, campaignsGridMd, campaignsGridLg styles
-
-  campaignCard: { // Style for individual cards, used in CampaignCard component
+  campaignCard: {
     backgroundColor: 'white',
-    borderRadius: '12px', // More rounded
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1)', // Slightly more prominent shadow for cards
-    overflow: 'hidden',
+    borderRadius: '12px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+    overflow: 'hidden', // Important for border-radius to affect image
     transition: 'transform 0.2s, box-shadow 0.2s',
     display: 'flex',
     flexDirection: 'column' as const,
-    height: '100%', // Make card take full height of slide if slides have fixed height
+    width: '100%', // Card takes full width of the slide
+    height: 'auto', // Let content dictate height, or set minHeight if needed
     boxSizing: 'border-box' as const,
+    // Added some internal padding to the card itself, can adjust or move to cardContent
+    // padding: '1rem', // Commented out, assuming cardContent handles it.
   },
-  campaignCardHover: { // Kept if you want hover effects (less relevant for swipe on mobile)
-    transform: 'translateY(-2px)',
-    boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
-  },
-  cardImage: { width: '100%', height: '180px', objectFit: 'cover' as const }, // Adjusted height
+  cardImage: { width: '100%', height: '180px', objectFit: 'cover' as const },
   noImagePlaceholder: { width: '100%', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f3f4', color: '#9aa0a6', fontSize: '0.875rem', boxSizing: 'border-box' as const },
   cardContent: { padding: '1rem', textAlign: 'left' as const, flexGrow: 1, display: 'flex', flexDirection: 'column' as const, boxSizing: 'border-box' as const },
   cardTitle: { fontSize: '1.125rem', fontWeight: 600, color: '#202124', marginBottom: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
@@ -127,21 +124,22 @@ const styles: { [key: string]: React.CSSProperties } = {
   creatorInfo: { fontSize: '0.75rem', color: '#5f6368' },
   viewButton: { fontSize: '0.8rem', padding: '0.375rem 0.75rem', backgroundColor: '#1a73e8', color: 'white', borderRadius: '4px', textDecoration: 'none', transition: 'background-color 0.2s' },
 
-  swiperContainer: { // NEW: For Swiper component
+  swiperContainer: {
     width: '100%',
-    flexGrow: 1, // Allow swiper to take available vertical space if needed
-    padding: '0.5rem 0', // Padding around the swiper
+    flexGrow: 1, // ADDED: Allow swiper to take available vertical space
+    minHeight: 0,  // ADDED: Essential for flex children that need to shrink/grow correctly
+    padding: '0.5rem 0',
+    position: 'relative', // ADDED: Often helps with Swiper's internal positioning
   },
-  swiperSlide: { // NEW: Ensure slides are ready for content
+  swiperSlide: {
     display: 'flex',
     justifyContent: 'center',
-    alignItems: 'center', // Stretch if campaign card has height:100%
-    // You might need to set a height on Swiper or slides if content height varies a lot
-    // Or ensure CampaignCard has a consistent min-height.
-    padding: '0 0.5rem', // Padding for "peek" effect if slidesPerView is > 1 (not for 1)
+    alignItems: 'stretch', // MODIFIED: Make items stretch to fill slide height
+    padding: '0 0.25rem', // Padding for "peek" effect if slidesPerView is > 1 (not for 1 with loop:false)
     boxSizing: 'border-box' as const,
+    // minHeight: '400px', // Example: could set a min-height for slides if desired
   },
-  emptyStateContainer: { // For loading, error, no campaigns, no search results
+  emptyStateContainer: {
     display: 'flex',
     flexDirection: 'column' as const,
     justifyContent: 'center',
@@ -149,15 +147,15 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: '3rem 1rem',
     textAlign: 'center' as const,
     color: '#5f6368',
-    flexGrow: 1, // Takes up space if carousel is empty
-    minHeight: '300px', // Ensure it's visible
+    flexGrow: 1,
+    minHeight: '300px',
     boxSizing: 'border-box' as const,
   },
   errorContainer: { padding: '1.5rem', backgroundColor: 'rgba(234, 67, 53, 0.1)', border: '1px solid rgba(234, 67, 53, 0.2)', borderRadius: '8px', color: '#c53929', maxWidth: '600px', margin: '0 auto 1rem auto', textAlign: 'center' as const, boxSizing: 'border-box' as const },
-  tabs: { /* ... (no change from previous fixes) ... */ display: 'flex', justifyContent: 'space-around', backgroundColor: '#fff', borderTop: '1px solid #e0e0e0', position: 'fixed' as const, bottom: 0, left: 0, width: '100%', zIndex: 100, padding: '0.75rem 0', boxShadow: '0 -1px 3px rgba(0,0,0,0.1)', boxSizing: 'border-box' as const },
-  tab: { /* ... (no change) ... */ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', fontSize: '0.65rem', color: '#5f6368', textDecoration: 'none', padding: '0.1rem 0.5rem', flexGrow: 1, textAlign: 'center' as const, transition: 'color 0.2s' },
-  tabActive: { /* ... (no change) ... */ color: '#1a73e8' },
-  tabIcon: { /* ... (no change) ... */ width: '1.125rem', height: '1.125rem', marginBottom: '0.125rem' }
+  tabs: { display: 'flex', justifyContent: 'space-around', backgroundColor: '#fff', borderTop: '1px solid #e0e0e0', position: 'fixed' as const, bottom: 0, left: 0, width: '100%', zIndex: 100, padding: '0.75rem 0', boxShadow: '0 -1px 3px rgba(0,0,0,0.1)', boxSizing: 'border-box' as const },
+  tab: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', fontSize: '0.65rem', color: '#5f6368', textDecoration: 'none', padding: '0.1rem 0.5rem', flexGrow: 1, textAlign: 'center' as const, transition: 'color 0.2s' },
+  tabActive: { color: '#1a73e8' },
+  tabIcon: { width: '1.125rem', height: '1.125rem', marginBottom: '0.125rem' }
 };
 
 const responsiveStyles = `
@@ -173,7 +171,7 @@ const responsiveStyles = `
   *, *::before, *::after {
     box-sizing: inherit;
   }
-  input[type="search"]::-webkit-search-cancel-button { /* Style for search cancel button */
+  input[type="search"]::-webkit-search-cancel-button {
     -webkit-appearance: none;
     appearance: none;
     height: 1em;
@@ -183,13 +181,19 @@ const responsiveStyles = `
     background-size: 1em 1em;
     cursor: pointer;
   }
-  /* Swiper specific styles for pagination bullets */
   .swiper-pagination-bullet {
-    background-color: #cccccc;
-    opacity: 1;
+    background-color: #cccccc !important; /* Use !important if needed to override Swiper defaults */
+    opacity: 1 !important;
   }
   .swiper-pagination-bullet-active {
-    background-color: #1a73e8;
+    background-color: #1a73e8 !important;
+  }
+  .swiper-button-next, .swiper-button-prev { /* Basic styling for nav buttons if you use them */
+    color: #1a73e8 !important; /* Primary color for arrows */
+    transform: scale(0.7); /* Make them a bit smaller */
+  }
+  .swiper-slide { /* Ensure slides don't have unexpected overflow if content is tricky */
+    overflow: hidden;
   }
 `;
 
@@ -209,12 +213,8 @@ const CampaignsPage: React.FC = () => {
   const [campaigns, setCampaigns] = useState<CampaignDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // REMOVED: windowWidth state and useEffect for it, as grid is removed.
-
-  // NEW: State for search
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Use useMemo for filteredCampaigns to optimize filtering
   const filteredCampaigns = useMemo(() => {
     if (!searchQuery) {
       return campaigns;
@@ -258,17 +258,14 @@ const CampaignsPage: React.FC = () => {
 // # #         SECTION 7 - COMPONENT: CAMPAIGN CARD (INNER COMPONENT)         #
 // # ############################################################################ #
   const CampaignCard: React.FC<{ campaign: CampaignDisplay }> = ({ campaign }) => {
-    // Removed isHovered state as it's less relevant for mobile swipe
-    // const cardStyle = { ...styles.campaignCard }; // Simpler style application
-
     return (
-      <div style={styles.campaignCard} > {/* Removed hover handlers */}
+      <div style={styles.campaignCard} >
         {campaign.image ? (
           <img
             src={campaign.image}
             alt={campaign.title}
             style={styles.cardImage}
-            onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/400x180/e5e7eb/9aa0a6?text=Image+Error'; }}
+            onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/400x180/e5e7eb/9aa0a6?text=Img+Error'; }}
           />
         ) : (
           <div style={styles.noImagePlaceholder}>No Image</div>
@@ -323,7 +320,6 @@ const CampaignsPage: React.FC = () => {
       <div style={styles.hero}>
         <h1 style={styles.heroTitle}>Explore Campaigns</h1>
         <p style={styles.heroSubtitle}>Swipe through projects making a difference.</p>
-        {/* NEW: Search Input */}
         <div style={styles.searchContainer}>
           <input
             type="search"
@@ -335,16 +331,16 @@ const CampaignsPage: React.FC = () => {
         </div>
       </div>
 
-      <main style={styles.container}>
+      <main style={styles.container}> {/* container has flexGrow and bottom padding */}
         {loading ? (
-          <div style={styles.emptyStateContainer}> {/* Reused for loading message */}
-            <div>Loading campaigns...</div> {/* Add spinner here if available */}
+          <div style={styles.emptyStateContainer}>
+            <div>Loading campaigns...</div>
           </div>
         ) : error ? (
           <div style={styles.errorContainer}>
             <p>{error}</p>
             <button
-              onClick={() => window.location.reload()} // Simple retry
+              onClick={() => window.location.reload()}
               style={{...styles.button, ...styles.buttonSecondary, marginTop: '1rem', width: 'auto', padding:'0.5rem 1rem'}}
             >
               Try Again
@@ -353,7 +349,7 @@ const CampaignsPage: React.FC = () => {
         ) : filteredCampaigns.length === 0 ? (
           <div style={styles.emptyStateContainer}>
             <p>{searchQuery ? `No campaigns found for "${searchQuery}".` : "No campaigns available at the moment."}</p>
-            {!searchQuery && isAuthenticated && ( // Show create button only if not searching and authenticated
+            {!searchQuery && isAuthenticated && (
               <Link
                 to="/new-campaign"
                 style={{...styles.button, ...styles.buttonPrimary, marginTop: '1rem', width: 'auto', padding:'0.625rem 1.25rem'}}
@@ -363,19 +359,21 @@ const CampaignsPage: React.FC = () => {
             )}
           </div>
         ) : (
-          // NEW: Swiper Carousel Implementation
           <Swiper
             modules={[Navigation, Pagination, A11y]}
-            spaceBetween={16} // Space between slides if you were to show more than one (or for peeking)
-            slidesPerView={1} // Show one full slide at a time
-            navigation // Show navigation arrows (optional for mobile, swipe is primary)
-            pagination={{ clickable: true, dynamicBullets: true }} // Enable clickable pagination dots
-            loop={false} // Set to true if you want infinite looping
-            style={styles.swiperContainer}
+            spaceBetween={16} 
+            slidesPerView={1}
+            navigation // You can disable this if swipe is preferred exclusively on mobile: navigation={false}
+            pagination={{ clickable: true, dynamicBullets: true }}
+            loop={false}
+            style={styles.swiperContainer} // Applied container style
             grabCursor={true}
+            // Consider adding a key to Swiper if filteredCampaigns length changes drastically
+            // to ensure it re-initializes correctly, e.g. key={filteredCampaigns.length}
+            // or key={searchQuery}
           >
             {filteredCampaigns.map(campaign => (
-              <SwiperSlide key={campaign.id} style={styles.swiperSlide}>
+              <SwiperSlide key={campaign.id} style={styles.swiperSlide}> {/* Applied slide style */}
                 <CampaignCard campaign={campaign} />
               </SwiperSlide>
             ))}
