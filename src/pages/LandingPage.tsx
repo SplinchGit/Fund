@@ -269,23 +269,71 @@ const LandingPage: React.FC = () => {
     (path === '/campaigns' && location.pathname.startsWith('/campaigns/'));
 
 // # ############################################################################ #
-// # #                    SECTION 12 - INLINE STYLES OBJECT                     #
+// # #                              SECTION 12 - INLINE STYLES OBJECT                             #
 // # ############################################################################ #
-  // --- Styles object (keeping the existing implementation) ---
-  const styles: { [key: string]: React.CSSProperties } = { /* ... Your full styles object ... */
-    page: { textAlign: 'center' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif', color: '#202124', backgroundColor: '#ffffff', margin: 0, padding: 0, overflowX: 'hidden' as const, width: '100%', maxWidth: '100vw', minHeight: '100vh', display: 'flex', flexDirection: 'column' as const },
-    container: { margin: '0 auto', width: '100%', padding: '0 0.5rem', boxSizing: 'border-box' as const, maxWidth: '1200px', flexGrow: 1 },
-    header: { background: 'white', padding: '0.5rem 0', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', position: 'sticky' as const, top: 0, zIndex: 100 },
-    headerContent: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px', margin: '0 auto', padding: '0 0.5rem' },
+  // --- Styles object with fixes applied ---
+  const styles: { [key: string]: React.CSSProperties } = {
+    page: {
+      textAlign: 'center' as const,
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif',
+      color: '#202124',
+      backgroundColor: '#ffffff',
+      margin: 0,
+      padding: 0,
+      overflowX: 'hidden' as const,
+      width: '100vw', // MODIFIED: Explicitly viewport width
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      boxSizing: 'border-box' as const, // ADDED: Good practice
+    },
+    container: { // For content within sections, should be centered with max-width
+      margin: '0 auto',
+      width: '100%',
+      padding: '0 0.5rem',
+      boxSizing: 'border-box' as const,
+      maxWidth: '1200px',
+      flexGrow: 1, // This makes container fill its parent if parent is flex. Useful here.
+    },
+    header: {
+      background: 'white',
+      padding: '0.5rem 0', // Vertical padding; horizontal managed by headerContent
+      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+      position: 'sticky' as const,
+      top: 0,
+      zIndex: 100,
+      width: '100%', // ADDED: Ensure header background spans full width of 'page'
+      boxSizing: 'border-box' as const, // ADDED: Ensure padding is within width
+    },
+    headerContent: { // Centers the content within the full-width header
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      maxWidth: '1200px', // Max width for logo/button area
+      margin: '0 auto',    // Centers this block within the header
+      padding: '0 0.5rem', // Padding for the content from edges of this 1200px block
+      boxSizing: 'border-box' as const, // ADDED
+    },
     logo: { display: 'flex', alignItems: 'center', color: '#1a73e8', fontWeight: 700, fontSize: '1.125rem', textDecoration: 'none' },
     logoSpan: { color: '#202124' },
     button: { padding: '0.5rem 0.75rem', borderRadius: '0.25rem', fontWeight: 500, cursor: 'pointer', textDecoration: 'none', textAlign: 'center' as const, fontSize: '0.75rem', transition: 'background-color 0.2s, border-color 0.2s', border: '1px solid transparent', minHeight: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
     buttonPrimary: { backgroundColor: '#1a73e8', color: 'white', borderColor: '#1a73e8' },
-    hero: { background: '#f5f7fa', padding: '1.5rem 0 2rem', textAlign: 'center' as const },
+    hero: {
+      background: '#f5f7fa',
+      padding: '1.5rem 0 2rem', // Content inside will be centered by hero's textAlign or children's margin:auto
+      textAlign: 'center' as const,
+      width: '100%', // ADDED: Ensure hero background spans full width
+      boxSizing: 'border-box' as const, // ADDED: Ensure padding is within width
+    },
     heroTitle: { fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem', color: '#202124', padding: 0 },
-    heroSubtitle: { fontSize: '0.875rem', color: '#5f6368', margin: '0 auto 1rem', maxWidth: '500px', padding: 0 },
+    heroSubtitle: { fontSize: '0.875rem', color: '#5f6368', margin: '0 auto 1rem', maxWidth: '500px', padding: 0 }, // Self-constrained and centered
     trustBadge: { display: 'inline-flex', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.8)', padding: '0.3rem 0.6rem', borderRadius: '1rem', fontSize: '0.75rem', color: '#5f6368', marginTop: '0.75rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
-    campaignsSection: { padding: '1.5rem 0 2rem' },
+    campaignsSection: {
+      padding: '1.5rem 0 2rem', // Vertical padding; horizontal comes from styles.container inside
+      flexGrow: 1, // MODIFIED: Added to fill vertical space
+      width: '100%', // ADDED: Ensure section background spans full width
+      boxSizing: 'border-box' as const, // ADDED: Ensure padding is within width
+    },
     sectionHeader: { textAlign: 'center' as const, marginBottom: '1rem' },
     sectionTitle: { fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.25rem', padding: 0 },
     sectionSubtitle: { color: '#5f6368', fontSize: '0.8rem', margin: '0 auto 1rem', padding: 0 },
@@ -301,18 +349,64 @@ const LandingPage: React.FC = () => {
     campaignCreator: { display: 'flex', alignItems: 'center', marginTop: 'auto', paddingTop: '0.5rem', fontSize: '0.7rem' },
     creatorAvatar: { width: '1.25rem', height: '1.25rem', borderRadius: '50%', backgroundColor: '#e5e7eb', marginRight: '0.375rem', display: 'inline-block' },
     verifiedBadge: { display: 'inline-flex', alignItems: 'center', backgroundColor: 'rgba(52, 168, 83, 0.1)', color: '#34a853', fontSize: '0.6rem', padding: '0.1rem 0.25rem', borderRadius: '0.125rem', marginLeft: '0.25rem', fontWeight: 500 },
-    tabs: { display: 'flex', justifyContent: 'space-around', backgroundColor: '#fff', borderTop: '1px solid #e0e0e0', position: 'fixed' as const, bottom: 0, left: 0, width: '100%', zIndex: 100, padding: '0.75rem 0', boxShadow: '0 -1px 3px rgba(0,0,0,0.1)' },
+    tabs: {
+      display: 'flex',
+      justifyContent: 'space-around',
+      backgroundColor: '#fff',
+      borderTop: '1px solid #e0e0e0',
+      position: 'fixed' as const,
+      bottom: 0,
+      left: 0,
+      width: '100%', // Already 100%
+      zIndex: 100,
+      padding: '0.75rem 0',
+      boxShadow: '0 -1px 3px rgba(0,0,0,0.1)',
+      boxSizing: 'border-box' as const, // ADDED
+    },
     tab: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', fontSize: '0.65rem', color: '#5f6368', textDecoration: 'none', padding: '0.1rem 0.5rem', flexGrow: 1, textAlign: 'center' as const, transition: 'color 0.2s' },
     tabActive: { color: '#1a73e8' },
     tabIcon: { width: '1.125rem', height: '1.125rem', marginBottom: '0.125rem' },
-    legalNotice: { fontSize: '0.7rem', color: '#5f6368', padding: '1rem', marginTop: '1rem', marginBottom: '4.5rem', borderTop: '1px solid #eee' },
-    errorMessage: { textAlign: 'center', padding: '1rem', backgroundColor: '#ffebee', color: '#c62828', borderRadius: '0.5rem', margin: '1rem 0', fontSize: '0.9rem' }
+    legalNotice: {
+      fontSize: '0.7rem',
+      color: '#5f6368',
+      padding: '1rem', // Padding on all sides is fine
+      marginTop: '1rem',
+      marginBottom: '4.5rem', // Space for fixed tabs
+      borderTop: '1px solid #eee',
+      width: '100%', // ADDED
+      boxSizing: 'border-box' as const, // ADDED
+    },
+    errorMessage: {
+      textAlign: 'center' as const, // Explicitly const
+      padding: '1rem',
+      backgroundColor: '#ffebee',
+      color: '#c62828',
+      borderRadius: '0.5rem',
+      margin: '1rem auto', // MODIFIED: 'auto' for horizontal centering
+      fontSize: '0.9rem',
+      maxWidth: '1200px', // ADDED: To match container width if desired
+      boxSizing: 'border-box' as const, // ADDED
+    }
   };
 
-  const responsiveStyles = ` html, body { font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'}; } `;
+  // MODIFIED: More robust global styles
+  const responsiveStyles = `
+    html, body {
+      width: 100%;
+      height: 100%; /* For minHeight: 100vh on page to work reliably */
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden; /* Prevent horizontal scroll on html/body */
+      font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'};
+      box-sizing: border-box; /* Apply border-box globally */
+    }
+    *, *::before, *::after {
+      box-sizing: inherit; /* Inherit border-box */
+    }
+  `;
 
 // # ############################################################################ #
-// # #          SECTION 13 - JSX RETURN: PAGE STRUCTURE & CONTENT           #
+// # #                   SECTION 13 - JSX RETURN: PAGE STRUCTURE & CONTENT                #
 // # ############################################################################ #
   return (
     <div style={styles.page}>
@@ -342,14 +436,13 @@ const LandingPage: React.FC = () => {
         <p style={styles.heroSubtitle}>Fund projects that make a difference with transparent and secure donations</p>
       </section>
 
-      <section style={styles.campaignsSection}>
-        <div style={styles.container}>
+      <section style={styles.campaignsSection}> {/* This section will grow vertically and be full-width */}
+        <div style={styles.container}> {/* This container centers content with max-width */}
           <div style={styles.sectionHeader}>
             <h2 style={styles.sectionTitle}>Featured Campaigns</h2>
             <p style={styles.sectionSubtitle}>Discover projects making a difference</p>
           </div>
 
-          {/* Error display with more helpful messages */}
           {pageError && (
             <div style={styles.errorMessage}>
               <p>{pageError}</p>
@@ -419,7 +512,6 @@ const LandingPage: React.FC = () => {
         &copy; {new Date().getFullYear()} WorldFund. All rights reserved.
       </footer>
 
-      {/* Bottom Navigation Tabs */}
       <nav style={styles.tabs}>
         <Link to="/" style={{ ...styles.tab, ...(isActivePath('/') ? styles.tabActive : {}) }}>
           <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg>
@@ -429,7 +521,6 @@ const LandingPage: React.FC = () => {
           <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" /></svg>
           <span>Explore</span>
         </Link>
-        {/* Account tab with improved error handling */}
         <button
           onClick={handleAccountNavigation}
           disabled={authIsLoading && !isAuthenticated}

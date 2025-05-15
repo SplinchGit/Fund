@@ -138,39 +138,135 @@ class AuthService {
 // # ############################################################################ #
 // # #          SECTION 11 - PRIVATE HELPERS: STORAGE & REQUEST ID          #
 // # ############################################################################ #
-  /** Safely access localStorage with error handling */
+  /** Safely access localStorage and sessionStorage with improved error handling */
   private safeLocalStorage = {
+    // Get item with session storage priority
     getItem: (key: string): string | null => {
       try {
-        return localStorage.getItem(key);
+        // First try from sessionStorage (more secure for auth tokens)
+        let value = sessionStorage.getItem(key);
+        if (value) {
+          console.log(`[AuthService] Retrieved ${key} from sessionStorage`);
+          return value;
+        }
+        
+        // Fall back to localStorage if not in sessionStorage
+        value = localStorage.getItem(key);
+        if (value) {
+          console.log(`[AuthService] Retrieved ${key} from localStorage`);
+          
+          // If this is a token, migrate it to sessionStorage
+          if (key === SESSION_TOKEN_KEY) {
+            try {
+              sessionStorage.setItem(key, value);
+              localStorage.removeItem(key);
+              console.log(`[AuthService] Migrated ${key} from localStorage to sessionStorage`);
+            } catch (migrationError) {
+              console.warn(`[AuthService] Failed to migrate ${key} to sessionStorage:`, migrationError);
+            }
+          }
+          
+          return value;
+        }
+        
+        console.log(`[AuthService] ${key} not found in storage`);
+        return null;
       } catch (error) {
-        console.warn(`[AuthService] Error getting ${key} from localStorage:`, error);
+        console.warn(`[AuthService] Error accessing ${key} from storage:`, error);
         return null;
       }
     },
+    
+    // Set item in appropriate storage based on key
     setItem: (key: string, value: string): boolean => {
       try {
-        localStorage.setItem(key, value);
+        // Store tokens in sessionStorage (more secure but cleared on tab close)
+        if (key === SESSION_TOKEN_KEY) {
+          sessionStorage.setItem(key, value);
+          console.log(`[AuthService] Stored ${key} in sessionStorage`);
+        } else {
+          // Store other data in localStorage
+          localStorage.setItem(key, value);
+          console.log(`[AuthService] Stored ${key} in localStorage`);
+        }
         return true;
       } catch (error) {
-        console.warn(`[AuthService] Error setting ${key} in localStorage:`, error);
+        console.warn(`[AuthService] Error setting ${key} in storage:`, error);
         return false;
       }
     },
+    
+    // Remove item from both storage types
     removeItem: (key: string): boolean => {
       try {
+        // Remove from both storage types to ensure it's fully cleared
+        sessionStorage.removeItem(key);
         localStorage.removeItem(key);
+        console.log(`[AuthService] Removed ${key} from storage`);
         return true;
       } catch (error) {
-        console.warn(`[AuthService] Error removing ${key} from localStorage:`, error);
+        console.warn(`[AuthService] Error removing ${key} from storage:`, error);
+        return false;
+      }
+    },
+    
+    // Check if an item exists in either storage
+    hasItem: (key: string): boolean => {
+      try {
+        return sessionStorage.getItem(key) !== null || localStorage.getItem(key) !== null;
+      } catch (error) {
+        console.warn(`[AuthService] Error checking ${key} in storage:`, error);
         return false;
       }
     }
   };
 
-  /** Generate a unique request ID */
+  /** Generate a unique request ID with additional entropy */
   private generateRequestId(): string {
-    return `req_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 10);
+    
+// Add safety checks for the crypto API to generate a part of the request ID
+    let entropyStr = '';
+    try {
+      // Check if running in a browser environment and the crypto API is available and functional.
+      // The non-null assertion operator (!) is used on window.crypto below
+      // because TypeScript might not fully infer its guaranteed availability within this
+      // block despite the preceding checks. This assertion confirms our understanding
+      // that if these conditions pass, window.crypto is indeed defined.
+      if (typeof window !== 'undefined' && window.crypto && typeof window.crypto.getRandomValues === 'function') {
+        // Use crypto API for stronger entropy if available
+        const crypto = window.crypto;
+        if (crypto) {
+          const entropyArray = new Uint32Array(1);
+          crypto.getRandomValues(entropyArray); // Applied non-null assertion to window.crypto
+          entropyStr = entropyArray[0]!.toString(36);
+        }
+      } else {
+        // Fallback if crypto API is not available (e.g., older browser, non-browser environment like Node.js during SSR)
+        // console.log('[AuthService] crypto.getRandomValues not available, using Math.random() fallback for entropy.'); // Optional: for more detailed logging
+        entropyStr = Date.now().toString(36) + Math.random().toString(36).substr(2);
+      }
+    } catch (error) {
+      // Fallback if crypto.getRandomValues is available but throws an unexpected error during its execution
+      entropyStr = Math.floor(Math.random() * 1000000).toString(36);
+      console.warn('[AuthService] Error using crypto.getRandomValues, resorting to Math.random() fallback:', error);
+    }
+    
+    // The 'timestamp' and 'random' variables are assumed to be defined 
+    // earlier in this function's scope.
+    return `req_${timestamp}_${random}_${entropyStr}`;
+  }
+  
+  /** Get current auth token with logging */
+  private getAuthToken(): string | null {
+    const token = this.safeLocalStorage.getItem(SESSION_TOKEN_KEY);
+    if (!token) {
+      console.warn('[AuthService] No authentication token found in storage');
+    } else {
+      console.log('[AuthService] Authentication token retrieved from storage');
+    }
+    return token;
   }
 
 // # ############################################################################ #
@@ -763,7 +859,10 @@ class AuthService {
 // # ############################################################################ #
 // # #              SECTION 21 - PUBLIC METHOD: CHECK AUTH STATUS               #
 // # ############################################################################ #
-  /** Checks if the user is authenticated */
+  /** 
+   * Checks if the user is authenticated with improved token validation
+   * This method is critical for determining authentication state throughout the app
+   */
   public async checkAuthStatus(): Promise<{
     isAuthenticated: boolean;
     token: string | null;
@@ -771,17 +870,114 @@ class AuthService {
   }> {
     console.log('[AuthService] Checking auth status...');
 
-    const token = this.safeLocalStorage.getItem(SESSION_TOKEN_KEY);
-    const walletAddress = this.safeLocalStorage.getItem(WALLET_ADDRESS_KEY);
+    try {
+      // Use the existing safeLocalStorage
+      const token = this.safeLocalStorage.getItem(SESSION_TOKEN_KEY);
+      const walletAddress = this.safeLocalStorage.getItem(WALLET_ADDRESS_KEY);
+      
+      // Log what we found without exposing the actual token
+      console.log(`[AuthService] Token found: ${Boolean(token)}, Wallet address found: ${Boolean(walletAddress)}`);
 
-    const isAuthenticated = Boolean(token && walletAddress);
-    console.log(`[AuthService] Auth status → ${isAuthenticated ? 'Authenticated' : 'Not authenticated'}`);
+      // Basic JWT validation (token should be in format: header.payload.signature)
+      let hasValidFormat = false;
+      if (token) {
+        const parts = token.split('.');
+        hasValidFormat = parts.length === 3;
+        
+        if (!hasValidFormat) {
+          console.warn('[AuthService] Retrieved token has invalid format, not a proper JWT');
+        } else {
+          try {
+            // Only proceed if we have at least 3 parts and the payload part exists
+            if (parts.length >= 3 && parts[1]) {
+              // Try to decode the middle (payload) part to check expiration
+              const payloadBase64 = parts[1];
+              
+              // Fix base64 padding if needed - with additional safety checks
+              let payloadJson = '';
+              try {
+                // Handle base64 correctly
+                const base64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+                const paddingLength = (4 - (base64.length % 4)) % 4;
+                const paddedBase64 = base64 + '='.repeat(paddingLength);
+                
+                // Decode safely
+                payloadJson = atob(paddedBase64);
+              } catch (base64Error) {
+                console.error('[AuthService] Error decoding base64 payload:', base64Error);
+                hasValidFormat = false;
+                throw new Error('Invalid token format: could not decode payload');
+              }
+              
+              // Parse JSON safely
+              if (payloadJson) {
+                let payload: any;
+                try {
+                  payload = JSON.parse(payloadJson);
+                } catch (jsonError) {
+                  console.error('[AuthService] Error parsing token JSON payload:', jsonError);
+                  hasValidFormat = false;
+                  throw new Error('Invalid token format: could not parse payload JSON');
+                }
+                
+                // Check expiration if present
+                if (payload && payload.exp) {
+                  const expTime = payload.exp * 1000; // Convert to milliseconds
+                  const now = Date.now();
+                  
+                  if (expTime < now) {
+                    console.warn(`[AuthService] Token expired at ${new Date(expTime).toISOString()}`);
+                    return {
+                      isAuthenticated: false,
+                      token: null,
+                      walletAddress: null
+                    };
+                  }
+                }
+                
+                // Log successful validation without revealing sensitive info
+                console.log('[AuthService] Token passed basic JWT validation');
+              } else {
+                console.warn('[AuthService] Empty payload after decoding');
+                hasValidFormat = false;
+              }
+            } else {
+              console.warn('[AuthService] Invalid token structure - missing payload part');
+              hasValidFormat = false;
+            }
+          } catch (parseError) {
+            console.error('[AuthService] Error validating token:', parseError);
+            hasValidFormat = false;
+          }
+        }
+      }
 
-    return {
-      isAuthenticated,
-      token,
-      walletAddress
-    };
+      // Determine authentication state based on token validity and wallet address
+      const isAuthenticated = Boolean(token && hasValidFormat && walletAddress);
+      
+      console.log(`[AuthService] Auth status → ${isAuthenticated ? 'Authenticated' : 'Not authenticated'}`);
+      
+      if (!isAuthenticated && (token || walletAddress)) {
+        console.warn('[AuthService] Not authenticated because: ' + 
+          (!token ? 'Token missing' : 
+            !hasValidFormat ? 'Token has invalid format' : 
+              !walletAddress ? 'Wallet address missing' : 'Unknown reason'));
+      }
+
+      return {
+        isAuthenticated,
+        // Only return the token if it's valid, otherwise return null
+        token: (token && hasValidFormat) ? token : null,
+        walletAddress
+      };
+    } catch (error) {
+      console.error('[AuthService] Error checking auth status:', error);
+      return {
+        isAuthenticated: false,
+        token: null,
+        walletAddress: null
+      };
+    }
   }
 
 // # ############################################################################ #

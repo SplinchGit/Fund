@@ -1,7 +1,7 @@
 // src/pages/CampaignsPage.tsx
 
 // # ############################################################################ #
-// # #                             SECTION 1 - IMPORTS                            #
+// # #                               SECTION 1 - IMPORTS                                #
 // # ############################################################################ #
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -9,165 +9,168 @@ import { useAuth } from '../components/AuthContext';
 import { campaignService, Campaign } from '../services/CampaignService';
 
 // # ############################################################################ #
-// # #                            SECTION 2 - STYLES                             #
+// # #                               SECTION 2 - STYLES                                #
 // # ############################################################################ #
-// Basic styles without media queries
 const styles: { [key: string]: React.CSSProperties } = {
-  page: { 
-    textAlign: 'center', 
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif', 
-    color: '#202124', 
-    backgroundColor: '#f5f7fa', 
-    margin: 0, 
-    padding: 0, 
-    overflowX: 'hidden', 
-    width: '100%', 
-    maxWidth: '100vw', 
-    minHeight: '100vh', 
-    display: 'flex', 
-    flexDirection: 'column'
+  page: {
+    textAlign: 'center' as const, // ADDED as const
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif',
+    color: '#202124',
+    backgroundColor: '#f5f7fa', // Page background color
+    margin: 0,
+    padding: 0,
+    overflowX: 'hidden' as const, // ADDED as const
+    width: '100vw', // MODIFIED: Explicitly viewport width
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column' as const, // ADDED as const
+    boxSizing: 'border-box' as const, // ADDED
   },
-  container: { 
-    margin: '0 auto', 
-    width: '100%', 
-    padding: '0 0.5rem', 
-    boxSizing: 'border-box', 
-    maxWidth: '1200px', 
-    flexGrow: 1 
+  container: { // For the <main> content area
+    margin: '0 auto',
+    width: '100%',
+    padding: '0 0.5rem',
+    boxSizing: 'border-box' as const, // Ensured as const
+    maxWidth: '1200px',
+    flexGrow: 1, // Makes <main> grow vertically
   },
-  header: { 
-    background: 'white', 
-    padding: '0.5rem 0', 
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)', 
-    position: 'sticky', 
-    top: 0, 
-    zIndex: 100 
+  header: {
+    background: 'white',
+    padding: '0.5rem 0',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    position: 'sticky' as const, // ADDED as const
+    top: 0,
+    zIndex: 100,
+    width: '100%', // ADDED
+    boxSizing: 'border-box' as const, // ADDED
   },
-  headerContent: { 
-    display: 'flex', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    maxWidth: '1200px', 
-    margin: '0 auto', 
-    padding: '0 0.5rem' 
+  headerContent: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: '0 0.5rem',
+    boxSizing: 'border-box' as const, // ADDED
   },
-  logo: { 
-    display: 'flex', 
-    alignItems: 'center', 
-    color: '#1a73e8', 
-    fontWeight: 700, 
-    fontSize: '1.125rem', 
-    textDecoration: 'none' 
+  logo: {
+    display: 'flex',
+    alignItems: 'center',
+    color: '#1a73e8',
+    fontWeight: 700,
+    fontSize: '1.125rem',
+    textDecoration: 'none',
   },
-  logoSpan: { 
-    color: '#202124' 
+  logoSpan: {
+    color: '#202124',
   },
-  button: { 
-    padding: '0.5rem 0.75rem', 
-    borderRadius: '0.25rem', 
-    fontWeight: 500, 
-    cursor: 'pointer', 
-    textDecoration: 'none', 
-    textAlign: 'center', 
-    fontSize: '0.875rem', 
-    transition: 'background-color 0.2s, border-color 0.2s', 
-    border: '1px solid transparent', 
-    minHeight: '36px', 
-    display: 'inline-flex', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    lineHeight: 1 
+  button: {
+    padding: '0.5rem 0.75rem',
+    borderRadius: '0.25rem',
+    fontWeight: 500,
+    cursor: 'pointer',
+    textDecoration: 'none',
+    textAlign: 'center' as const, // ADDED as const
+    fontSize: '0.875rem',
+    transition: 'background-color 0.2s, border-color 0.2s',
+    border: '1px solid transparent',
+    minHeight: '36px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    lineHeight: 1,
   },
-  buttonPrimary: { 
-    backgroundColor: '#1a73e8', 
-    color: 'white', 
-    borderColor: '#1a73e8' 
+  buttonPrimary: {
+    backgroundColor: '#1a73e8',
+    color: 'white',
+    borderColor: '#1a73e8',
   },
   buttonSecondary: {
     backgroundColor: '#f1f3f4',
     color: '#202124',
-    borderColor: '#dadce0'
+    borderColor: '#dadce0',
   },
   navItem: {
     marginLeft: '1rem',
     fontSize: '0.875rem',
     color: '#5f6368',
     textDecoration: 'none',
-    transition: 'color 0.2s'
+    transition: 'color 0.2s',
   },
   navItemActive: {
     color: '#1a73e8',
-    fontWeight: 500
+    fontWeight: 500,
   },
-  hero: {
+  hero: { // Full-width hero section
     backgroundColor: 'white',
     padding: '2rem 1rem',
-    textAlign: 'center',
+    textAlign: 'center' as const, // ADDED as const
     marginBottom: '2rem',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    width: '100%', // ADDED
+    boxSizing: 'border-box' as const, // ADDED
   },
   heroTitle: {
     fontSize: '2rem',
     fontWeight: 700,
     color: '#202124',
-    marginBottom: '0.5rem'
+    marginBottom: '0.5rem',
   },
   heroSubtitle: {
     fontSize: '1.125rem',
     color: '#5f6368',
     maxWidth: '800px',
-    margin: '0 auto'
+    margin: '0 auto',
   },
-  mainTitle: {
+  mainTitle: { // These are used within the <main> container
     fontSize: '1.5rem',
     fontWeight: 600,
     color: '#202124',
     marginBottom: '0.5rem',
-    textAlign: 'center'
+    textAlign: 'center' as const, // ADDED as const
   },
   mainSubtitle: {
     fontSize: '1rem',
     color: '#5f6368',
     marginBottom: '2rem',
-    textAlign: 'center'
+    textAlign: 'center' as const, // ADDED as const
   },
-  // Fixed grid layout without media queries
   campaignsGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(1, 1fr)',
     gap: '1.5rem',
-    marginBottom: '2rem'
+    marginBottom: '2rem',
   },
-  // For medium screens
   campaignsGridMd: {
     display: 'grid',
     gridTemplateColumns: 'repeat(2, 1fr)',
     gap: '1.5rem',
-    marginBottom: '2rem'
+    marginBottom: '2rem',
   },
-  // For large screens
   campaignsGridLg: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
     gap: '1.5rem',
-    marginBottom: '2rem'
+    marginBottom: '2rem',
   },
   campaignCard: {
     backgroundColor: 'white',
     borderRadius: '8px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
     overflow: 'hidden',
-    transition: 'transform 0.2s, box-shadow 0.2s'
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    display: 'flex', // ADDED for better internal structure
+    flexDirection: 'column' as const, // ADDED
+    boxSizing: 'border-box' as const, // ADDED
   },
-  // Separate hover styles to apply programmatically
   campaignCardHover: {
     transform: 'translateY(-2px)',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
   },
   cardImage: {
     width: '100%',
     height: '160px',
-    objectFit: 'cover'
+    objectFit: 'cover' as const, // ADDED as const
   },
   noImagePlaceholder: {
     width: '100%',
@@ -177,10 +180,16 @@ const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: 'center',
     backgroundColor: '#f1f3f4',
     color: '#9aa0a6',
-    fontSize: '0.875rem'
+    fontSize: '0.875rem',
+    boxSizing: 'border-box' as const, // ADDED
   },
   cardContent: {
-    padding: '1rem'
+    padding: '1rem',
+    textAlign: 'left' as const, // ADDED to ensure content aligns left by default
+    flexGrow: 1, // ADDED: Allows content to fill space if card height is fixed or varied
+    display: 'flex', // ADDED
+    flexDirection: 'column' as const, // ADDED
+    boxSizing: 'border-box' as const, // ADDED
   },
   cardTitle: {
     fontSize: '1rem',
@@ -189,8 +198,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: '0.5rem',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    textAlign: 'left'
+    whiteSpace: 'nowrap' as const, // Ensured as const
+    // textAlign: 'left' removed as cardContent handles it
   },
   cardDescription: {
     fontSize: '0.875rem',
@@ -198,12 +207,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: '0.75rem',
     display: '-webkit-box',
     WebkitLineClamp: 2,
-    WebkitBoxOrient: 'vertical',
+    WebkitBoxOrient: 'vertical' as const, // ADDED as const
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    height: '2.625rem',
+    minHeight: 'calc(2 * 1.5 * 0.875rem)', // Adjusted for 2 lines, assuming lineHeight 1.5
     lineHeight: 1.5,
-    textAlign: 'left'
+    // textAlign: 'left' removed
+    flexGrow: 1, // Allow description to take up space before progress bar
   },
   progressBar: {
     width: '100%',
@@ -211,12 +221,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: '#e9ecef',
     borderRadius: '2px',
     overflow: 'hidden',
-    marginBottom: '0.5rem'
+    marginBottom: '0.5rem',
+    marginTop: 'auto', // Pushes progress bar towards bottom if description is short
   },
   progressFill: {
     height: '100%',
     backgroundColor: '#34a853',
-    borderRadius: '2px'
+    borderRadius: '2px',
   },
   progressStats: {
     display: 'flex',
@@ -224,7 +235,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '0.75rem',
     color: '#5f6368',
     marginBottom: '0.75rem',
-    textAlign: 'left'
+    // textAlign: 'left' removed
   },
   cardFooter: {
     display: 'flex',
@@ -232,11 +243,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: 'center',
     padding: '0.5rem 1rem',
     borderTop: '1px solid #f1f3f4',
-    backgroundColor: '#fafafa'
+    backgroundColor: '#fafafa',
+    boxSizing: 'border-box' as const, // ADDED
+    marginTop: 'auto', // Ensures footer is at the bottom of the card
   },
   creatorInfo: {
     fontSize: '0.75rem',
-    color: '#5f6368'
+    color: '#5f6368',
   },
   viewButton: {
     fontSize: '0.75rem',
@@ -244,13 +257,15 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundColor: '#1a73e8',
     color: 'white',
     borderRadius: '4px',
-    textDecoration: 'none'
+    textDecoration: 'none',
   },
   loadingContainer: {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: '3rem 0'
+    padding: '3rem 0',
+    boxSizing: 'border-box' as const, // ADDED
+    minHeight: '200px', // Ensure it takes some space
   },
   errorContainer: {
     padding: '1.5rem',
@@ -259,87 +274,105 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderRadius: '8px',
     color: '#ea4335',
     maxWidth: '600px',
-    margin: '0 auto',
-    textAlign: 'center'
+    margin: '2rem auto', // Added vertical margin
+    textAlign: 'center' as const, // ADDED as const
+    boxSizing: 'border-box' as const, // ADDED
   },
   emptyContainer: {
     padding: '3rem 1rem',
-    textAlign: 'center',
-    color: '#5f6368'
+    textAlign: 'center' as const, // ADDED as const
+    color: '#5f6368',
+    boxSizing: 'border-box' as const, // ADDED
+    minHeight: '200px', // Ensure it takes some space
   },
-  tabs: { 
-    display: 'flex', 
-    justifyContent: 'space-around', 
-    backgroundColor: '#fff', 
-    borderTop: '1px solid #e0e0e0', 
-    position: 'fixed', 
-    bottom: 0, 
-    left: 0, 
-    width: '100%', 
-    zIndex: 100, 
-    padding: '0.75rem 0', 
-    boxShadow: '0 -1px 3px rgba(0,0,0,0.1)' 
+  tabs: { // Fixed bottom tabs
+    display: 'flex',
+    justifyContent: 'space-around',
+    backgroundColor: '#fff',
+    borderTop: '1px solid #e0e0e0',
+    position: 'fixed' as const, // ADDED as const
+    bottom: 0,
+    left: 0,
+    width: '100%',
+    zIndex: 100,
+    padding: '0.75rem 0',
+    boxShadow: '0 -1px 3px rgba(0,0,0,0.1)',
+    boxSizing: 'border-box' as const, // ADDED
   },
-  tab: { 
-    display: 'flex', 
-    flexDirection: 'column', 
-    alignItems: 'center', 
-    fontSize: '0.65rem', 
-    color: '#5f6368', 
-    textDecoration: 'none', 
-    padding: '0.1rem 0.5rem', 
-    flexGrow: 1, 
-    textAlign: 'center', 
-    transition: 'color 0.2s' 
+  tab: {
+    display: 'flex',
+    flexDirection: 'column' as const, // ADDED as const
+    alignItems: 'center',
+    fontSize: '0.65rem',
+    color: '#5f6368',
+    textDecoration: 'none',
+    padding: '0.1rem 0.5rem',
+    flexGrow: 1,
+    textAlign: 'center' as const, // ADDED as const
+    transition: 'color 0.2s',
   },
-  tabActive: { 
-    color: '#1a73e8' 
+  tabActive: {
+    color: '#1a73e8',
   },
-  tabIcon: { 
-    width: '1.125rem', 
-    height: '1.125rem', 
-    marginBottom: '0.125rem'
-  }
+  tabIcon: {
+    width: '1.125rem',
+    height: '1.125rem',
+    marginBottom: '0.125rem',
+  },
 };
 
+// ADDED: Global responsive styles
+const responsiveStyles = `
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'};
+    box-sizing: border-box;
+  }
+  *, *::before, *::after {
+    box-sizing: inherit;
+  }
+`;
+
 // # ############################################################################ #
-// # #                 SECTION 3 - INTERFACE: CAMPAIGN DISPLAY                  #
+// # #                 SECTION 3 - INTERFACE: CAMPAIGN DISPLAY                 #
 // # ############################################################################ #
 interface CampaignDisplay extends Campaign {
   progressPercentage: number;
 }
 
 // # ############################################################################ #
-// # #                SECTION 4 - COMPONENT: CAMPAIGNS PAGE                    #
+// # #                 SECTION 4 - COMPONENT: CAMPAIGNS PAGE                 #
 // # ############################################################################ #
 const CampaignsPage: React.FC = () => {
   const { isAuthenticated } = useAuth();
-  
+
   const [campaigns, setCampaigns] = useState<CampaignDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
 // # ############################################################################ #
-// # #             SECTION 5 - EFFECT: WINDOW RESIZE HANDLER                  #
+// # #                 SECTION 5 - EFFECT: WINDOW RESIZE HANDLER                 #
 // # ############################################################################ #
-  // Handle window resize for responsive grid
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
     };
-
     window.addEventListener('resize', handleResize);
+    handleResize(); // Call once to set initial width
     return () => {
       window.removeEventListener('resize', handleResize);
     };
   }, []);
 
-  // Determine grid style based on window width
   const getGridStyle = () => {
     if (windowWidth >= 1024) {
       return styles.campaignsGridLg;
-    } else if (windowWidth >= 640) {
+    } else if (windowWidth >= 768) { // Common breakpoint for tablets
       return styles.campaignsGridMd;
     } else {
       return styles.campaignsGrid;
@@ -347,21 +380,20 @@ const CampaignsPage: React.FC = () => {
   };
 
 // # ############################################################################ #
-// # #                 SECTION 6 - EFFECT: FETCH CAMPAIGNS                   #
+// # #                 SECTION 6 - EFFECT: FETCH CAMPAIGNS                 #
 // # ############################################################################ #
   useEffect(() => {
     const fetchCampaigns = async () => {
       setLoading(true);
+      setError(null); // Reset error on new fetch
       try {
         const result = await campaignService.fetchAllCampaigns();
-        
+
         if (result.success && result.campaigns) {
-          // Transform campaigns to add progressPercentage
           const displayCampaigns = result.campaigns.map(campaign => ({
             ...campaign,
-            progressPercentage: Math.min(Math.round((campaign.raised / campaign.goal) * 100), 100)
+            progressPercentage: campaign.goal > 0 ? Math.min(Math.round((campaign.raised / campaign.goal) * 100), 100) : 0, // Handle goal = 0
           }));
-          
           setCampaigns(displayCampaigns);
         } else {
           setError(result.error || 'Failed to load campaigns');
@@ -373,24 +405,22 @@ const CampaignsPage: React.FC = () => {
         setLoading(false);
       }
     };
-
     fetchCampaigns();
   }, []);
 
 // # ############################################################################ #
-// # #      SECTION 7 - COMPONENT: CAMPAIGN CARD (INNER COMPONENT)       #
+// # #         SECTION 7 - COMPONENT: CAMPAIGN CARD (INNER COMPONENT)         #
 // # ############################################################################ #
   const CampaignCard: React.FC<{ campaign: CampaignDisplay }> = ({ campaign }) => {
     const [isHovered, setIsHovered] = useState(false);
-    
-    // Combine default card style with hover style conditionally
+
     const cardStyle = {
       ...styles.campaignCard,
-      ...(isHovered ? styles.campaignCardHover : {})
+      ...(isHovered ? styles.campaignCardHover : {}),
     };
-    
+
     return (
-      <div 
+      <div
         style={cardStyle}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -401,34 +431,39 @@ const CampaignsPage: React.FC = () => {
             alt={campaign.title}
             style={styles.cardImage}
             onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://placehold.co/400x200/e5e7eb/5f6368?text=No+Image';
+              (e.target as HTMLImageElement).style.display = 'none'; // Hide broken image
+              // Optionally, replace with a placeholder div or a default image
+              const placeholder = document.createElement('div');
+              Object.assign(placeholder.style, styles.noImagePlaceholder);
+              placeholder.textContent = 'Image Error';
+              if (e.target && (e.target as HTMLImageElement).parentNode) {
+                 (e.target as HTMLImageElement).parentNode!.insertBefore(placeholder, e.target as HTMLImageElement);
+              }
             }}
           />
         ) : (
           <div style={styles.noImagePlaceholder}>
-            No Image
+            No Image Available
           </div>
         )}
-        
+
         <div style={styles.cardContent}>
           <h3 style={styles.cardTitle}>{campaign.title}</h3>
           <p style={styles.cardDescription}>
             {campaign.description || 'No description provided.'}
           </p>
-          
-          <div style={styles.progressBar}>
+          <div style={styles.progressBar}> {/* Moved after description, before stats */}
             <div style={{...styles.progressFill, width: `${campaign.progressPercentage}%`}}></div>
           </div>
-          
           <div style={styles.progressStats}>
             <span>{campaign.raised} / {campaign.goal} WLD</span>
             <span>{campaign.progressPercentage}%</span>
           </div>
         </div>
-        
+
         <div style={styles.cardFooter}>
           <div style={styles.creatorInfo}>
-            {campaign.ownerId.slice(0, 6)}...{campaign.ownerId.slice(-4)}
+            By: {campaign.ownerId ? `${campaign.ownerId.slice(0, 6)}...${campaign.ownerId.slice(-4)}` : 'Unknown'}
           </div>
           <Link to={`/campaigns/${campaign.id}`} style={styles.viewButton}>
             View Details
@@ -439,33 +474,33 @@ const CampaignsPage: React.FC = () => {
   };
 
 // # ############################################################################ #
-// # #             SECTION 8 - JSX RETURN: CAMPAIGNS PAGE LAYOUT              #
+// # #                 SECTION 8 - JSX RETURN: CAMPAIGNS PAGE LAYOUT                 #
 // # ############################################################################ #
   return (
     <div style={styles.page}>
+      <style>{responsiveStyles}</style> {/* ADDED global responsive styles */}
       <header style={styles.header}>
         <div style={styles.headerContent}>
           <Link to="/" style={styles.logo}>World<span style={styles.logoSpan}>Fund</span></Link>
-
           <div>
             {isAuthenticated ? (
               <>
-                <Link 
-                  to="/dashboard" 
+                <Link
+                  to="/dashboard"
                   style={{...styles.navItem, marginRight: '1rem'}}
                 >
                   Dashboard
                 </Link>
-                <Link 
-                  to="/new-campaign" 
+                <Link
+                  to="/new-campaign"
                   style={{...styles.button, ...styles.buttonPrimary}}
                 >
                   Create Campaign
                 </Link>
               </>
             ) : (
-              <Link 
-                to="/landing" 
+              <Link
+                to="/landing" // Or your login/signup page
                 style={{...styles.button, ...styles.buttonPrimary}}
               >
                 Sign In
@@ -482,16 +517,22 @@ const CampaignsPage: React.FC = () => {
         </p>
       </div>
 
+      {/* styles.container has flexGrow:1 to push tabs down and centers content */}
       <main style={styles.container}>
         {loading ? (
           <div style={styles.loadingContainer}>
-            <div>Loading campaigns...</div>
+            <div>Loading campaigns...</div> {/* You can add a spinner here if you have one */}
           </div>
         ) : error ? (
           <div style={styles.errorContainer}>
             <p>{error}</p>
-            <button 
-              onClick={() => window.location.reload()} 
+            <button
+              onClick={() => {
+                setError(null); // Reset error
+                // Re-run fetchCampaigns, which is in useEffect dependency, so changing a state it depends on or re-triggering.
+                // For simplicity here, reload, but ideally you'd re-trigger the fetch logic.
+                window.location.reload(); 
+              }}
               style={{...styles.button, ...styles.buttonPrimary, marginTop: '1rem'}}
             >
               Try Again
@@ -499,18 +540,17 @@ const CampaignsPage: React.FC = () => {
           </div>
         ) : campaigns.length === 0 ? (
           <div style={styles.emptyContainer}>
-            <p>No campaigns found. Create one!</p>
+            <p>No campaigns currently available. Why not create one?</p>
             {isAuthenticated && (
-              <Link 
-                to="/new-campaign" 
+              <Link
+                to="/new-campaign"
                 style={{...styles.button, ...styles.buttonPrimary, marginTop: '1rem'}}
               >
-                Create Campaign
+                Create Your First Campaign
               </Link>
             )}
           </div>
         ) : (
-          // Use dynamic grid style based on window width
           <div style={getGridStyle()}>
             {campaigns.map(campaign => (
               <CampaignCard key={campaign.id} campaign={campaign} />
@@ -519,7 +559,6 @@ const CampaignsPage: React.FC = () => {
         )}
       </main>
 
-      {/* Bottom Navigation Tabs */}
       <nav style={styles.tabs}>
         <Link to="/" style={styles.tab}>
           <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor">
@@ -545,6 +584,6 @@ const CampaignsPage: React.FC = () => {
 };
 
 // # ############################################################################ #
-// # #                        SECTION 9 - DEFAULT EXPORT                        #
+// # #                 SECTION 9 - DEFAULT EXPORT                 #
 // # ############################################################################ #
 export default CampaignsPage;

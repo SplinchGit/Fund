@@ -1,7 +1,7 @@
 // src/pages/Dashboard.tsx
 
 // # ############################################################################ #
-// # #                             SECTION 1 - IMPORTS                            #
+// # #                               SECTION 1 - IMPORTS                                #
 // # ############################################################################ #
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -9,91 +9,94 @@ import { useAuth } from '../components/AuthContext';
 import { CampaignTracker } from './CampaignTracker';
 
 // # ############################################################################ #
-// # #           SECTION 2 - STYLES OBJECT DEFINITION (HOISTED)           #
+// # #                 SECTION 2 - STYLES OBJECT DEFINITION (HOISTED)                 #
 // # ############################################################################ #
-// Define styles at the module level to avoid the block-scoped variable errors
 const styles: { [key: string]: React.CSSProperties } = {
-  page: { 
-    textAlign: 'center' as const, 
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif', 
-    color: '#202124', 
-    backgroundColor: '#f5f7fa', 
-    margin: 0, 
-    padding: 0, 
-    overflowX: 'hidden' as const, 
-    width: '100%', 
-    maxWidth: '100vw', 
-    minHeight: '100vh', 
-    display: 'flex', 
-    flexDirection: 'column' as const 
+  page: {
+    textAlign: 'center' as const,
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif',
+    color: '#202124',
+    backgroundColor: '#f5f7fa', // This will be the full page background
+    margin: 0,
+    padding: 0,
+    overflowX: 'hidden' as const,
+    width: '100vw', // MODIFIED: Explicitly viewport width
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    boxSizing: 'border-box' as const, // ADDED: Good practice
   },
-  container: { 
-    margin: '0 auto', 
-    width: '100%', 
-    padding: '0 0.5rem', 
-    boxSizing: 'border-box' as const, 
-    maxWidth: '1200px', 
-    flexGrow: 1 
+  container: { // Used for the <main> content area
+    margin: '0 auto', // Centers the main content
+    width: '100%',    // Takes full width up to maxWidth
+    padding: '0 0.5rem', // Horizontal padding for content within main
+    boxSizing: 'border-box' as const,
+    maxWidth: '1200px', // Main content will not exceed this width
+    flexGrow: 1,      // MODIFIED: Ensures main content area grows vertically
   },
-  header: { 
-    background: 'white', 
-    padding: '0.5rem 0', 
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)', 
-    position: 'sticky' as const, 
-    top: 0, 
-    zIndex: 100 
+  header: {
+    background: 'white',
+    padding: '0.5rem 0', // Vertical padding; horizontal managed by headerContent
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    position: 'sticky' as const,
+    top: 0,
+    zIndex: 100,
+    width: '100%', // ADDED: Ensure header background spans full width of 'page'
+    boxSizing: 'border-box' as const, // ADDED: Ensure padding is within width
   },
-  headerContent: { 
-    display: 'flex', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    maxWidth: '1200px', 
-    margin: '0 auto', 
-    padding: '0 0.5rem' 
+  headerContent: { // Centers the content within the full-width header
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: '0 0.5rem',
+    boxSizing: 'border-box' as const, // ADDED
   },
-  logo: { 
-    display: 'flex', 
-    alignItems: 'center', 
-    color: '#1a73e8', 
-    fontWeight: 700, 
-    fontSize: '1.125rem', 
-    textDecoration: 'none' 
+  logo: {
+    display: 'flex',
+    alignItems: 'center',
+    color: '#1a73e8',
+    fontWeight: 700,
+    fontSize: '1.125rem',
+    textDecoration: 'none',
   },
-  logoSpan: { 
-    color: '#202124' 
+  logoSpan: {
+    color: '#202124',
   },
-  button: { 
-    padding: '0.5rem 0.75rem', 
-    borderRadius: '0.25rem', 
-    fontWeight: 500, 
-    cursor: 'pointer', 
-    textDecoration: 'none', 
-    textAlign: 'center' as const, 
-    fontSize: '0.75rem', 
-    transition: 'background-color 0.2s, border-color 0.2s', 
-    border: '1px solid transparent', 
-    minHeight: '36px', 
-    display: 'inline-flex', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    lineHeight: 1 
+  button: {
+    padding: '0.5rem 0.75rem',
+    borderRadius: '0.25rem',
+    fontWeight: 500,
+    cursor: 'pointer',
+    textDecoration: 'none',
+    textAlign: 'center' as const,
+    fontSize: '0.75rem',
+    transition: 'background-color 0.2s, border-color 0.2s',
+    border: '1px solid transparent',
+    minHeight: '36px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    lineHeight: 1,
   },
-  buttonPrimary: { 
-    backgroundColor: '#1a73e8', 
-    color: 'white', 
-    borderColor: '#1a73e8' 
+  buttonPrimary: {
+    backgroundColor: '#1a73e8',
+    color: 'white',
+    borderColor: '#1a73e8',
   },
-  buttonDanger: { 
-    backgroundColor: '#ea4335', 
-    color: 'white', 
-    borderColor: '#ea4335' 
+  buttonDanger: {
+    backgroundColor: '#ea4335',
+    color: 'white',
+    borderColor: '#ea4335',
   },
   dashboardHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: '1.5rem',
-    padding: '0.5rem'
+    padding: '0.5rem', // Padding for content inside dashboardHeader
+    boxSizing: 'border-box' as const, // ADDED
   },
   dashboardTitle: {
     fontSize: '1.5rem',
@@ -101,54 +104,56 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#202124',
     margin: 0,
     padding: 0,
-    textAlign: 'left' as const
+    textAlign: 'left' as const,
   },
   walletInfo: {
     fontSize: '0.8rem',
     color: '#5f6368',
     display: 'flex',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   walletAddress: {
-    marginRight: '1rem'
+    marginRight: '1rem',
   },
-  contentSection: {
+  contentSection: { // Sections within the main container
     backgroundColor: 'white',
     borderRadius: '0.5rem',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
     padding: '1.25rem',
-    marginBottom: '1.25rem'
+    marginBottom: '1.25rem',
+    boxSizing: 'border-box' as const, // ADDED
   },
   statsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', // Made responsive
     gap: '1rem',
-    marginBottom: '1.5rem'
+    marginBottom: '1.5rem',
   },
   statCard: {
     backgroundColor: 'white',
     borderRadius: '0.5rem',
     padding: '1rem',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    textAlign: 'center' as const
+    textAlign: 'center' as const,
+    boxSizing: 'border-box' as const, // ADDED
   },
   statValue: {
     fontSize: '1.5rem',
     fontWeight: 600,
     color: '#1a73e8',
     margin: 0,
-    padding: 0
+    padding: 0,
   },
   statLabel: {
     fontSize: '0.75rem',
     color: '#5f6368',
     marginTop: '0.25rem',
-    padding: 0
+    padding: 0,
   },
   createButtonContainer: {
     textAlign: 'center' as const,
     marginTop: '2rem',
-    marginBottom: '2rem'
+    marginBottom: '2rem',
   },
   createButton: {
     display: 'inline-flex',
@@ -164,63 +169,67 @@ const styles: { [key: string]: React.CSSProperties } = {
     transition: 'transform 0.2s, box-shadow 0.2s',
     border: 'none',
     fontSize: '0.875rem',
-    cursor: 'pointer'
+    cursor: 'pointer',
   },
   createButtonIcon: {
     marginRight: '0.625rem',
     width: '1.25rem',
     height: '1.25rem',
-    fill: 'white'
+    fill: 'white',
   },
-  tabs: { 
-    display: 'flex', 
-    justifyContent: 'space-around', 
-    backgroundColor: '#fff', 
-    borderTop: '1px solid #e0e0e0', 
-    position: 'fixed' as const, 
-    bottom: 0, 
-    left: 0, 
-    width: '100%', 
-    zIndex: 100, 
-    padding: '0.75rem 0', 
-    boxShadow: '0 -1px 3px rgba(0,0,0,0.1)' 
+  tabs: { // Fixed bottom tabs
+    display: 'flex',
+    justifyContent: 'space-around',
+    backgroundColor: '#fff',
+    borderTop: '1px solid #e0e0e0',
+    position: 'fixed' as const,
+    bottom: 0,
+    left: 0,
+    width: '100%', // Already 100%
+    zIndex: 100,
+    padding: '0.75rem 0',
+    boxShadow: '0 -1px 3px rgba(0,0,0,0.1)',
+    boxSizing: 'border-box' as const, // ADDED
   },
-  tab: { 
-    display: 'flex', 
-    flexDirection: 'column' as const, 
-    alignItems: 'center', 
-    fontSize: '0.65rem', 
-    color: '#5f6368', 
-    textDecoration: 'none', 
-    padding: '0.1rem 0.5rem', 
-    flexGrow: 1, 
-    textAlign: 'center' as const, 
-    transition: 'color 0.2s' 
+  tab: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    fontSize: '0.65rem',
+    color: '#5f6368',
+    textDecoration: 'none',
+    padding: '0.1rem 0.5rem',
+    flexGrow: 1,
+    textAlign: 'center' as const,
+    transition: 'color 0.2s',
   },
-  tabActive: { 
-    color: '#1a73e8' 
+  tabActive: {
+    color: '#1a73e8',
   },
-  tabIcon: { 
-    width: '1.125rem', 
-    height: '1.125rem', 
-    marginBottom: '0.125rem'
+  tabIcon: {
+    width: '1.125rem',
+    height: '1.125rem',
+    marginBottom: '0.125rem',
   },
-  legalNotice: { 
-    fontSize: '0.7rem', 
-    color: '#5f6368', 
-    padding: '1rem', 
-    marginTop: '1rem', 
-    marginBottom: '4.5rem', 
+  legalNotice: { // Footer
+    fontSize: '0.7rem',
+    color: '#5f6368',
+    padding: '1rem',
+    marginTop: '1rem',
+    marginBottom: '4.5rem', // Space for fixed tabs
     borderTop: '1px solid #eee',
-    textAlign: 'center' as const
+    textAlign: 'center' as const,
+    width: '100%', // ADDED
+    boxSizing: 'border-box' as const, // ADDED
   },
   loadingContainer: {
     display: 'flex',
     flexDirection: 'column' as const,
     justifyContent: 'center',
     alignItems: 'center',
-    height: '100vh',
-    backgroundColor: '#f5f7fa'
+    height: '100vh', // Takes full viewport height
+    backgroundColor: '#f5f7fa', // Consistent with page background
+    boxSizing: 'border-box' as const, // ADDED
   },
   loadingSpinner: {
     borderRadius: '50%',
@@ -228,31 +237,32 @@ const styles: { [key: string]: React.CSSProperties } = {
     height: '40px',
     border: '3px solid rgba(0, 0, 0, 0.1)',
     borderTopColor: '#1a73e8',
-    animation: 'spin 1s ease-in-out infinite'
+    animation: 'spin 1s ease-in-out infinite',
   },
   loadingText: {
     marginTop: '1rem',
     color: '#5f6368',
-    fontSize: '0.9rem'
+    fontSize: '0.9rem',
   },
-  quickAccessSection: {
+  quickAccessSection: { // Sections within the main container
     backgroundColor: 'white',
     borderRadius: '0.5rem',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
     padding: '1rem',
-    marginBottom: '1.25rem'
+    marginBottom: '1.25rem',
+    boxSizing: 'border-box' as const, // ADDED
   },
-  sectionTitle: {
+  sectionTitle: { // Used for titles within content sections
     fontSize: '1rem',
     fontWeight: 600,
     color: '#202124',
     marginTop: 0,
     marginBottom: '0.75rem',
-    textAlign: 'left' as const
+    textAlign: 'left' as const,
   },
   quickLinks: {
     display: 'flex',
-    flexDirection: 'column' as const
+    flexDirection: 'column' as const,
   },
   quickLink: {
     padding: '0.75rem',
@@ -263,31 +273,48 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     alignItems: 'center',
     fontSize: '0.875rem',
-    transition: 'background-color 0.2s'
+    transition: 'background-color 0.2s',
   },
   quickLinkIcon: {
     marginRight: '0.5rem',
     width: '1rem',
-    height: '1rem'
+    height: '1rem',
   },
-  infoSection: {
+  infoSection: { // Sections within the main container
     backgroundColor: 'white',
     borderRadius: '0.5rem',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
     padding: '1.25rem',
-    marginBottom: '1.25rem'
+    marginBottom: '1.25rem',
+    boxSizing: 'border-box' as const, // ADDED
   },
   infoText: {
     fontSize: '0.875rem',
     color: '#5f6368',
     marginBottom: '1rem',
     lineHeight: '1.5',
-    textAlign: 'left' as const
-  }
+    textAlign: 'left' as const,
+  },
 };
 
+// ADDED: Global responsive styles
+const responsiveStyles = `
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'};
+    box-sizing: border-box;
+  }
+  *, *::before, *::after {
+    box-sizing: inherit;
+  }
+`;
+
 // # ############################################################################ #
-// # #           SECTION 3 - COMPONENT: PAGE DEFINITION & HOOKS           #
+// # #                 SECTION 3 - COMPONENT: PAGE DEFINITION & HOOKS                 #
 // # ############################################################################ #
 const Dashboard: React.FC = () => {
   const { walletAddress, isAuthenticated, logout } = useAuth();
@@ -295,13 +322,12 @@ const Dashboard: React.FC = () => {
   const [stats, setStats] = useState({
     totalCampaigns: 0,
     activeCampaigns: 0,
-    totalRaised: 0
+    totalRaised: 0,
   });
 
 // # ############################################################################ #
 // # #                 SECTION 4 - EFFECT: AUTHENTICATION CHECK                 #
 // # ############################################################################ #
-  // Ensure user is authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       console.log('[Dashboard] User not authenticated, redirecting to landing page');
@@ -310,7 +336,7 @@ const Dashboard: React.FC = () => {
   }, [isAuthenticated, navigate]);
 
 // # ############################################################################ #
-// # #                      SECTION 5 - EVENT HANDLER: LOGOUT                     #
+// # #                 SECTION 5 - EVENT HANDLER: LOGOUT                 #
 // # ############################################################################ #
   const handleLogout = async () => {
     await logout();
@@ -318,12 +344,20 @@ const Dashboard: React.FC = () => {
   };
 
 // # ############################################################################ #
-// # #      SECTION 6 - CONDITIONAL RENDERING: UNAUTHENTICATED FALLBACK       #
+// # #         SECTION 6 - CONDITIONAL RENDERING: UNAUTHENTICATED FALLBACK          #
 // # ############################################################################ #
   if (!isAuthenticated) {
-    // Return a loading state or nothing while the redirect happens
     return (
       <div style={styles.loadingContainer}>
+        <style>{responsiveStyles}</style> {/* ADDED responsive styles here too for consistency during loading */}
+        <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+        </style>
         <div style={styles.loadingSpinner}></div>
         <p style={styles.loadingText}>Loading...</p>
       </div>
@@ -331,10 +365,11 @@ const Dashboard: React.FC = () => {
   }
 
 // # ############################################################################ #
-// # #             SECTION 7 - JSX RETURN: PAGE LAYOUT & CONTENT              #
+// # #                 SECTION 7 - JSX RETURN: PAGE LAYOUT & CONTENT                 #
 // # ############################################################################ #
   return (
     <div style={styles.page}>
+      <style>{responsiveStyles}</style> {/* ADDED global responsive styles */}
       <style>
         {`
           @keyframes spin {
@@ -351,8 +386,8 @@ const Dashboard: React.FC = () => {
             <span style={styles.walletAddress}>
               Connected: {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
             </span>
-            <button 
-              style={{...styles.button, ...styles.buttonDanger}} 
+            <button
+              style={{...styles.button, ...styles.buttonDanger}}
               onClick={handleLogout}
             >
               Logout
@@ -361,6 +396,7 @@ const Dashboard: React.FC = () => {
         </div>
       </header>
 
+      {/* The <main> element uses styles.container, which has flexGrow:1 and maxWidth for centered content */}
       <main style={styles.container}>
         <div style={styles.dashboardHeader}>
           <div>
@@ -369,16 +405,16 @@ const Dashboard: React.FC = () => {
               Manage your campaigns securely - only you can edit or delete your campaigns from this dashboard.
             </p>
           </div>
-          
-          {walletAddress && (
+          {/* This wallet address display seems redundant with the one in headerContent, consider removing one */}
+          {/* {walletAddress && (
             <div style={{fontSize: '0.8rem', color: '#5f6368', display: 'flex', alignItems: 'center'}}>
               <span style={{marginRight: '1rem'}}>
                 Connected: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
               </span>
             </div>
-          )}
+          )} */}
         </div>
-        
+
         <div style={styles.statsGrid}>
           <div style={styles.statCard}>
             <h3 style={styles.statValue}>{stats.totalCampaigns}</h3>
@@ -393,7 +429,7 @@ const Dashboard: React.FC = () => {
             <p style={styles.statLabel}>Total Raised (WLD)</p>
           </div>
         </div>
-        
+
         <div style={styles.createButtonContainer}>
           <Link to="/new-campaign" style={styles.createButton}>
             <svg style={styles.createButtonIcon} viewBox="0 0 24 24" fill="currentColor">
@@ -432,8 +468,8 @@ const Dashboard: React.FC = () => {
             Start by creating a new campaign and sharing it with your network.
           </p>
           <div style={{textAlign: 'center' as const}}>
-            <Link 
-              to="/new-campaign" 
+            <Link
+              to="/new-campaign"
               style={{...styles.button, ...styles.buttonPrimary}}
             >
               Create Your First Campaign
@@ -446,7 +482,6 @@ const Dashboard: React.FC = () => {
         &copy; {new Date().getFullYear()} WorldFund. All rights reserved.
       </footer>
 
-      {/* Bottom Navigation Tabs */}
       <nav style={styles.tabs}>
         <Link to="/" style={styles.tab}>
           <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor">
@@ -472,6 +507,6 @@ const Dashboard: React.FC = () => {
 }
 
 // # ############################################################################ #
-// # #                        SECTION 8 - DEFAULT EXPORT                        #
+// # #                 SECTION 8 - DEFAULT EXPORT                 #
 // # ############################################################################ #
 export default Dashboard;
