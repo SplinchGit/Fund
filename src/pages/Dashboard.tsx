@@ -1,5 +1,5 @@
 // src/pages/Dashboard.tsx
-// (Corrected style definition order, Explore tab removed, buttonDanger style updated)
+// (Final polish for this file: style definition order, Explore tab removed, buttonDanger style, Logout button style simplified)
 
 // # ############################################################################ #
 // # #                          SECTION 1 - IMPORTS                             #
@@ -74,6 +74,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     lineHeight: 1,
   },
   buttonPrimary: { 
+    // This can be spread with styles.button if needed elsewhere, or used as a standalone addition
     backgroundColor: '#1a73e8',
     color: 'white',
     borderColor: '#1a73e8',
@@ -87,7 +88,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: 'center' as const,
     fontSize: '0.875rem', 
     transition: 'background-color 0.2s, border-color 0.2s',
-    border: '1px solid transparent',
+    border: '1px solid #dc3545',
     minHeight: '36px',
     display: 'inline-flex',
     alignItems: 'center',
@@ -127,7 +128,6 @@ const styles: { [key: string]: React.CSSProperties } = {
   infoText: { fontSize: '0.875rem', color: '#5f6368', marginBottom: '1rem', lineHeight: '1.6', textAlign: 'left' as const, },
 };
 
-// responsiveStyles is defined AFTER styles, so it can safely reference styles.page.fontFamily
 const responsiveStyles = `
   html, body { 
     width: 100%; 
@@ -141,10 +141,11 @@ const responsiveStyles = `
   *, *::before, *::after { 
     box-sizing: inherit; 
   }
-  .quickLink:hover { /* Ensure you add className="quickLinkHoverable" or similar to Link if you want this specific hover */
-    background-color: #f0f0f0; 
+  /* Added hover for .quickLink defined in JSX via className */
+  .quickLinkHoverable:hover { 
+    background-color: #f0f0f0 !important; /* Use !important if needed to override inline styles, though ideally avoid */
+    color: #1a73e8 !important;
   }
-  /* Keyframes for spinner, if not globally defined elsewhere */
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
@@ -171,9 +172,6 @@ const Dashboard: React.FC = () => {
       navigate('/landing');
     }
     // TODO: Fetch actual dashboard stats if authenticated
-    // if (isAuthenticated) {
-    //   // Example: setStats({ totalCampaigns: 12, totalRaised: 5830 });
-    // }
   }, [isAuthenticated, navigate]);
 
 // # ############################################################################ #
@@ -190,10 +188,7 @@ const Dashboard: React.FC = () => {
   if (!isAuthenticated) {
     return (
       <div style={styles.loadingContainer}>
-        {/* responsiveStyles is now a string, so it's used in <style> tag */}
         <style>{responsiveStyles}</style> 
-        {/* Spinner animation can be included directly or via responsiveStyles if preferred */}
-        {/* <style>{` @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } } `}</style> */}
         <div style={styles.loadingSpinner}></div>
         <p style={styles.loadingText}>Loading Dashboard...</p>
       </div>
@@ -206,7 +201,6 @@ const Dashboard: React.FC = () => {
   return (
     <div style={styles.page}>
       <style>{responsiveStyles}</style>
-      {/* Note: @keyframes spin is now part of responsiveStyles to avoid duplication */}
 
       <header style={styles.header}>
         <div style={styles.headerContent}>
@@ -218,8 +212,7 @@ const Dashboard: React.FC = () => {
               </span>
             )}
             <button
-              // Applying the combined style for the danger button
-              style={{...styles.button, ...styles.buttonDanger}} 
+              style={styles.buttonDanger} // Simplified: buttonDanger already includes base button styles
               onClick={handleLogout}
             >
               Logout
@@ -258,14 +251,13 @@ const Dashboard: React.FC = () => {
 
         <div style={styles.contentSection}>
           <h2 style={styles.sectionTitle}>Your Campaigns</h2>
-          {/* This is where your campaigns will be listed.
-              We need CampaignTracker.tsx to modify this part. */}
-          <CampaignTracker /> 
+          <CampaignTracker deleteButtonStyle={styles.buttonDanger} /> 
         </div>
 
         <div style={styles.quickAccessSection}>
           <h2 style={styles.sectionTitle}>Quick Access</h2>
           <div style={styles.quickLinks}>
+            {/* Added className for explicit hover styling via <style> tag */}
             <Link to="/campaigns" style={styles.quickLink} className="quickLinkHoverable">
               <svg style={styles.quickLinkIcon} viewBox="0 0 24 24" fill="currentColor">
                 <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"></path>
@@ -302,15 +294,12 @@ const Dashboard: React.FC = () => {
         &copy; {new Date().getFullYear()} WorldFund. All rights reserved.
       </footer>
 
-      {/* MODIFIED: "Explore" tab removed */}
       <nav style={styles.tabs}>
         <Link to="/" style={styles.tab}>
           <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"></path></svg>
           <span>Home</span>
         </Link>
-        {/* Explore Link Removed */}
         <Link to="/dashboard" style={{...styles.tab, ...styles.tabActive}}> 
-          {/* Assuming this is the "Account" tab and should be active on the dashboard */}
           <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
           <span>Account</span>
         </Link>
@@ -319,7 +308,4 @@ const Dashboard: React.FC = () => {
   );
 }
 
-// # ############################################################################ #
-// # #                         SECTION 8 - DEFAULT EXPORT                       #
-// # ############################################################################ #
 export default Dashboard;

@@ -409,12 +409,18 @@ export const EditCampaignForm: React.FC<{ id: string }> = ({ id }) => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    title: string;
+    description: string;
+    goal: number;
+    image: string;
+    status: 'active' | 'completed' | 'cancelled';
+  }>({
     title: '',
     description: '',
     goal: 0,
     image: '',
-    status: ''
+    status: 'active'
   });
 
 // # ############################################################################ #
