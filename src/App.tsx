@@ -11,7 +11,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 // Direct imports
 import LandingPage from './pages/LandingPage';
-import CampaignsPage from './pages/CampaignsPage';
 import Dashboard from './pages/Dashboard';
 import TipJar from './pages/TipJar';
 import EditCampaignPage from './pages/EditCampaignPage'; // Your existing component
@@ -61,7 +60,6 @@ const App: React.FC = () => {
 
         {/* Public Routes */}
         <Route path="/landing" element={<LandingPage />} />
-        <Route path="/campaigns" element={<CampaignsPage />} />
         {/* Using CampaignDetailWrapper, assuming CampaignDetail still expects 'id' prop */}
         <Route path="/campaigns/:id" element={<CampaignDetailWrapper />} />
 
