@@ -14,7 +14,8 @@
     "categories": {
       "storage": {
         "Splinch": {},
-        "Users": {}
+        "Users": {},
+        "CampaignImageAssets": {}
       },
       "auth": {
         "0worldfunddebugd1266f95": {}
@@ -27,6 +28,9 @@
         "0worldfunddebugAuthLibsLayer": {
           "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
           "s3Key": "amplify-builds/0worldfunddebugAuthLibsLayer-LambdaLayerVersion9168254a-build.zip"
+        },
+        "campaignImageHandler": {
+          "processedImageS3Prefix": "public/processed-campaign-images/"
         }
       },
       "api": {

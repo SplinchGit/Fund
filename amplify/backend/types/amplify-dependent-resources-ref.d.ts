@@ -27,9 +27,20 @@ export type AmplifyDependentResourcesAttributes = {
     },
     "0worldfunddebugAuthLibsLayer": {
       "Arn": "string"
+    },
+    "campaignImageHandler": {
+      "Arn": "string",
+      "LambdaExecutionRole": "string",
+      "LambdaExecutionRoleArn": "string",
+      "Name": "string",
+      "Region": "string"
     }
   },
   "storage": {
+    "CampaignImageAssets": {
+      "BucketName": "string",
+      "Region": "string"
+    },
     "Splinch": {
       "Arn": "string",
       "Name": "string",

@@ -1,32 +1,27 @@
 // src/components/CampaignCard.tsx
+// (Days Left display removed)
 
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Campaign as CampaignData } from '../services/CampaignService'; // Adjust path if CampaignService is elsewhere
 
-// Interface for the data a campaign card expects
-// Ensure this aligns with the data structure you use for campaigns
 export interface CampaignDisplayInfo extends CampaignData {
-  daysLeft?: number;                // Optional: if not always calculated or displayed
-  creator?: string;                 // Formatted owner ID or name
-  isVerified?: boolean;             // Verification status
-  progressPercentage: number;      // Number from 0-100 for the progress bar
-  // You can add other fields if your CampaignData from the service is different
-  // or if cards need to display more/less info in different contexts.
+  daysLeft?: number; // Remains optional, but will no longer be displayed by this card
+  creator?: string;
+  isVerified?: boolean;
+  progressPercentage: number;
 }
 
-// Props for the CampaignCard component, allowing for customization
 export interface CampaignCardProps {
   campaign: CampaignDisplayInfo;
-  showViewDetailsButton?: boolean;    // To show the "View Details" button
-  showAdminActions?: boolean;         // To show Edit/Delete buttons (typically for Dashboard)
+  showViewDetailsButton?: boolean;
+  showAdminActions?: boolean;
   onEdit?: (campaignId: string) => void;
   onDelete?: (campaignId: string) => void;
   editButtonStyle?: React.CSSProperties;
-  deleteButtonStyle?: React.CSSProperties; // Will be the red button style
+  deleteButtonStyle?: React.CSSProperties;
 }
 
-// Styles for the Campaign Card - self-contained for better reusability
 const cardStyles: { [key: string]: React.CSSProperties } = {
   campaignCard: {
     backgroundColor: 'white',
@@ -36,7 +31,7 @@ const cardStyles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     flexDirection: 'column' as const,
     width: '100%',
-    height: '100%', // Make card fill the slide height if alignItems: 'stretch' is on SwiperSlide
+    height: '100%',
     boxSizing: 'border-box' as const,
     textAlign: 'left' as const,
   },
@@ -83,8 +78,8 @@ const cardStyles: { [key: string]: React.CSSProperties } = {
     WebkitBoxOrient: 'vertical' as const,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    minHeight: 'calc(3 * 1.4em)', // Min height for approx 3 lines (1.4em line-height)
-    lineHeight: '1.4em',         // Standard line height
+    minHeight: 'calc(3 * 1.4em)',
+    lineHeight: '1.4em',
     flexGrow: 1,
   },
   progressBar: {
@@ -107,31 +102,31 @@ const cardStyles: { [key: string]: React.CSSProperties } = {
     justifyContent: 'space-between',
     fontSize: '0.75rem',
     color: '#5f6368',
-    marginBottom: '0.5rem', // Reduced margin to bring daysLeft closer if present
+    // marginBottom: '0.5rem', // Adjusted: daysLeftText will provide bottom margin for content area
   },
-  daysLeftText: {
-    fontSize: '0.75rem',
-    color: '#5f6368',
-    // marginTop: '0.25rem', // No extra top margin, relies on progressStats marginBottom
-    textAlign: 'right' as const,
-    marginBottom: '0.75rem', // Consistent bottom margin before footer
-  },
+  // daysLeftText style is no longer needed if we remove the element
+  // daysLeftText: {
+  //   fontSize: '0.75rem',
+  //   color: '#5f6368',
+  //   textAlign: 'right' as const,
+  //   marginBottom: '0.75rem', 
+  // },
   cardFooter: {
     display: 'flex',
-    justifyContent: 'space-between', // Will space creator info and buttons
+    justifyContent: 'space-between',
     alignItems: 'center',
     padding: '0.75rem 1rem',
     borderTop: '1px solid #f1f3f4',
     backgroundColor: '#fcfcfc',
     boxSizing: 'border-box' as const,
-    minHeight: '50px', // Ensure footer has some consistent height
+    minHeight: '50px',
   },
   creatorDetails: {
       display: 'flex',
       alignItems: 'center',
-      flexShrink: 1, // Allow creator details to shrink if buttons need space
-      overflow: 'hidden', // Hide overflow for creator name
-      marginRight: '0.5rem', // Space between creator and buttons
+      flexShrink: 1, 
+      overflow: 'hidden', 
+      marginRight: '0.5rem', 
   },
   creatorAvatar: {
     width: '24px',
@@ -164,10 +159,9 @@ const cardStyles: { [key: string]: React.CSSProperties } = {
   actionButtonsContainer: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.5rem', // Space between multiple buttons like Edit and Delete
-    flexShrink: 0, // Buttons should not shrink
+    gap: '0.5rem', 
+    flexShrink: 0, 
   },
-  // General button style for actions in footer - specific styles passed as props or defined in consuming component
   actionButton: { 
     fontSize: '0.8rem', 
     padding: '0.375rem 0.75rem', 
@@ -177,18 +171,18 @@ const cardStyles: { [key: string]: React.CSSProperties } = {
     cursor: 'pointer',
     border: 'none',
     transition: 'background-color 0.2s',
-    whiteSpace: 'nowrap' as const, // Prevent button text from wrapping
+    whiteSpace: 'nowrap' as const,
   },
 };
 
 export const CampaignCard: React.FC<CampaignCardProps> = ({
   campaign,
-  showViewDetailsButton = true, // Default to true
+  showViewDetailsButton = true,
   showAdminActions,
   onEdit,
   onDelete,
-  editButtonStyle,     // Style for Edit button (e.g., orange)
-  deleteButtonStyle,   // Style for Delete button (red, defined in Dashboard.tsx)
+  editButtonStyle,
+  deleteButtonStyle,
 }) => {
 
   const handleEdit = () => {
@@ -229,9 +223,14 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
           <span>{campaign.raised !== undefined ? campaign.raised.toLocaleString() : '0'} / {campaign.goal !== undefined ? campaign.goal.toLocaleString() : '0'} WLD</span>
           <span>{campaign.progressPercentage !== undefined ? campaign.progressPercentage.toFixed(0) : '0'}%</span>
         </div>
-        {campaign.daysLeft !== undefined && campaign.daysLeft >= 0 && ( // Only show if daysLeft is a non-negative number
+        {/* --- DAYS LEFT DISPLAY REMOVED ---
+        {campaign.daysLeft !== undefined && campaign.daysLeft >= 0 && (
             <div style={cardStyles.daysLeftText}>{campaign.daysLeft} days left</div>
         )}
+        */}
+        {/* Add a bottom margin to progressStats if daysLeft was the only thing providing space before footer */}
+         { (campaign.daysLeft === undefined || campaign.daysLeft < 0) && <div style={{ marginBottom: '0.75rem' }}></div> }
+
       </div>
       <div style={cardStyles.cardFooter}>
         <div style={cardStyles.creatorDetails}>
@@ -252,12 +251,12 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
             {showAdminActions && onDelete && (
                 <button 
                     onClick={handleDelete} 
-                    style={{...cardStyles.actionButton, ...(deleteButtonStyle || {backgroundColor: '#dc3545'})}} // Use passed style
+                    style={{...cardStyles.actionButton, ...(deleteButtonStyle || {backgroundColor: '#dc3545'})}}
                 >
                     Delete
                 </button>
             )}
-            {showViewDetailsButton && !showAdminActions && ( // Only show View Details if not showing admin actions
+            {showViewDetailsButton && !showAdminActions && (
                  <Link to={`/campaigns/${campaign.id}`} style={{...cardStyles.actionButton, backgroundColor: '#1a73e8'}}>
                     View Details
                 </Link>

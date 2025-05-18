@@ -1,5 +1,5 @@
 // src/pages/LandingPage.tsx
-// (Corrected full version: Swiper key removed, Spacing adjusted, Swiper debug log)
+// (Refactored THIS version to remove daysLeft logic from its internal CampaignCardComponent and data prep)
 
 // # ############################################################################ #
 // # #                          SECTION 1 - IMPORTS                             #
@@ -22,7 +22,7 @@ import 'swiper/css/pagination';
 // # #                   SECTION 2 - INTERFACE: CAMPAIGN DISPLAY DATA             #
 // # ############################################################################ #
 interface CampaignDisplay extends CampaignData {
-  daysLeft: number; 
+  daysLeft?: number; // MODIFIED: Made optional as it's being removed from display
   creator: string; 
   isVerified: boolean; 
   progressPercentage: number;
@@ -111,7 +111,7 @@ const LandingPage: React.FC = () => {
         if (result.success && result.campaigns) {
           const displayCampaigns: CampaignDisplay[] = result.campaigns.map(campaign => ({
             ...campaign,
-            daysLeft: calculateDaysLeft(campaign.createdAt),
+            // daysLeft: calculateDaysLeft(campaign.createdAt), // REMOVED daysLeft calculation
             creator: formatAddress(campaign.ownerId),
             isVerified: true, 
             progressPercentage: campaign.goal > 0 ? Math.min(Math.round((campaign.raised / campaign.goal) * 100), 100) : 0,
@@ -153,7 +153,7 @@ const LandingPage: React.FC = () => {
           throw new Error('Wallet authentication via debug trigger failed. Check console.');
         }
       } else {
-        console.log("[LandingPage] API URL check:", { VITE_AMPLIFY_API: import.meta.env.VITE_AMPLIFY_API, VITE_APP_BACKEND_API_URL: import.meta.env.VITE_APP_BACKEN_API_URL });
+        console.log("[LandingPage] API URL check:", { VITE_AMPLIFY_API: import.meta.env.VITE_AMPLIFY_API, VITE_APP_BACKEND_API_URL: import.meta.env.VITE_APP_BACKEND_API_URL });
         console.log("[LandingPage] handleConnectWallet: Fetching nonce for MiniKit auth...");
         let serverNonce;
         try {
@@ -224,13 +224,14 @@ const LandingPage: React.FC = () => {
 // # ############################################################################ #
 // # #                         SECTION 12 - HELPER FUNCTIONS                      #
 // # ############################################################################ #
-  const calculateDaysLeft = (createdAt: string): number => {
-    const created = new Date(createdAt); const now = new Date();
-    const campaignDurationMs = 30 * 24 * 60 * 60 * 1000; // 30 days
-    const endTimeMs = created.getTime() + campaignDurationMs;
-    const diffTime = endTimeMs - now.getTime();
-    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-  };
+  // REMOVED: calculateDaysLeft function as it's no longer used here
+  // const calculateDaysLeft = (createdAt: string): number => {
+  //   const created = new Date(createdAt); const now = new Date();
+  //   const campaignDurationMs = 30 * 24 * 60 * 60 * 1000; // 30 days
+  //   const endTimeMs = created.getTime() + campaignDurationMs;
+  //   const diffTime = endTimeMs - now.getTime();
+  //   return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+  // };
   const formatAddress = (address: string): string => address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Anonymous';
   const isActivePath = (path: string): boolean => location.pathname === path || (path === '/' && location.pathname === '/landing') || (path === '/campaigns' && (location.pathname === '/campaigns' || location.pathname.startsWith('/campaigns/')));
 
@@ -249,17 +250,18 @@ const LandingPage: React.FC = () => {
     button: { padding: '0.5rem 0.75rem', borderRadius: '0.25rem', fontWeight: 500, cursor: 'pointer', textDecoration: 'none', textAlign: 'center' as const, fontSize: '0.875rem', transition: 'background-color 0.2s, border-color 0.2s', border: '1px solid transparent', minHeight: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
     buttonPrimary: { backgroundColor: '#1a73e8', color: 'white', borderColor: '#1a73e8' },
     buttonSecondary: { backgroundColor: '#f1f3f4', color: '#202124', borderColor: '#dadce0' },
-    hero: { background: '#f5f7fa', padding: '1rem 1rem 1.5rem', textAlign: 'center' as const, width: '100%', boxSizing: 'border-box' as const, marginBottom: '0.5rem', }, // SPACING ADJUSTED
-    heroTitle: { fontSize: '2rem', fontWeight: 700, color: '#202124', marginBottom: '0.25rem', padding: 0 }, // SPACING ADJUSTED
+    hero: { background: '#f5f7fa', padding: '1rem 1rem 1.5rem', textAlign: 'center' as const, width: '100%', boxSizing: 'border-box' as const, marginBottom: '0.5rem', },
+    heroTitle: { fontSize: '2rem', fontWeight: 700, color: '#202124', marginBottom: '0.25rem', padding: 0 },
     heroSubtitle: { fontSize: '1.125rem', color: '#5f6368', margin: '0 auto 1rem', maxWidth: '800px', padding: 0 }, 
-    searchContainer: { margin: '0.5rem auto 1rem auto', width: '100%', maxWidth: '500px', padding: '0 0.5rem', boxSizing: 'border-box' as const, }, // SPACING ADJUSTED
+    searchContainer: { margin: '0.5rem auto 1rem auto', width: '100%', maxWidth: '500px', padding: '0 0.5rem', boxSizing: 'border-box' as const, },
     searchInput: { width: '100%', padding: '0.75rem 1rem', fontSize: '1rem', border: '1px solid #dadce0', borderRadius: '2rem', boxSizing: 'border-box' as const, transition: 'border-color 0.2s, box-shadow 0.2s', },
-    campaignsSection: { padding: '0.5rem 0 2rem', flexGrow: 1, width: '100%', boxSizing: 'border-box' as const, }, // SPACING ADJUSTED
-    sectionHeader: { textAlign: 'center' as const, marginBottom: '1rem' }, // SPACING ADJUSTED
-    sectionTitle: { fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.25rem', padding: 0, color: '#202124' }, // SPACING ADJUSTED
+    campaignsSection: { padding: '0.5rem 0 2rem', flexGrow: 1, width: '100%', boxSizing: 'border-box' as const, },
+    sectionHeader: { textAlign: 'center' as const, marginBottom: '1rem' },
+    sectionTitle: { fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.25rem', padding: 0, color: '#202124' },
     sectionSubtitle: { color: '#5f6368', fontSize: '1rem', margin: '0 auto 1rem', padding: 0, maxWidth: '700px' }, 
-    swiperContainer: { width: '100%', flexGrow: 1, minHeight: 0, padding: '0.5rem 0', position: 'relative' as const, /* height: '500px', // DEBUG: Test this if Swiper still not showing & data is present */ },
+    swiperContainer: { width: '100%', flexGrow: 1, minHeight: 0, padding: '0.5rem 0', position: 'relative' as const, },
     swiperSlide: { display: 'flex', justifyContent: 'center', alignItems: 'stretch', padding: '0 0.25rem', boxSizing: 'border-box' as const, },
+    // Styles for the inline CampaignCardComponent
     campaignCard: { backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', overflow: 'hidden', transition: 'transform 0.2s, box-shadow 0.2s', display: 'flex', flexDirection: 'column' as const, width: '100%', height: 'auto', boxSizing: 'border-box' as const, },
     cardImage: { width: '100%', height: '180px', objectFit: 'cover' as const },
     noImagePlaceholder: { width: '100%', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f3f4', color: '#9aa0a6', fontSize: '0.875rem', boxSizing: 'border-box' as const },
@@ -268,9 +270,9 @@ const LandingPage: React.FC = () => {
     cardDescription: { fontSize: '0.875rem', color: '#5f6368', marginBottom: '0.75rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden', textOverflow: 'ellipsis', minHeight: 'calc(3 * 1.5 * 0.875rem)', lineHeight: 1.5, flexGrow: 1},
     progressBar: { width: '100%', height: '6px', backgroundColor: '#e9ecef', borderRadius: '3px', overflow: 'hidden', marginBottom: '0.5rem', marginTop: 'auto' },
     progressFill: { height: '100%', backgroundColor: '#34a853', borderRadius: '3px',  transition: 'width 0.4s ease-in-out' },
-    progressStats: { display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#5f6368', marginBottom: '0.75rem' },
+    progressStats: { display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#5f6368', marginBottom: '0.75rem' }, // Keep marginBottom for spacing before footer if daysLeft is removed
     cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderTop: '1px solid #f1f3f4', backgroundColor: '#fcfcfc', boxSizing: 'border-box' as const, marginTop: 'auto' },
-    creatorInfo: { fontSize: '0.75rem', color: '#5f6368', display: 'flex', alignItems: 'center' },
+    creatorInfo: { fontSize: '0.75rem', color: '#5f6368', display: 'flex', alignItems: 'center' }, // Added display:flex, alignItems:center
     creatorAvatar: { width: '1.25rem', height: '1.25rem', borderRadius: '50%', backgroundColor: '#e5e7eb', marginRight: '0.375rem', display: 'inline-block' },
     verifiedBadge: { display: 'inline-flex', alignItems: 'center', backgroundColor: 'rgba(52, 168, 83, 0.1)', color: '#34a853', fontSize: '0.6rem', padding: '0.1rem 0.25rem', borderRadius: '0.125rem', marginLeft: '0.25rem', fontWeight: 500 },
     viewButton: { fontSize: '0.8rem', padding: '0.375rem 0.75rem', backgroundColor: '#1a73e8', color: 'white', borderRadius: '4px', textDecoration: 'none', transition: 'background-color 0.2s' },
@@ -296,6 +298,7 @@ const LandingPage: React.FC = () => {
 // # ############################################################################ #
 // # #         SECTION 13.5 - INNER COMPONENT: CAMPAIGN CARD                  #
 // # ############################################################################ #
+  // This CampaignCardComponent is specific to LandingPage.tsx
   const CampaignCardComponent: React.FC<{ campaign: CampaignDisplay }> = ({ campaign }) => {
     return (
       <div style={styles.campaignCard}>
@@ -304,10 +307,19 @@ const LandingPage: React.FC = () => {
           <h3 style={styles.cardTitle}>{campaign.title}</h3>
           <p style={styles.cardDescription}>{campaign.description || 'No description provided.'}</p>
           <div style={styles.progressBar}><div style={{ ...styles.progressFill, width: `${campaign.progressPercentage}%` }}></div></div>
-          <div style={styles.progressStats}><span>{campaign.raised.toLocaleString()} / {campaign.goal.toLocaleString()} WLD</span><span>{campaign.progressPercentage}%</span></div>
+          <div style={styles.progressStats}>
+            <span>{campaign.raised.toLocaleString()} / {campaign.goal.toLocaleString()} WLD</span>
+            <span>{campaign.progressPercentage}%</span>
+          </div>
+          {/* Days Left display logic would be here if present */}
+          {/* Example: campaign.daysLeft !== undefined && <p>{campaign.daysLeft} days left</p> */}
         </div>
         <div style={styles.cardFooter}>
-          <div style={styles.creatorInfo}><span style={styles.creatorAvatar}></span><span>{campaign.creator}</span>{campaign.isVerified && ( <span style={styles.verifiedBadge}>Verified</span> )}</div>
+          <div style={styles.creatorInfo}>
+            <span style={styles.creatorAvatar}></span> {/* Avatar placeholder */}
+            <span>{campaign.creator}</span>
+            {campaign.isVerified && ( <span style={styles.verifiedBadge}>Verified</span> )}
+          </div>
           <Link to={`/campaigns/${campaign.id}`} style={styles.viewButton}>View Details</Link>
         </div>
       </div>
@@ -318,8 +330,7 @@ const LandingPage: React.FC = () => {
 // # #                 SECTION 14 - JSX RETURN: PAGE STRUCTURE & CONTENT        #
 // # ############################################################################ #
   
-  // SWIPER DEBUG LOG (Check your browser console for this output)
-  console.log('SWIPER_DEBUG:', {
+  console.log('SWIPER_DEBUG (LandingPage):', {
     loadingCampaigns,
     pageError,
     campaignsCount: campaigns.length,
@@ -382,16 +393,16 @@ const LandingPage: React.FC = () => {
               modules={[Navigation, Pagination, A11y]}
               spaceBetween={16} 
               slidesPerView={1}
-              navigation // Enabled navigation arrows
-              pagination={{ clickable: true, dynamicBullets: true }} // Enabled pagination
-              loop={false} // Loop is false, good for a finite list
+              navigation
+              pagination={{ clickable: true, dynamicBullets: true }}
+              loop={false} 
               style={styles.swiperContainer}
               grabCursor={true}
-              // key prop has been removed for testing Swiper functionality
+              // key prop removed
             >
               {filteredCampaigns.map(campaign => (
                 <SwiperSlide key={campaign.id} style={styles.swiperSlide}>
-                  <CampaignCardComponent campaign={campaign} />
+                  <CampaignCardComponent campaign={campaign} /> 
                 </SwiperSlide>
               ))}
             </Swiper>
@@ -406,7 +417,6 @@ const LandingPage: React.FC = () => {
           <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg>
           <span>Home</span>
         </Link>
-        {/* "Explore" tab was removed here in previous iterations */}
         <button onClick={handleAccountNavigation} disabled={authIsLoading && !isAuthenticated} style={{ ...styles.tab, ...(isActivePath('/dashboard') ? styles.tabActive : {}), background: 'none', border: 'none', fontFamily: 'inherit', cursor: 'pointer', padding: '0.1rem 0.5rem', margin: 0, }}>
           <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
           <span>Account</span>

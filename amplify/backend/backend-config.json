@@ -60,43 +60,29 @@
       "build": true,
       "providerPlugin": "awscloudformation",
       "service": "LambdaLayer"
-    }
-  },
-  "parameters": {
-    "AMPLIFY_function_0worldfunddebug56fd6525_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug56fd6525"
-        }
-      ]
     },
-    "AMPLIFY_function_0worldfunddebug56fd6525_s3Key": {
-      "usedBy": [
+    "campaignImageHandler": {
+      "build": true,
+      "dependsOn": [
         {
-          "category": "function",
-          "resourceName": "0worldfunddebug56fd6525"
+          "attributes": [
+            "ApiName",
+            "ApiId"
+          ],
+          "category": "api",
+          "resourceName": "WorldFundAPI"
         }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebugAuthLibsLayer_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebugAuthLibsLayer"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebugAuthLibsLayer_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebugAuthLibsLayer"
-        }
-      ]
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
     }
   },
   "storage": {
+    "CampaignImageAssets": {
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "S3"
+    },
     "Splinch": {
       "providerPlugin": "awscloudformation",
       "service": "DynamoDB"
