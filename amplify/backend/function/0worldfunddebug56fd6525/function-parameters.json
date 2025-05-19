@@ -3,9 +3,9 @@
     {
       "type": "ProjectLayer",
       "resourceName": "0worldfunddebugAuthLibsLayer",
+      "env": "dev",
       "version": "Always choose latest version",
-      "isLatestVersionSelected": true,
-      "env": "main"
+      "isLatestVersionSelected": true
     }
   ]
 }

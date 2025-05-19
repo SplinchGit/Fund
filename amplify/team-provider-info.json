@@ -45,7 +45,7 @@
       "AuthRoleName": "amplify-0worldfunddebug-dev-7f503-authRole",
       "UnauthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-dev-7f503-unauthRole",
       "AuthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-dev-7f503-authRole",
-      "Region": "eu-west-2", 
+      "Region": "eu-west-2",
       "DeploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
       "UnauthRoleName": "amplify-0worldfunddebug-dev-7f503-unauthRole",
       "StackName": "amplify-0worldfunddebug-dev-7f503",
