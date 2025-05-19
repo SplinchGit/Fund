@@ -284,7 +284,7 @@ export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
       try {
         if (!worldIdProofData) throw new Error("World ID proof data is missing for final verification.");
 
-        const backendResult = await wldPaymentService.notifyBackendOfDonation(
+        const backendResult = await wldPaymentService.notifyBackendOfConfirmedDonation(
           campaignId,
           amount,
           receipt.transactionHash,
