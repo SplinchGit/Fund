@@ -77,6 +77,64 @@
       "service": "Lambda"
     }
   },
+  "parameters": {
+    "AMPLIFY_function_0worldfunddebug56fd6525_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug56fd6525"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebug56fd6525_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug56fd6525"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebugAuthLibsLayer_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebugAuthLibsLayer"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebugAuthLibsLayer_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebugAuthLibsLayer"
+        }
+      ]
+    },
+    "AMPLIFY_function_campaignImageHandler_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "campaignImageHandler"
+        }
+      ]
+    },
+    "AMPLIFY_function_campaignImageHandler_processedImageS3Prefix": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "campaignImageHandler"
+        }
+      ]
+    },
+    "AMPLIFY_function_campaignImageHandler_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "campaignImageHandler"
+        }
+      ]
+    }
+  },
   "storage": {
     "CampaignImageAssets": {
       "dependsOn": [],
