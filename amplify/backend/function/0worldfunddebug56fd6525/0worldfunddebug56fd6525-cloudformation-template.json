@@ -19,6 +19,9 @@
     "function0worldfunddebugAuthLibsLayerArn": {
       "Type": "String",
       "Default": "function0worldfunddebugAuthLibsLayerArn"
+    },
+    "jwtSecretArn": {
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -73,6 +76,9 @@
             },
             "REGION": {
               "Ref": "AWS::Region"
+            },
+            "JWT_SECRET_ARN": {
+              "Ref": "jwtSecretArn"
             }
           }
         },

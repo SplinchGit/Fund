@@ -46,10 +46,10 @@
       "UnauthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-dev-7f503-unauthRole",
       "AuthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-dev-7f503-authRole",
       "Region": "eu-west-2",
-      "DeploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
+      "DeploymentBucketName": "",
       "UnauthRoleName": "amplify-0worldfunddebug-dev-7f503-unauthRole",
-      "StackName": "amplify-0worldfunddebug-dev-7f503",
-      "StackId": "arn:aws:cloudformation:eu-west-2:152034782674:stack/amplify-0worldfunddebug-dev-7f503/8c4b21f0-1c9e-11f0-b26b-06072f3ae149",
+      "StackName": "",
+      "StackId": "",
       "AmplifyAppId": "d2fvyjulmwt6nl"
     },
     "categories": {
@@ -74,10 +74,54 @@
           "processedImageS3Prefix": "public/processed-campaign-images/",
           "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
           "s3Key": "amplify-builds/campaignImageHandler-684b776839384e373537-build.zip"
-        }
+        },
+        "WorldFundAPI": {}
       },
       "api": {
         "WorldFundAPI": {}
+      }
+    }
+  },
+  "prod": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-0worldfunddebug-prod-952c1-authRole",
+      "UnauthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-prod-952c1-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-prod-952c1-authRole",
+      "Region": "eu-west-2",
+      "DeploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
+      "UnauthRoleName": "amplify-0worldfunddebug-prod-952c1-unauthRole",
+      "StackName": "amplify-0worldfunddebug-prod-952c1",
+      "StackId": "arn:aws:cloudformation:eu-west-2:152034782674:stack/amplify-0worldfunddebug-prod-952c1/5b7a86e0-3514-11f0-91b7-0a144bdb5449",
+      "AmplifyAppId": "d2fvyjulmwt6nl"
+    },
+    "categories": {
+      "auth": {
+        "0worldfunddebugd1266f95": {}
+      },
+      "function": {
+        "0worldfunddebug56fd6525": {
+          "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
+          "s3Key": "amplify-builds/0worldfunddebug56fd6525-526668744258724c4566-build.zip",
+          "jwtSecretArn": "arn:aws:secretsmanager:eu-west-2:152034782674:secret:JWT_SESSION_SECRET-GcRucs"
+        },
+        "0worldfunddebugAuthLibsLayer": {
+          "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
+          "s3Key": "amplify-builds/0worldfunddebugAuthLibsLayer-LambdaLayerVersion9de4b419-build.zip"
+        },
+        "campaignImageHandler": {
+          "processedImageS3Prefix": "public/processed-campaign-images/",
+          "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
+          "s3Key": "amplify-builds/campaignImageHandler-684b776839384e373537-build.zip"
+        },
+        "WorldFundAPI": {}
+      },
+      "api": {
+        "WorldFundAPI": {}
+      },
+      "storage": {
+        "CampaignImageAssets": {},
+        "Splinch": {},
+        "Users": {}
       }
     }
   }

@@ -86,6 +86,14 @@
         }
       ]
     },
+    "AMPLIFY_function_0worldfunddebug56fd6525_jwtSecretArn": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug56fd6525"
+        }
+      ]
+    },
     "AMPLIFY_function_0worldfunddebug56fd6525_s3Key": {
       "usedBy": [
         {

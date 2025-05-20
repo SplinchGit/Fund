@@ -3,9 +3,15 @@
     {
       "type": "ProjectLayer",
       "resourceName": "0worldfunddebugAuthLibsLayer",
-      "env": "dev",
       "version": "Always choose latest version",
-      "isLatestVersionSelected": true
+      "isLatestVersionSelected": true,
+      "env": "prod"
+    }
+  ],
+  "environmentVariableList": [
+    {
+      "cloudFormationParameterName": "jwtSecretArn",
+      "environmentVariableName": "JWT_SECRET_ARN"
     }
   ]
 }
