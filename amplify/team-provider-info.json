@@ -101,7 +101,7 @@
       "function": {
         "0worldfunddebug56fd6525": {
           "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
-          "s3Key": "amplify-builds/0worldfunddebug56fd6525-526668744258724c4566-build.zip",
+          "s3Key": "amplify-builds/0worldfunddebug56fd6525-37364d32417063523853-build.zip",
           "jwtSecretArn": "arn:aws:secretsmanager:eu-west-2:152034782674:secret:JWT_SESSION_SECRET-GcRucs",
           "worldIdAppId": "app_0da912869c4818fc1a1ec64306551b69",
           "generalUserVerifyActionId": "verify-user",
@@ -115,7 +115,7 @@
         },
         "0worldfunddebugAuthLibsLayer": {
           "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
-          "s3Key": "amplify-builds/0worldfunddebugAuthLibsLayer-LambdaLayerVersion117e8e13-build.zip"
+          "s3Key": "amplify-builds/0worldfunddebugAuthLibsLayer-LambdaLayerVersion4972f7fd-build.zip"
         },
         "campaignImageHandler": {
           "processedImageS3Prefix": "public/processed-campaign-images/",

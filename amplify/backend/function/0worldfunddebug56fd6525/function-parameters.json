@@ -49,5 +49,21 @@
       "cloudFormationParameterName": "campaignsTableName",
       "environmentVariableName": "CAMPAIGNS_TABLE_NAME"
     }
-  ]
+  ],
+  "permissions": {
+    "storage": {
+      "Splinch": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ],
+      "Users": [
+        "create",
+        "read",
+        "update",
+        "delete"
+      ]
+    }
+  }
 }

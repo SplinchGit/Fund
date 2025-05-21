@@ -1,4 +1,13 @@
-// amplify/backend/function/0worldfunddebug56fd6525/src/index.js
+/* Amplify Params - DO NOT EDIT
+	ENV
+	REGION
+	STORAGE_SPLINCH_ARN
+	STORAGE_SPLINCH_NAME
+	STORAGE_SPLINCH_STREAMARN
+	STORAGE_USERS_ARN
+	STORAGE_USERS_NAME
+	STORAGE_USERS_STREAMARN
+Amplify Params - DO NOT EDIT */// amplify/backend/function/0worldfunddebug56fd6525/src/index.js
 
 // # ############################################################################ #
 // # #                             SECTION 1 - MODULE IMPORTS                     #

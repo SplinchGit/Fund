@@ -1,8 +1,8 @@
 // src/pages/Dashboard.tsx
-// (Final polish for this file: style definition order, Explore tab removed, buttonDanger style, Logout button style simplified)
+// (Full fix incorporating button resizing and consolidation, Logout button style preserved)
 
 // # ############################################################################ #
-// # #                          SECTION 1 - IMPORTS                             #
+// # #                           SECTION 1 - IMPORTS                           #
 // # ############################################################################ #
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -10,7 +10,7 @@ import { useAuth } from '../components/AuthContext';
 import { CampaignTracker } from './CampaignTracker'; // Assuming this path is correct
 
 // # ############################################################################ #
-// # # SECTION 2 - STYLES OBJECT DEFINITION (styles BEFORE responsiveStyles)    #
+// # # SECTION 2 - STYLES OBJECT DEFINITION (styles BEFORE responsiveStyles)   #
 // # ############################################################################ #
 
 const styles: { [key: string]: React.CSSProperties } = {
@@ -57,14 +57,14 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   logo: { display: 'flex', alignItems: 'center', color: '#1a73e8', fontWeight: 700, fontSize: '1.125rem', textDecoration: 'none', },
   logoSpan: { color: '#202124', },
-  button: { 
+  button: {
     padding: '0.5rem 0.75rem',
     borderRadius: '0.25rem',
     fontWeight: 500,
     cursor: 'pointer',
     textDecoration: 'none',
     textAlign: 'center' as const,
-    fontSize: '0.875rem', 
+    fontSize: '0.875rem',
     transition: 'background-color 0.2s, border-color 0.2s',
     border: '1px solid transparent',
     minHeight: '36px',
@@ -73,20 +73,21 @@ const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: 'center',
     lineHeight: 1,
   },
-  buttonPrimary: { 
+  buttonPrimary: {
     // This can be spread with styles.button if needed elsewhere, or used as a standalone addition
     backgroundColor: '#1a73e8',
     color: 'white',
     borderColor: '#1a73e8',
   },
-  buttonDanger: { 
+  // --- Logout Button Style - UNCHANGED as per your request ---
+  buttonDanger: {
     padding: '0.5rem 0.75rem',
     borderRadius: '0.25rem',
     fontWeight: 500,
     cursor: 'pointer',
     textDecoration: 'none',
     textAlign: 'center' as const,
-    fontSize: '0.875rem', 
+    fontSize: '0.875rem',
     transition: 'background-color 0.2s, border-color 0.2s',
     border: '1px solid #dc3545',
     minHeight: '36px',
@@ -94,10 +95,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: 'center',
     justifyContent: 'center',
     lineHeight: 1,
-    backgroundColor: '#dc3545', 
+    backgroundColor: '#dc3545',
     color: 'white',
     borderColor: '#dc3545',
   },
+  // --- End of Unchanged Logout Button Style ---
   dashboardHeader: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', marginBottom: '1.5rem', padding: '1rem 0.5rem 0.5rem 0.5rem', boxSizing: 'border-box' as const, textAlign: 'center' as const, },
   dashboardTitle: { fontSize: '1.75rem', fontWeight: 700, color: '#202124', margin: 0, padding: 0, },
   dashboardSubtitle: { fontSize: '0.9rem', color: '#5f6368', marginTop: '0.5rem', maxWidth: '600px', lineHeight: 1.5, },
@@ -109,8 +111,31 @@ const styles: { [key: string]: React.CSSProperties } = {
   statValue: { fontSize: '1.75rem', fontWeight: 700, color: '#1a73e8', margin: '0 0 0.25rem 0', padding: 0, },
   statLabel: { fontSize: '0.8rem', color: '#5f6368', marginTop: '0.25rem', padding: 0, },
   createButtonContainer: { textAlign: 'center' as const, margin: '1.5rem 0 2rem 0', },
-  createButton: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.75rem 1.5rem', backgroundColor: '#1a73e8', color: 'white', borderRadius: '999px', fontWeight: 500, textDecoration: 'none', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', transition: 'transform 0.2s, box-shadow 0.2s', border: 'none', fontSize: '0.9rem', cursor: 'pointer', },
-  createButtonIcon: { marginRight: '0.5rem', width: '1.125rem', height: '1.125rem', fill: 'white', },
+  // --- MODIFIED createButton style for better sizing and standard button look ---
+  createButton: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '0.6rem 1.2rem',      // Adjusted padding
+    backgroundColor: '#1a73e8',    // Primary blue
+    color: 'white',
+    borderRadius: '0.25rem',     // Standard border radius (like styles.button)
+    fontWeight: 500,
+    textDecoration: 'none',
+    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    border: 'none',
+    fontSize: '0.85rem',           // Adjusted font size
+    cursor: 'pointer',
+    lineHeight: 1.2,              // Adjusted for better text display with icons
+  },
+  // --- MODIFIED createButtonIcon style ---
+  createButtonIcon: {
+    marginRight: '0.5rem',
+    width: '1rem',               // Adjusted size
+    height: '1rem',              // Adjusted size
+    fill: 'currentColor',        // Changed to currentColor to inherit button text color (white)
+  },
   tabs: { display: 'flex', justifyContent: 'space-around', backgroundColor: '#fff', borderTop: '1px solid #e0e0e0', position: 'fixed' as const, bottom: 0, left: 0, width: '100%', zIndex: 100, padding: '0.75rem 0', boxShadow: '0 -1px 3px rgba(0,0,0,0.1)', boxSizing: 'border-box' as const, },
   tab: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', fontSize: '0.65rem', color: '#5f6368', textDecoration: 'none', padding: '0.1rem 0.5rem', flexGrow: 1, textAlign: 'center' as const, transition: 'color 0.2s', },
   tabActive: { color: '#1a73e8', },
@@ -124,8 +149,21 @@ const styles: { [key: string]: React.CSSProperties } = {
   quickLinks: { display: 'flex', flexDirection: 'column' as const, gap: '0.5rem', },
   quickLink: { padding: '0.75rem 0.5rem', color: '#1a73e8', textDecoration: 'none', textAlign: 'left' as const, display: 'flex', alignItems: 'center', fontSize: '0.875rem', transition: 'background-color 0.2s, color 0.2s', borderRadius: '4px', },
   quickLinkIcon: { marginRight: '0.75rem', width: '1rem', height: '1rem', flexShrink: 0, },
-  infoSection: { backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', padding: '1.5rem', marginBottom: '1.5rem', boxSizing: 'border-box' as const, },
-  infoText: { fontSize: '0.875rem', color: '#5f6368', marginBottom: '1rem', lineHeight: '1.6', textAlign: 'left' as const, },
+  infoSection: { // Style for the container remains
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+    padding: '1.5rem',
+    marginBottom: '1.5rem',
+    boxSizing: 'border-box' as const,
+  },
+  infoText: { // Style for the text remains
+    fontSize: '0.875rem',
+    color: '#5f6368',
+    marginBottom: '0rem', // Button below is removed, so no extra margin needed here
+    lineHeight: '1.6',
+    textAlign: 'left' as const,
+  },
 };
 
 const responsiveStyles = `
@@ -153,18 +191,18 @@ const responsiveStyles = `
 `;
 
 // # ############################################################################ #
-// # #                 SECTION 3 - COMPONENT: PAGE DEFINITION & HOOKS             #
+// # #                 SECTION 3 - COMPONENT: PAGE DEFINITION & HOOKS                #
 // # ############################################################################ #
 const Dashboard: React.FC = () => {
   const { walletAddress, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ 
-    totalCampaigns: 0, 
-    totalRaised: 0 
+  const [stats, setStats] = useState({
+    totalCampaigns: 0, // Initial value, will be updated by API call
+    totalRaised: 0
   });
 
 // # ############################################################################ #
-// # #                 SECTION 4 - EFFECT: AUTHENTICATION CHECK                 #
+// # #                 SECTION 4 - EFFECT: AUTHENTICATION CHECK                  #
 // # ############################################################################ #
   useEffect(() => {
     if (!isAuthenticated) {
@@ -172,10 +210,25 @@ const Dashboard: React.FC = () => {
       navigate('/landing');
     }
     // TODO: Fetch actual dashboard stats if authenticated
+    // This function should update setStats, for example:
+    // const fetchDashboardData = async () => {
+    //   try {
+    //     // const response = await yourApi.getDashboardStats();
+    //     // setStats({
+    //     //   totalCampaigns: response.data.totalCampaigns,
+    //     //   totalRaised: response.data.totalRaised,
+    //     // });
+    //   } catch (error) {
+    //     console.error("Failed to fetch dashboard stats:", error);
+    //   }
+    // };
+    // if (isAuthenticated) {
+    //   fetchDashboardData();
+    // }
   }, [isAuthenticated, navigate]);
 
 // # ############################################################################ #
-// # #                 SECTION 5 - EVENT HANDLER: LOGOUT                        #
+// # #                   SECTION 5 - EVENT HANDLER: LOGOUT                     #
 // # ############################################################################ #
   const handleLogout = async () => {
     await logout();
@@ -183,12 +236,12 @@ const Dashboard: React.FC = () => {
   };
 
 // # ############################################################################ #
-// # #         SECTION 6 - CONDITIONAL RENDERING: UNAUTHENTICATED FALLBACK        #
+// # #           SECTION 6 - CONDITIONAL RENDERING: UNAUTHENTICATED FALLBACK         #
 // # ############################################################################ #
   if (!isAuthenticated) {
     return (
       <div style={styles.loadingContainer}>
-        <style>{responsiveStyles}</style> 
+        <style>{responsiveStyles}</style>
         <div style={styles.loadingSpinner}></div>
         <p style={styles.loadingText}>Loading Dashboard...</p>
       </div>
@@ -196,7 +249,7 @@ const Dashboard: React.FC = () => {
   }
 
 // # ############################################################################ #
-// # #                 SECTION 7 - JSX RETURN: PAGE LAYOUT & CONTENT              #
+// # #                 SECTION 7 - JSX RETURN: PAGE LAYOUT & CONTENT                 #
 // # ############################################################################ #
   return (
     <div style={styles.page}>
@@ -208,11 +261,11 @@ const Dashboard: React.FC = () => {
           <div style={styles.walletInfo}>
             {walletAddress && (
                 <span style={styles.walletAddress}>
-                Connected: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-              </span>
+                  Connected: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                </span>
             )}
             <button
-              style={styles.buttonDanger} // Simplified: buttonDanger already includes base button styles
+              style={styles.buttonDanger} // Using UNCHANGED buttonDanger style
               onClick={handleLogout}
             >
               Logout
@@ -240,18 +293,19 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* --- Main "Create Campaign" button with dynamic text --- */}
         <div style={styles.createButtonContainer}>
           <Link to="/new-campaign" style={styles.createButton}>
             <svg style={styles.createButtonIcon} viewBox="0 0 24 24" fill="currentColor">
               <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path>
             </svg>
-            Create New Campaign
+            {stats.totalCampaigns === 0 ? 'Create Your First Campaign' : 'Create New Campaign'}
           </Link>
         </div>
 
         <div style={styles.contentSection}>
           <h2 style={styles.sectionTitle}>Your Campaigns</h2>
-          <CampaignTracker deleteButtonStyle={styles.buttonDanger} /> 
+          <CampaignTracker deleteButtonStyle={styles.buttonDanger} />
         </div>
 
         <div style={styles.quickAccessSection}>
@@ -273,21 +327,17 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div style={styles.infoSection}>
-          <h2 style={styles.sectionTitle}>Getting Started</h2>
-          <p style={styles.infoText}>
-            Create and manage campaigns to raise funds for your projects using WLD tokens.
-            Start by creating a new campaign and sharing it with your network.
-          </p>
-          <div style={{textAlign: 'center' as const}}>
-            <Link
-              to="/new-campaign"
-              style={{...styles.button, ...styles.buttonPrimary, width: 'auto', padding: '0.625rem 1.25rem'}}
-            >
-              Create Your First Campaign
-            </Link>
+        {/* --- Conditionally render infoSection AND REMOVED its internal button --- */}
+        {stats.totalCampaigns === 0 && (
+          <div style={styles.infoSection}>
+            <h2 style={styles.sectionTitle}>Getting Started</h2>
+            <p style={styles.infoText}>
+              Create and manage campaigns to raise funds for your projects using WLD tokens.
+              Start by creating a new campaign and sharing it with your network.
+              {/* The button that was here has been removed to consolidate to the main createButton */}
+            </p>
           </div>
-        </div>
+        )}
       </main>
 
       <footer style={styles.legalNotice}>
@@ -299,7 +349,7 @@ const Dashboard: React.FC = () => {
           <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"></path></svg>
           <span>Home</span>
         </Link>
-        <Link to="/dashboard" style={{...styles.tab, ...styles.tabActive}}> 
+        <Link to="/dashboard" style={{...styles.tab, ...styles.tabActive}}>
           <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
           <span>Account</span>
         </Link>

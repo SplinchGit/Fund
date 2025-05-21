@@ -47,6 +47,24 @@
       "dependsOn": [
         {
           "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "Splinch"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "Users"
+        },
+        {
+          "attributes": [
             "Arn"
           ],
           "category": "function",
