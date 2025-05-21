@@ -22,6 +22,33 @@
     },
     "jwtSecretArn": {
       "Type": "String"
+    },
+    "worldIdAppId": {
+      "Type": "String"
+    },
+    "generalUserVerifyActionId": {
+      "Type": "String"
+    },
+    "wldDonationVerifyActionId": {
+      "Type": "String"
+    },
+    "worldchainRpcUrl": {
+      "Type": "String"
+    },
+    "wldContractAddressWorldchain": {
+      "Type": "String"
+    },
+    "wldTokenDecimals": {
+      "Type": "String"
+    },
+    "worldChainId": {
+      "Type": "String"
+    },
+    "usersTableName": {
+      "Type": "String"
+    },
+    "campaignsTableName": {
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -79,6 +106,33 @@
             },
             "JWT_SECRET_ARN": {
               "Ref": "jwtSecretArn"
+            },
+            "WORLD_ID_APP_ID": {
+              "Ref": "worldIdAppId"
+            },
+            "GENERAL_USER_VERIFY_ACTION_ID": {
+              "Ref": "generalUserVerifyActionId"
+            },
+            "WLD_DONATION_VERIFY_ACTION_ID": {
+              "Ref": "wldDonationVerifyActionId"
+            },
+            "WORLDCHAIN_RPC_URL": {
+              "Ref": "worldchainRpcUrl"
+            },
+            "WLD_CONTRACT_ADDRESS_WORLDCHAIN": {
+              "Ref": "wldContractAddressWorldchain"
+            },
+            "WLD_TOKEN_DECIMALS": {
+              "Ref": "wldTokenDecimals"
+            },
+            "WORLD_CHAIN_ID": {
+              "Ref": "worldChainId"
+            },
+            "USERS_TABLE_NAME": {
+              "Ref": "usersTableName"
+            },
+            "CAMPAIGNS_TABLE_NAME": {
+              "Ref": "campaignsTableName"
             }
           }
         },

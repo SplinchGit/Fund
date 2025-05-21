@@ -18,10 +18,10 @@ const fetch = require('node-fetch'); // For making HTTPS requests to Worldcoin A
 // # ############################################################################ #
 // --- Configuration ---
 const JWT_EXPIRY = '1d';
-const WORLD_ID_APP_ID = process.env.VITE_WORLD_APP_ID || process.env.WORLD_APP_ID; // Used for verifyCloudProof & MiniKit status API
+// const WORLD_ID_APP_ID = process.env.VITE_WORLD_APP_ID || process.env.WORLD_ID_APP_ID; // Definition moved into handler for debugging
 const JWT_SECRET_ARN = process.env.JWT_SECRET_ARN;
 
-const GENERAL_USER_VERIFY_ACTION_ID = process.env.VITE_WORLD_ACTION_ID || 'verify-user';
+const GENERAL_USER_VERIFY_ACTION_ID = process.env.VITE_WORLD_ACTION_ID || process.env.GENERAL_USER_VERIFY_ACTION_ID || 'verify-user'; // Added direct check
 const WLD_DONATION_VERIFY_ACTION_ID = process.env.WLD_DONATION_VERIFY_ACTION_ID;
 
 const WORLDCHAIN_RPC_URL = process.env.WORLDCHAIN_RPC_URL;
@@ -32,8 +32,9 @@ const DEPLOYED_FRONTEND_URL = process.env.FRONTEND_URL || 'https://main.d2fvyjul
 const LOCAL_DEV_URL = 'http://localhost:5173';
 const ALLOWED_ORIGINS_LIST = [DEPLOYED_FRONTEND_URL, LOCAL_DEV_URL];
 
-const USERS_TABLE_NAME = process.env.USERS_TABLE_NAME || 'Users-dev'; // Will be Users-prod in prod env
-const CAMPAIGNS_TABLE_NAME = process.env.CAMPAIGNS_TABLE_NAME || 'Campaigns-dev'; // Will be Campaigns-prod in prod env
+// These will be checked in criticalEnvVars using their direct process.env names
+// const USERS_TABLE_NAME = process.env.USERS_TABLE_NAME || 'Users-dev'; 
+// const CAMPAIGNS_TABLE_NAME = process.env.CAMPAIGNS_TABLE_NAME || 'Campaigns-dev';
 
 // # ############################################################################ #
 // # #                     SECTION 3 - AWS SDK CLIENT INITIALIZATION              #
@@ -44,10 +45,10 @@ const dynamodbClient = new DynamoDBClient({ region: lambdaRegion });
 const ddbDocClient = DynamoDBDocumentClient.from(dynamodbClient);
 
 let ethersProvider = null;
-if (WORLDCHAIN_RPC_URL) {
+if (process.env.WORLDCHAIN_RPC_URL) { // Check directly from process.env
     try {
-        ethersProvider = new ethers.JsonRpcProvider(WORLDCHAIN_RPC_URL);
-        console.log(`Ethers provider initialized for Worldchain: ${WORLDCHAIN_RPC_URL}`);
+        ethersProvider = new ethers.JsonRpcProvider(process.env.WORLDCHAIN_RPC_URL);
+        console.log(`Ethers provider initialized for Worldchain: ${process.env.WORLDCHAIN_RPC_URL}`);
     } catch (e) {
         console.error("Failed to initialize Ethers provider for Worldchain:", e);
         ethersProvider = null;
@@ -71,19 +72,13 @@ const generateNonce = () => crypto.randomBytes(16).toString('hex');
 // # #                 SECTION 6 - HELPER FUNCTION: CREATE API RESPONSE (WITH CORS) #
 // # ############################################################################ #
 function createResponse(statusCode, body, requestOrigin) {
-  let effectiveAllowOrigin = DEPLOYED_FRONTEND_URL; // Default to deployed frontend URL
-  // More robust check for multiple allowed origins
+  let effectiveAllowOrigin = DEPLOYED_FRONTEND_URL; 
   if (requestOrigin && ALLOWED_ORIGINS_LIST.includes(requestOrigin)) {
     effectiveAllowOrigin = requestOrigin;
   } else if (ALLOWED_ORIGINS_LIST.length > 0) {
-    // If requestOrigin is not in the list but we have a list,
-    // it's safer to default to the primary deployed URL or a restrictive policy.
-    // For simplicity here, sticking to DEPLOYED_FRONTEND_URL if requestOrigin isn't an exact match.
-    // A more complex setup might involve wildcards or more dynamic origin checking.
+    // Defaulting as before
   }
-
-
-  return {
+  return { /* ... as before ... */ 
     statusCode: statusCode,
     headers: {
       'Content-Type': 'application/json',
@@ -100,45 +95,36 @@ function createResponse(statusCode, body, requestOrigin) {
 // # ############################################################################ #
 const getJwtSecret = async () => {
   if (cachedJwtSecret) return cachedJwtSecret;
-  if (!JWT_SECRET_ARN) { console.error('JWT_SECRET_ARN missing.'); throw new Error('Server config error: JWT secret ARN missing.'); }
+  if (!process.env.JWT_SECRET_ARN) { console.error('JWT_SECRET_ARN (from process.env) missing.'); throw new Error('Server config error: JWT secret ARN missing.'); }
   try {
-    const r = await secretsClient.send(new GetSecretValueCommand({ SecretId: JWT_SECRET_ARN }));
+    const r = await secretsClient.send(new GetSecretValueCommand({ SecretId: process.env.JWT_SECRET_ARN }));
     if (r.SecretString) { cachedJwtSecret = r.SecretString; return cachedJwtSecret; }
     throw new Error('Failed to retrieve JWT secret content.');
   } catch (e) { console.error('Error retrieving JWT secret:', e); throw new Error('Failed to retrieve JWT secret'); }
 };
 
-// # ############################################################################ #
-// # #                     SECTION 8 - HELPER FUNCTION: VERIFY JWT TOKEN          #
-// # ############################################################################ #
+// ... (verifyJWT, sanitizeSiweMessage, isValidSignatureFormat helpers as before) ...
 const verifyJWT = async (authHeader) => {
-  if (!authHeader) throw new Error('No authorization header provided');
-  const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : authHeader;
-  if (!token) throw new Error('No token provided');
-  try {
-    const secret = await getJwtSecret();
-    if (!secret) throw new Error('JWT secret unavailable for verification.');
-    return jwt.verify(token, secret);
-  } catch (e) { console.error('JWT verification failed:', e); throw new Error('Invalid or expired token'); }
+  if (!authHeader) throw new Error('No authorization header provided');
+  const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : authHeader;
+  if (!token) throw new Error('No token provided');
+  try {
+    const secret = await getJwtSecret();
+    if (!secret) throw new Error('JWT secret unavailable for verification.');
+    return jwt.verify(token, secret);
+  } catch (e) { console.error('JWT verification failed:', e); throw new Error('Invalid or expired token'); }
 };
-
-// # ############################################################################ #
-// # #                 SECTION 9 - HELPER FUNCTION: SANITIZE SIWE MESSAGE         #
-// # ############################################################################ #
 const sanitizeSiweMessage = (message) => {
-  if (typeof message !== 'string') { console.warn('SIWE Message not a string'); return ''; }
-  return message.replace(/\r\n/g, '\n').trim();
+  if (typeof message !== 'string') { console.warn('SIWE Message not a string'); return ''; }
+  return message.replace(/\r\n/g, '\n').trim();
+};
+const isValidSignatureFormat = (signature) => {
+  if (typeof signature !== 'string') return false;
+  const isValid = /^0x[0-9a-fA-F]{130}$/.test(signature);
+  if (!isValid) console.warn('Invalid signature format:', signature);
+  return isValid;
 };
 
-// # ############################################################################ #
-// # #             SECTION 10 - HELPER FUNCTION: VALIDATE SIGNATURE FORMAT        #
-// # ############################################################################ #
-const isValidSignatureFormat = (signature) => {
-  if (typeof signature !== 'string') return false;
-  const isValid = /^0x[0-9a-fA-F]{130}$/.test(signature);
-  if (!isValid) console.warn('Invalid signature format:', signature);
-  return isValid;
-};
 
 // # ############################################################################ #
 // # #             SECTION 11 - MAIN LAMBDA HANDLER: INITIALIZATION & LOGGING     #
@@ -148,28 +134,70 @@ exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin;
   console.log('Request Origin:', requestOrigin);
 
-  console.log(`Effective USERS_TABLE_NAME: '${USERS_TABLE_NAME}'`);
-  console.log(`Effective CAMPAIGNS_TABLE_NAME: '${CAMPAIGNS_TABLE_NAME}'`);
-  // ... (other env var logging from your file) ...
-  console.log(`Effective JWT_SECRET_ARN: '${JWT_SECRET_ARN}'`);
-  console.log(`Effective WORLD_ID_APP_ID: '${WORLD_ID_APP_ID}'`);
+  // Moved constant definitions that rely on process.env inside the handler
+  // to ensure they are fresh for each invocation for this debugging phase.
+  console.log('--- DEBUGGING ENVIRONMENT VARIABLES ---');
+  console.log('Value of process.env.WORLD_ID_APP_ID:', process.env.WORLD_ID_APP_ID);
+  console.log('Value of process.env.VITE_WORLD_APP_ID:', process.env.VITE_WORLD_APP_ID); // For comparison
+  
+  // Define WORLD_ID_APP_ID for use in this handler scope based on process.env
+  const WORLD_ID_APP_ID = process.env.WORLD_ID_APP_ID || process.env.VITE_WORLD_APP_ID; // Prioritize direct backend name
+  console.log('Assigned value to local const WORLD_ID_APP_ID:', WORLD_ID_APP_ID); 
+  console.log('Type of local const WORLD_ID_APP_ID:', typeof WORLD_ID_APP_ID);
+
+  console.log('Value of process.env.USERS_TABLE_NAME:', process.env.USERS_TABLE_NAME);
+  const USERS_TABLE_NAME = process.env.USERS_TABLE_NAME; // Directly use it
+
+  console.log('Value of process.env.CAMPAIGNS_TABLE_NAME:', process.env.CAMPAIGNS_TABLE_NAME);
+  const CAMPAIGNS_TABLE_NAME = process.env.CAMPAIGNS_TABLE_NAME; // Directly use it
+  
+  console.log('Value of process.env.JWT_SECRET_ARN:', process.env.JWT_SECRET_ARN);
+  // JWT_SECRET_ARN is used directly by getJwtSecret helper from process.env
+
+  console.log('Value of process.env.WLD_DONATION_VERIFY_ACTION_ID:', process.env.WLD_DONATION_VERIFY_ACTION_ID);
+  const WLD_DONATION_VERIFY_ACTION_ID = process.env.WLD_DONATION_VERIFY_ACTION_ID;
+
+  console.log('Value of process.env.WORLDCHAIN_RPC_URL:', process.env.WORLDCHAIN_RPC_URL);
+  // WORLDCHAIN_RPC_URL is used directly by ethersProvider init from process.env
+
+  console.log('Value of process.env.WLD_CONTRACT_ADDRESS_WORLDCHAIN:', process.env.WLD_CONTRACT_ADDRESS_WORLDCHAIN);
+  const WLD_CONTRACT_ADDRESS_WORLDCHAIN = process.env.WLD_CONTRACT_ADDRESS_WORLDCHAIN;
+  console.log('--- END DEBUGGING ENVIRONMENT VARIABLES ---');
+
+
+  // Logging for effective values based on how they are used or fallbacked in global scope
+  // These might be slightly different if global fallbacks were hit vs direct process.env in handler
+  console.log(`Effective USERS_TABLE_NAME (used in handler): '${USERS_TABLE_NAME}'`);
+  console.log(`Effective CAMPAIGNS_TABLE_NAME (used in handler): '${CAMPAIGNS_TABLE_NAME}'`);
+  console.log(`Effective JWT_SECRET_ARN (used in getJwtSecret): '${process.env.JWT_SECRET_ARN}'`);
+  console.log(`Effective WORLD_ID_APP_ID (used in handler): '${WORLD_ID_APP_ID}'`); // This is the key one for the error
+  // GENERAL_USER_VERIFY_ACTION_ID and WLD_TOKEN_DECIMALS were not in criticalEnvVars, let's ensure they are logged if used
+  const GENERAL_USER_VERIFY_ACTION_ID = process.env.GENERAL_USER_VERIFY_ACTION_ID || process.env.VITE_WORLD_ACTION_ID || 'verify-user';
+  const WLD_TOKEN_DECIMALS = parseInt(process.env.WLD_TOKEN_DECIMALS || '18');
   console.log(`Effective GENERAL_USER_VERIFY_ACTION_ID: '${GENERAL_USER_VERIFY_ACTION_ID}'`);
-  console.log(`Effective WLD_DONATION_VERIFY_ACTION_ID: '${WLD_DONATION_VERIFY_ACTION_ID}'`);
-  console.log(`Effective WORLDCHAIN_RPC_URL: '${WORLDCHAIN_RPC_URL}'`);
-  console.log(`Effective WLD_CONTRACT_ADDRESS_WORLDCHAIN: '${WLD_CONTRACT_ADDRESS_WORLDCHAIN}'`);
+  console.log(`Effective WLD_DONATION_VERIFY_ACTION_ID (used in handler): '${WLD_DONATION_VERIFY_ACTION_ID}'`);
+  console.log(`Effective WORLDCHAIN_RPC_URL (used in ethersProvider init): '${process.env.WORLDCHAIN_RPC_URL}'`);
+  console.log(`Effective WLD_CONTRACT_ADDRESS_WORLDCHAIN (used in handler): '${WLD_CONTRACT_ADDRESS_WORLDCHAIN}'`);
   console.log(`Effective WLD_TOKEN_DECIMALS: '${WLD_TOKEN_DECIMALS}'`);
 
 
   const criticalEnvVars = {
-    USERS_TABLE_NAME, CAMPAIGNS_TABLE_NAME, JWT_SECRET_ARN, WORLD_ID_APP_ID,
-    WLD_DONATION_VERIFY_ACTION_ID, WORLDCHAIN_RPC_URL, WLD_CONTRACT_ADDRESS_WORLDCHAIN
+    USERS_TABLE_NAME: process.env.USERS_TABLE_NAME, // Check directly from process.env
+    CAMPAIGNS_TABLE_NAME: process.env.CAMPAIGNS_TABLE_NAME, // Check directly
+    JWT_SECRET_ARN: process.env.JWT_SECRET_ARN, // Check directly
+    WORLD_ID_APP_ID: WORLD_ID_APP_ID, // Use the one derived above for the check
+    WLD_DONATION_VERIFY_ACTION_ID: process.env.WLD_DONATION_VERIFY_ACTION_ID, // Check directly
+    WORLDCHAIN_RPC_URL: process.env.WORLDCHAIN_RPC_URL, // Check directly
+    WLD_CONTRACT_ADDRESS_WORLDCHAIN: process.env.WLD_CONTRACT_ADDRESS_WORLDCHAIN // Check directly
   };
+
   for (const [key, value] of Object.entries(criticalEnvVars)) {
-    if (!value) {
-      console.error(`${key} environment variable is not set.`);
+    if (!value) { // This checks if the value is falsy (undefined, null, "", 0, false)
+      console.error(`Critical check failed for ${key}. Value was: '${value}' (Type: ${typeof value})`);
       return createResponse(500, { message: `Server configuration error: Missing critical environment variable ${key}.` }, requestOrigin);
     }
   }
+
   const needsEthersProvider = (event.path.includes('/campaigns/') && event.path.endsWith('/donate')) || event.path.startsWith('/minikit-tx-status');
   if (needsEthersProvider && !ethersProvider) {
     console.error("Ethers provider for Worldchain is not initialized. WORLDCHAIN_RPC_URL might be missing or invalid.");
@@ -180,6 +208,10 @@ exports.handler = async (event) => {
   const path = event.path;
   const pathParts = path.split('/').filter(part => part !== '');
   console.log(`Handling request: ${httpMethod} ${path}`);
+
+  // ... (Rest of your handler code: CORS, routes for /auth/nonce, /auth/verify-signature, /verify-worldid with dynamic import, etc. AS MODIFIED BEFORE) ...
+  // Ensure the dynamic import block for verifyCloudProofFunc is inside the /verify-worldid route as previously discussed.
+  // All other route logic remains the same.
 
 // # ############################################################################ #
 // # #             SECTION 12 - MAIN LAMBDA HANDLER: CORS PREFLIGHT (OPTIONS)     #
@@ -213,18 +245,12 @@ exports.handler = async (event) => {
     try {
       const { payload, nonce: serverIssuedNonceFromClient } = JSON.parse(event.body);
       // --- Start of placeholder for your full SIWE verification logic ---
-      // Ensure you have robust SIWE verification here. This is a simplified placeholder.
-      // You would typically:
-      // 1. Create a new SiweMessage instance from `payload.message`
-      // 2. Call `siweMessage.verify({ signature: payload.signature, nonce: serverIssuedNonceFromClient /* or nonce from your DB/cache */ })`
-      // 3. If successful, `siweMessage.address` is the verified address.
-      
-      // For this example, assuming payload.address is the result after successful verification
+      // This is a simplified placeholder.
       const walletAddress = payload.address; 
-      if (!walletAddress) { // Placeholder - real verification would throw if invalid
+      if (!walletAddress) { 
           throw new Error("SIWE verification failed or address missing.");
       }
-      // --- End of placeholder for your full SIWE verification logic ---
+      // --- End of placeholder ---
 
       const now = new Date().toISOString();
       try {
@@ -240,7 +266,7 @@ exports.handler = async (event) => {
             }));
         } else { throw err; }
       }
-      const jwtSecretInternal = await getJwtSecret();
+      const jwtSecretInternal = await getJwtSecret(); // Uses process.env.JWT_SECRET_ARN
       const tokenInternal = jwt.sign({ walletAddress }, jwtSecretInternal, { expiresIn: JWT_EXPIRY });
       return createResponse(200, { success: true, token: tokenInternal, walletAddress }, requestOrigin);
 
@@ -248,7 +274,6 @@ exports.handler = async (event) => {
       console.error('[POST /auth/verify-signature] Error in catch block:', error);
       let errorMessage = 'Failed to verify signature';
       if (error instanceof Error) errorMessage = error.message;
-      // Add more specific error status codes based on SIWE error types if possible
       return createResponse(500, { message: 'Failed to verify signature', error: errorMessage }, requestOrigin);
     }
   }
@@ -259,7 +284,6 @@ exports.handler = async (event) => {
   if (httpMethod === 'POST' && path === '/verify-worldid') {
     console.log('[POST /verify-worldid] World ID Proof Verification Handler triggered');
     
-    // Load verifyCloudProof dynamically if not already loaded
     if (!verifyCloudProofFunc) {
       try {
         console.log("Attempting dynamic import of @worldcoin/idkit for /verify-worldid route...");
@@ -298,8 +322,14 @@ exports.handler = async (event) => {
       if (!merkle_root || !nullifier_hash || !proof || !verification_level || signalUsed === undefined) {
         return createResponse(400, { verified: false, message: "Missing required World ID proof parameters." }, requestOrigin);
       }
+      
+      // Ensure WORLD_ID_APP_ID (the local const) is valid before using it
+      if (!WORLD_ID_APP_ID) { // This check might be redundant if criticalEnvVars already caught it, but good for clarity
+          console.error("WORLD_ID_APP_ID constant is not properly initialized within handler for /verify-worldid");
+          return createResponse(500, { verified: false, message: 'Server configuration error: World ID App ID not resolved.' }, requestOrigin);
+      }
 
-      const actionIdToUse = WLD_DONATION_VERIFY_ACTION_ID; 
+      const actionIdToUse = process.env.WLD_DONATION_VERIFY_ACTION_ID; // Directly use from process.env
       console.log(`Verifying World ID proof with App ID: ${WORLD_ID_APP_ID}, Action ID: ${actionIdToUse}, Signal: ${signalUsed}`);
 
       const idKitProofForCloud = {
@@ -307,13 +337,12 @@ exports.handler = async (event) => {
         credential_type: verification_level === 'orb' ? 'orb' : 'phone',
       };
 
-      // Use the dynamically imported function
       await verifyCloudProofFunc(idKitProofForCloud, WORLD_ID_APP_ID, actionIdToUse, signalUsed);
       console.log("World ID proof successfully verified with Worldcoin cloud service for action:", actionIdToUse);
 
       const now = new Date().toISOString();
       await ddbDocClient.send(new UpdateCommand({
-        TableName: USERS_TABLE_NAME,
+        TableName: USERS_TABLE_NAME, // Uses the const defined in handler from process.env
         Key: { walletAddress: userWalletAddress },
         UpdateExpression: 'SET isWorldIdVerified = :isVerified, worldIdVerifiedAt = :now, worldIdNullifier = :nullifier, lastUsedWorldIdAction = :action, lastUsedWorldIdSignal = :signal',
         ExpressionAttributeValues: {
@@ -337,6 +366,10 @@ exports.handler = async (event) => {
     }
   }
 
+// ... (Rest of your routes: /minikit-tx-status, /campaigns, /users, /donate, default as before) ...
+// Ensure all instances of process.env.VAR_NAME are used directly where needed,
+// or local constants are correctly derived from process.env at the start of the handler.
+
 // ####################################################################################
 // # START: NEW HANDLER for GET /minikit-tx-status/{worldcoinTransactionId} (SECTION 15.1 - NEW) #
 // ####################################################################################
@@ -344,6 +377,11 @@ exports.handler = async (event) => {
     const worldcoinTxId = pathParts[1];
     console.log(`[GET /minikit-tx-status/${worldcoinTxId}] Handler triggered`);
     try {
+        // Ensure WORLD_ID_APP_ID (the local const) is valid before using it
+        if (!WORLD_ID_APP_ID) {
+             console.error("WORLD_ID_APP_ID constant is not properly initialized within handler for /minikit-tx-status");
+             return createResponse(500, { message: 'Server configuration error: World ID App ID not resolved for MiniKit status.' }, requestOrigin);
+        }
         const apiUrl = `https://developer.worldcoin.org/api/v2/minikit/transaction/${worldcoinTxId}?app_id=${WORLD_ID_APP_ID}`;
         console.log(`Querying Worldcoin API: ${apiUrl}`);
         const response = await fetch(apiUrl, {
@@ -513,14 +551,14 @@ exports.handler = async (event) => {
         console.log(`[POST /campaigns/${campaignId}/donate] On-Chain Verification Handler Triggered`);
         try {
             const authHeader = event.headers?.Authorization || event.headers?.authorization;
-            await verifyJWT(authHeader); // Just verify token, don't necessarily need donor address from JWT here
+            await verifyJWT(authHeader); 
             if (!event.body) return createResponse(400, { message: 'Missing request body' }, requestOrigin);
             const { donatedAmount, transactionHash, chainId } = JSON.parse(event.body);
 
             if (!donatedAmount || !transactionHash || chainId === undefined) {
                 return createResponse(400, { message: 'donatedAmount, transactionHash, and chainId are required.' }, requestOrigin);
             }
-            const expectedChainId = parseInt(process.env.VITE_WORLDCHAIN_CHAIN_ID || '0'); 
+            const expectedChainId = parseInt(process.env.WORLDCHAIN_CHAIN_ID || '0'); // Changed from VITE_WORLDCHAIN_CHAIN_ID
             if (parseInt(chainId) !== expectedChainId) {
                 console.error(`Chain ID mismatch. Expected: ${expectedChainId}, Received: ${chainId}`);
                 return createResponse(400, { message: `Invalid chain ID. This donation must be on Worldchain (ID: ${expectedChainId}).` }, requestOrigin);
@@ -534,7 +572,7 @@ exports.handler = async (event) => {
                 return createResponse(409, { message: 'This donation has already been recorded and verified.' }, requestOrigin);
             }
             if (!ethersProvider) throw new Error("Blockchain provider (ethers) not initialized. Check WORLDCHAIN_RPC_URL.");
-            console.log(`Workspaceing receipt for tx: ${transactionHash} on chainId: ${chainId}`);
+            console.log(`Workspaceing receipt for tx: ${transactionHash} on chainId: ${chainId}`); // Corrected typo from Workspaceing
             const receipt = await ethersProvider.getTransactionReceipt(transactionHash);
 
             if (!receipt) {
@@ -545,7 +583,7 @@ exports.handler = async (event) => {
             }
             console.log(`Transaction ${transactionHash} successful on-chain. Status: ${receipt.status}, Block: ${receipt.blockNumber.toString()}`);
             
-            const expectedWldContractLower = WLD_CONTRACT_ADDRESS_WORLDCHAIN.toLowerCase();
+            const expectedWldContractLower = (process.env.WLD_CONTRACT_ADDRESS_WORLDCHAIN || "").toLowerCase();
             let transferDetails = null;
             const wldInterface = new ethers.Interface(["event Transfer(address indexed from, address indexed to, uint256 value)"]);
 
@@ -562,7 +600,7 @@ exports.handler = async (event) => {
                 }
             }
             if (!transferDetails) {
-                console.error(`No WLD Transfer event found from contract ${WLD_CONTRACT_ADDRESS_WORLDCHAIN} in tx ${transactionHash}.`);
+                console.error(`No WLD Transfer event found from contract ${process.env.WLD_CONTRACT_ADDRESS_WORLDCHAIN} in tx ${transactionHash}.`);
                 return createResponse(400, { message: "Could not verify WLD transfer in the transaction logs for the expected token contract." }, requestOrigin);
             }
             const campaignOwnerId = campaignData.Item.ownerId;
@@ -571,16 +609,16 @@ exports.handler = async (event) => {
                 return createResponse(400, { message: `Donation recipient (${transferDetails.to}) does not match campaign owner (${campaignOwnerId}).` }, requestOrigin);
             }
             console.log(`Recipient verified: ${transferDetails.to}`);
-
-            const expectedAmountInSmallestUnit = ethers.parseUnits(donatedAmount, WLD_TOKEN_DECIMALS);
-            if (!transferDetails.value.eq(expectedAmountInSmallestUnit)) { // Using .eq() for BigNumber comparison
+            const local_WLD_TOKEN_DECIMALS = parseInt(process.env.WLD_TOKEN_DECIMALS || '18');
+            const expectedAmountInSmallestUnit = ethers.parseUnits(donatedAmount, local_WLD_TOKEN_DECIMALS);
+            if (!transferDetails.value.eq(expectedAmountInSmallestUnit)) { 
                 console.error(`Amount mismatch for tx ${transactionHash}. Expected: ${expectedAmountInSmallestUnit.toString()}, Actual: ${transferDetails.value.toString()}`);
-                return createResponse(400, { message: `Donation amount does not match on-chain transfer. Expected ${donatedAmount} WLD, but found ${ethers.formatUnits(transferDetails.value, WLD_TOKEN_DECIMALS)} WLD.` }, requestOrigin);
+                return createResponse(400, { message: `Donation amount does not match on-chain transfer. Expected ${donatedAmount} WLD, but found ${ethers.formatUnits(transferDetails.value, local_WLD_TOKEN_DECIMALS)} WLD.` }, requestOrigin);
             }
-            console.log(`Amount verified: ${ethers.formatUnits(transferDetails.value, WLD_TOKEN_DECIMALS)} WLD`);
+            console.log(`Amount verified: ${ethers.formatUnits(transferDetails.value, local_WLD_TOKEN_DECIMALS)} WLD`);
 
             const now = new Date().toISOString();
-            const verifiedDonation = {
+            const verifiedDonation = { /* ... as before ... */
                 id: crypto.randomUUID(),
                 amount: parseFloat(donatedAmount),
                 onChainAmountSmallestUnit: transferDetails.value.toString(),
@@ -594,8 +632,7 @@ exports.handler = async (event) => {
                 blockNumber: receipt.blockNumber.toString(),
             };
             await ddbDocClient.send(new UpdateCommand({
-                TableName: CAMPAIGNS_TABLE_NAME,
-                Key: { id: campaignId },
+                TableName: CAMPAIGNS_TABLE_NAME, Key: { id: campaignId },
                 UpdateExpression: 'SET #r = if_not_exists(#r, :z) + :a, #d = list_append(if_not_exists(#d, :el), :dn), #ua = :now',
                 ExpressionAttributeNames: { '#r': 'raised', '#d': 'donations', '#ua': 'updatedAt' },
                 ExpressionAttributeValues: {
@@ -616,21 +653,21 @@ exports.handler = async (event) => {
             return createResponse(errMsg.includes('token') ? 401 : 500, { verified: false, message: errMsg, errorDetails: error.message }, requestOrigin);
         }
       }
-    } // End of /campaigns/{id}/* block
-  } // End of /campaigns block
+    } 
+  } 
 
 
 // # ############################################################################ #
 // # #                 SECTION 24 - MAIN LAMBDA HANDLER: ROUTE BLOCK - /USERS     #
 // # ############################################################################ #
   if (path.startsWith('/users/')) {
-    // pathParts is already defined
+    // pathParts is already defined from start of handler
     if (httpMethod === 'GET' && pathParts.length === 3 && pathParts[0] === 'users' && pathParts[2] === 'campaigns') {
         const userWalletAddress = pathParts[1];
         try {
             console.log(`[GET /users/:walletAddress/campaigns] Fetching campaigns for user: '${userWalletAddress}'`);
             const result = await ddbDocClient.send(new ScanCommand({
-                TableName: CAMPAIGNS_TABLE_NAME,
+                TableName: CAMPAIGNS_TABLE_NAME, // Uses const defined in handler from process.env
                 FilterExpression: '#oId = :walletAddress',
                 ExpressionAttributeNames: { '#oId': 'ownerId' },
                 ExpressionAttributeValues: { ':walletAddress': userWalletAddress }

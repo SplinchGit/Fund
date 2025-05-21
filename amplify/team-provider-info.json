@@ -102,11 +102,20 @@
         "0worldfunddebug56fd6525": {
           "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
           "s3Key": "amplify-builds/0worldfunddebug56fd6525-526668744258724c4566-build.zip",
-          "jwtSecretArn": "arn:aws:secretsmanager:eu-west-2:152034782674:secret:JWT_SESSION_SECRET-GcRucs"
+          "jwtSecretArn": "arn:aws:secretsmanager:eu-west-2:152034782674:secret:JWT_SESSION_SECRET-GcRucs",
+          "worldIdAppId": "app_0da912869c4818fc1a1ec64306551b69",
+          "generalUserVerifyActionId": "verify-user",
+          "wldDonationVerifyActionId": "worldfund-donate-campaign",
+          "worldchainRpcUrl": "https://worldchain.drpc.org",
+          "wldContractAddressWorldchain": "0x2cfc85d8e48f8eab294be644d9e25c3030863003",
+          "wldTokenDecimals": "18",
+          "worldChainId": "480",
+          "usersTableName": "Users-prod",
+          "campaignsTableName": "Campaings-prod"
         },
         "0worldfunddebugAuthLibsLayer": {
           "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
-          "s3Key": "amplify-builds/0worldfunddebugAuthLibsLayer-LambdaLayerVersion9de4b419-build.zip"
+          "s3Key": "amplify-builds/0worldfunddebugAuthLibsLayer-LambdaLayerVersion117e8e13-build.zip"
         },
         "campaignImageHandler": {
           "processedImageS3Prefix": "public/processed-campaign-images/",

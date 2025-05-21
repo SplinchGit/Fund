@@ -78,7 +78,23 @@
     }
   },
   "parameters": {
+    "AMPLIFY_function_0worldfunddebug56fd6525_campaignsTableName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug56fd6525"
+        }
+      ]
+    },
     "AMPLIFY_function_0worldfunddebug56fd6525_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug56fd6525"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebug56fd6525_generalUserVerifyActionId": {
       "usedBy": [
         {
           "category": "function",
@@ -95,6 +111,62 @@
       ]
     },
     "AMPLIFY_function_0worldfunddebug56fd6525_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug56fd6525"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebug56fd6525_usersTableName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug56fd6525"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebug56fd6525_wldContractAddressWorldchain": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug56fd6525"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebug56fd6525_wldDonationVerifyActionId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug56fd6525"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebug56fd6525_wldTokenDecimals": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug56fd6525"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebug56fd6525_worldChainId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug56fd6525"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebug56fd6525_worldIdAppId": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "0worldfunddebug56fd6525"
+        }
+      ]
+    },
+    "AMPLIFY_function_0worldfunddebug56fd6525_worldchainRpcUrl": {
       "usedBy": [
         {
           "category": "function",

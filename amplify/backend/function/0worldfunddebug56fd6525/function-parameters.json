@@ -12,6 +12,42 @@
     {
       "cloudFormationParameterName": "jwtSecretArn",
       "environmentVariableName": "JWT_SECRET_ARN"
+    },
+    {
+      "cloudFormationParameterName": "worldIdAppId",
+      "environmentVariableName": "WORLD_ID_APP_ID"
+    },
+    {
+      "cloudFormationParameterName": "generalUserVerifyActionId",
+      "environmentVariableName": "GENERAL_USER_VERIFY_ACTION_ID"
+    },
+    {
+      "cloudFormationParameterName": "wldDonationVerifyActionId",
+      "environmentVariableName": "WLD_DONATION_VERIFY_ACTION_ID"
+    },
+    {
+      "cloudFormationParameterName": "worldchainRpcUrl",
+      "environmentVariableName": "WORLDCHAIN_RPC_URL"
+    },
+    {
+      "cloudFormationParameterName": "wldContractAddressWorldchain",
+      "environmentVariableName": "WLD_CONTRACT_ADDRESS_WORLDCHAIN"
+    },
+    {
+      "cloudFormationParameterName": "wldTokenDecimals",
+      "environmentVariableName": "WLD_TOKEN_DECIMALS"
+    },
+    {
+      "cloudFormationParameterName": "worldChainId",
+      "environmentVariableName": "WORLD_CHAIN_ID"
+    },
+    {
+      "cloudFormationParameterName": "usersTableName",
+      "environmentVariableName": "USERS_TABLE_NAME"
+    },
+    {
+      "cloudFormationParameterName": "campaignsTableName",
+      "environmentVariableName": "CAMPAIGNS_TABLE_NAME"
     }
   ]
 }
