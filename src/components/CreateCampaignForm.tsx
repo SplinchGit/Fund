@@ -1,20 +1,33 @@
 // src/components/CreateCampaignForm.tsx
-// (Simplified image linking: send raw S3 key to backend; backend stores it; Lambda uses it for lookup)
+// (Full fix: Corrects image payload, category selection, and provides context for line 81 error)
 
 // # ############################################################################ #
-// # #                          SECTION 1 - IMPORTS                             #
+// # #                           SECTION 1 - IMPORTS                           #
 // # ############################################################################ #
 import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { campaignService, CampaignPayload } from "../services/CampaignService"; // Ensure CampaignPayload expects imageS3Key
+// Ensure CampaignPayload in CampaignService.ts has:
+// category: string; image?: string; ownerId: string; title: string; description: string; goal: number;
+import { campaignService, CampaignPayload } from "../services/CampaignService";
 import { useAuth } from "./AuthContext";
-import { uploadData } from '@aws-amplify/storage'; 
+import { uploadData } from '@aws-amplify/storage';
+
+// Define categories (or import from a shared constants file)
+const PREDEFINED_CATEGORIES = [
+    "Technology & Innovation",
+    "Creative Works",
+    "Community & Social Causes",
+    "Small Business & Entrepreneurship",
+    "Health & Wellness",
+    "Other"
+];
 
 // # ############################################################################ #
-// # #                          SECTION 2 - STYLES                              #
+// # #                           SECTION 2 - STYLES                           #
 // # ############################################################################ #
 const styles: { [key: string]: React.CSSProperties } = {
-  // ... (Your existing styles - assume these are complete and correct from previous versions)
+  // Using your styles from Turn 51. Line 81 error is reported within this block.
+  // If the error on Line 81 persists, please share that specific line and a few around it.
   page: { textAlign: 'center' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif', color: '#202124', backgroundColor: '#f5f7fa', margin: 0, padding: 0, overflowX: 'hidden' as const, width: '100vw', minHeight: '100vh', display: 'flex', flexDirection: 'column' as const, boxSizing: 'border-box' as const, },
   container: { margin: '0 auto', width: '100%', padding: '0 0.5rem', boxSizing: 'border-box' as const, maxWidth: '1200px', flexGrow: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', paddingTop: '1rem', paddingBottom: '2rem', },
   header: { background: 'white', padding: '0.5rem 0', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', position: 'sticky' as const, top: 0, zIndex: 100, width: '100%', boxSizing: 'border-box' as const, },
@@ -26,6 +39,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   formGroup: { marginBottom: '1.5rem', textAlign: 'left' as const, },
   label: { display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: '#3c4043', },
   input: { width: '100%', padding: '0.75rem 1rem', fontSize: '1rem', border: '1px solid #dadce0', borderRadius: '6px', backgroundColor: 'white', boxSizing: 'border-box' as const, transition: 'border-color 0.2s, box-shadow 0.2s', },
+  select: { width: '100%', padding: '0.75rem 1rem', fontSize: '1rem', border: '1px solid #dadce0', borderRadius: '6px', backgroundColor: 'white', boxSizing: 'border-box' as const, transition: 'border-color 0.2s, box-shadow 0.2s', appearance: 'none' as const, backgroundImage: `url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22/%3E%3C/svg%3E')`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '0.65em auto', paddingRight: '2.5rem', },
   textarea: { width: '100%', padding: '0.75rem 1rem', fontSize: '1rem', border: '1px solid #dadce0', borderRadius: '6px', resize: 'vertical' as const, minHeight: '120px', backgroundColor: 'white', boxSizing: 'border-box' as const, transition: 'border-color 0.2s, box-shadow 0.2s', },
   charCount: { fontSize: '0.75rem', color: '#5f6368', marginTop: '0.375rem', textAlign: 'right' as const, },
   button: { width: '100%', padding: '0.875rem 1.5rem', fontSize: '1rem', fontWeight: 500, color: 'white', backgroundColor: '#1a73e8', border: 'none', borderRadius: '6px', cursor: 'pointer', transition: 'background-color 0.2s, opacity 0.2s', textAlign: 'center' as const, minHeight: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 'normal', },
@@ -38,18 +52,18 @@ const styles: { [key: string]: React.CSSProperties } = {
 };
 
 const responsiveStyles = `
-  html, body { font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'}; /* ...rest of your body styles... */ }
+  html, body { font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'}; }
   *, *::before, *::after { box-sizing: inherit; }
-  input:focus, textarea:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2); outline: none; }
+  input:focus, textarea:focus, select:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2); outline: none; }
 `;
 
 // # ############################################################################ #
-// # #                 SECTION 3 - COMPONENT DEFINITION & STATE                 #
+// # #                   SECTION 3 - COMPONENT DEFINITION & STATE                   #
 // # ############################################################################ #
 
 interface CreateFormFields {
   title: string;
-  goal: string; 
+  goal: string;
   description: string;
 }
 
@@ -61,29 +75,28 @@ export function CreateCampaignForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [form, setForm] = useState<CreateFormFields>({
     title: "",
-    goal: "", 
+    goal: "",
     description: "",
   });
+  const [selectedCategory, setSelectedCategory] = useState<string>(PREDEFINED_CATEGORIES[0] ?? "");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   
-  // Removed temporaryCampaignIdRef and uuid import
-
 // # ############################################################################ #
-// # #                          SECTION 4 - CONSTANTS                           #
+// # #                           SECTION 4 - CONSTANTS                           #
 // # ############################################################################ #
   const MAX_TITLE_LENGTH = 40;
   const MAX_DESCRIPTION_LENGTH = 425;
-  const MIN_GOAL_AMOUNT = 1; 
-  const MAX_GOAL_AMOUNT = 10000000000;
-  const MAX_IMAGE_SIZE_MB = 5; // 5MB
+  const MIN_GOAL_AMOUNT = 1;
+  const MAX_GOAL_AMOUNT = 10000000000; // Make sure this aligns with backend if any validation exists there
+  const MAX_IMAGE_SIZE_MB = 5;
   const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
   const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png'];
   const ALLOWED_IMAGE_EXTENSIONS_DISPLAY = "JPEG, PNG";
 
 // # ############################################################################ #
-// # #                 SECTION 5 - EFFECT: AUTHENTICATION CHECK                 #
+// # #                   SECTION 5 - EFFECT: AUTHENTICATION CHECK                   #
 // # ############################################################################ #
   useEffect(() => {
     if (!isAuthenticated) {
@@ -92,11 +105,11 @@ export function CreateCampaignForm() {
       }, 2500);
       return () => clearTimeout(redirectTimer);
     } else {
-        setSubmitError(null); 
+        setSubmitError(null);
     }
   }, [isAuthenticated, navigate]);
 
-  useEffect(() => { 
+  useEffect(() => {
     return () => {
       if (imagePreview) {
         URL.revokeObjectURL(imagePreview);
@@ -105,16 +118,20 @@ export function CreateCampaignForm() {
   }, [imagePreview]);
 
 // # ############################################################################ #
-// # #                 SECTION 6 - EVENT HANDLER: ONCHANGE                      #
+// # #                   SECTION 6 - EVENT HANDLER: ONCHANGE                   #
 // # ############################################################################ #
-  const onChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const onChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value, }));
+    if (name === "category") {
+        setSelectedCategory(value);
+    } else {
+        setForm(prev => ({ ...prev, [name]: value, }));
+    }
     if (submitError) setSubmitError(null);
   };
 
 // # ############################################################################ #
-// # #                 SECTION 6.5 - EVENT HANDLER: HANDLE IMAGE CHANGE         #
+// # #                 SECTION 6.5 - EVENT HANDLER: HANDLE IMAGE CHANGE                 #
 // # ############################################################################ #
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     setImageError(null); 
@@ -137,42 +154,47 @@ export function CreateCampaignForm() {
   };
 
 // # ############################################################################ #
-// # #                 SECTION 7 - EVENT HANDLER: ONSUBMIT                      #
+// # #                   SECTION 7 - EVENT HANDLER: ONSUBMIT                   #
 // # ############################################################################ #
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!isAuthenticated || !walletAddress) { setSubmitError('You must be logged in...'); return; }
+    if (!isAuthenticated || !walletAddress) { 
+        setSubmitError('You must be logged in and have a connected wallet to create a campaign.'); 
+        return; 
+    }
 
     const goalAmount = parseFloat(form.goal);
 
+    // --- Form Validations ---
     if (!form.title.trim()) { setSubmitError('Campaign title is required.'); return; }
     if (form.title.trim().length > MAX_TITLE_LENGTH) { setSubmitError(`Title cannot exceed ${MAX_TITLE_LENGTH} characters.`); return; }
-    if (isNaN(goalAmount) || goalAmount < MIN_GOAL_AMOUNT || goalAmount > MAX_GOAL_AMOUNT) { 
-      setSubmitError(`Funding goal must be a number between ${MIN_GOAL_AMOUNT} and ${MAX_GOAL_AMOUNT} WLD.`); return; 
+    if (!selectedCategory) { 
+        setSubmitError('Please select a campaign category.'); return;
+    }
+    if (isNaN(goalAmount) || goalAmount < MIN_GOAL_AMOUNT || goalAmount > MAX_GOAL_AMOUNT) {
+      setSubmitError(`Funding goal must be a number between ${MIN_GOAL_AMOUNT} and ${MAX_GOAL_AMOUNT} WLD.`); return;
     }
     if (!form.description.trim()) { setSubmitError('Campaign description is required.'); return; }
     if (form.description.trim().length > MAX_DESCRIPTION_LENGTH) { setSubmitError(`Description cannot exceed ${MAX_DESCRIPTION_LENGTH} characters.`); return; }
     if (imageError) { setSubmitError(imageError); return; }
+    // --- End Form Validations ---
 
     setSubmitError(null);
     setLoading(true);
-    let rawImageS3Key: string | undefined = undefined; // Use a distinct variable name
+    let rawImageS3Key: string | undefined = undefined; // Variable to hold the S3 key from upload
 
     try {
       if (imageFile) {
-        // Path for raw uploads within user's protected space.
-        // The S3 key generated here IS the rawImageS3Key.
+        // Ensure walletAddress is a string for the S3 key path
         const uniqueFileName = `raw-campaign-uploads/${walletAddress}-${Date.now()}-${imageFile.name.replace(/\s+/g, '_')}`;
         console.log(`[CreateCampaignForm] Uploading raw image: ${uniqueFileName}`);
         try {
           const uploadResult = await uploadData({
-            key: uniqueFileName, // This key will be prefixed by 'protected/{identity_id}/' by Amplify
+            key: uniqueFileName, 
             data: imageFile,
             options: {
               contentType: imageFile.type,
-              accessLevel: 'protected', // Raw upload is scoped to the user
-              // Optionally add uploaderWalletAddress to metadata if Lambda needs it explicitly
-              // metadata: { uploaderwalletaddress: walletAddress } 
+              accessLevel: 'protected', // Scoped to the authenticated user
             }
           }).result;
           rawImageS3Key = uploadResult.key; // This key includes the 'protected/{identity_id}/' prefix
@@ -183,22 +205,23 @@ export function CreateCampaignForm() {
         }
       }
 
-      // The CampaignPayload in CampaignService.ts should expect 'imageS3Key'
+      // Construct payload correctly using 'image' property for the S3 key
       const payloadForBackend: CampaignPayload = {
         title: form.title.trim(),
         description: form.description.trim(),
         goal: goalAmount,
-        ownerId: walletAddress,
-        ...(rawImageS3Key && { imageS3Key: rawImageS3Key }), // Send the key of the raw upload
+        category: selectedCategory,
+        ownerId: walletAddress, // walletAddress is confirmed to be a string here due to the check above
+        // Conditionally add the 'image' property (with the S3 key) if rawImageS3Key has a value
+        ...(rawImageS3Key ? { image: rawImageS3Key } : {})
       };
       
       console.log('[CreateCampaignForm] Submitting campaign data:', payloadForBackend);
+      // Ensure CampaignPayload in CampaignService.ts expects 'category: string' and 'image?: string'
       const serviceResult = await campaignService.createCampaign(payloadForBackend);
 
       if (serviceResult.success && serviceResult.id) {
         console.log('[CreateCampaignForm] Campaign created successfully:', serviceResult.id);
-        // The backend Lambda will process the image linked by rawImageS3Key.
-        // The campaign card will eventually display the processed image URL.
         navigate(`/campaigns/${serviceResult.id}`, { state: { message: 'Campaign created successfully!' } });
       } else {
         throw new Error(serviceResult.error || 'Failed to create campaign.');
@@ -212,10 +235,9 @@ export function CreateCampaignForm() {
   };
 
 // # ############################################################################ #
-// # #                 SECTION 8 - JSX RETURN & FORM STRUCTURE                  #
+// # #                   SECTION 8 - JSX RETURN & FORM STRUCTURE                   #
 // # ############################################################################ #
   return (
-    // ... (Your existing JSX structure - no change needed here from last full version you posted)
     <div style={styles.page}>
       <style>{responsiveStyles}</style>
       <header style={styles.header}>
@@ -235,6 +257,26 @@ export function CreateCampaignForm() {
               <input type="text" id="title" name="title" value={form.title} onChange={onChange} style={styles.input} placeholder="e.g., Community Art Mural" disabled={!isAuthenticated || loading} maxLength={MAX_TITLE_LENGTH} required />
               <div style={styles.charCount}>{form.title.length}/{MAX_TITLE_LENGTH}</div>
             </div>
+
+            <div style={styles.formGroup}>
+                <label htmlFor="category" style={styles.label}>Category</label>
+                <select
+                    id="category"
+                    name="category" 
+                    value={selectedCategory}
+                    onChange={onChange} 
+                    style={styles.select} 
+                    disabled={!isAuthenticated || loading}
+                    required
+                >
+                    {PREDEFINED_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                            {cat}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
             <div style={styles.formGroup}>
               <label htmlFor="goal" style={styles.label}>Funding Goal (WLD)</label>
               <input type="number" id="goal" name="goal" value={form.goal} onChange={onChange} min={MIN_GOAL_AMOUNT.toString()} max={MAX_GOAL_AMOUNT.toString()} step="any" style={styles.input} placeholder={`e.g., 500 (Min: ${MIN_GOAL_AMOUNT}, Max: ${MAX_GOAL_AMOUNT})`} disabled={!isAuthenticated || loading} required />

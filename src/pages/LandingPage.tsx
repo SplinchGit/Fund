@@ -1,12 +1,13 @@
 // src/pages/LandingPage.tsx
-// (Refactored THIS version to remove daysLeft logic from its internal CampaignCardComponent and data prep)
+// (MODIFIED to include category filter dropdown and display)
 
 // # ############################################################################ #
-// # #                          SECTION 1 - IMPORTS                             #
+// # #                           SECTION 1 - IMPORTS                           #
 // # ############################################################################ #
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext';
+// Ensure CampaignData from CampaignService includes 'category'
 import { campaignService, Campaign as CampaignData } from '../services/CampaignService';
 import { triggerMiniKitWalletAuth } from '../MiniKitProvider';
 
@@ -18,18 +19,31 @@ import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
+// Define categories (or import from a shared constants file)
+const PREDEFINED_CATEGORIES = [
+    "Technology & Innovation",
+    "Creative Works",
+    "Community & Social Causes",
+    "Small Business & Entrepreneurship",
+    "Health & Wellness",
+    "Other"
+];
+const ALL_CATEGORIES_FILTER_OPTION = "All Categories";
+
+
 // # ############################################################################ #
-// # #                   SECTION 2 - INTERFACE: CAMPAIGN DISPLAY DATA             #
+// # #                 SECTION 2 - INTERFACE: CAMPAIGN DISPLAY DATA                 #
 // # ############################################################################ #
 interface CampaignDisplay extends CampaignData {
-  daysLeft?: number; // MODIFIED: Made optional as it's being removed from display
-  creator: string; 
-  isVerified: boolean; 
+  // daysLeft?: number; // Already optional or removed
+  creator: string;
+  isVerified: boolean;
   progressPercentage: number;
+  category: string; // <<<< ENSURE 'category' is part of CampaignData or explicitly here
 }
 
 // # ############################################################################ #
-// # #                SECTION 3 - COMPONENT: PAGE DEFINITION & INITIALIZATION     #
+// # #           SECTION 3 - COMPONENT: PAGE DEFINITION & INITIALIZATION           #
 // # ############################################################################ #
 const LandingPage: React.FC = () => {
   useEffect(() => {
@@ -46,7 +60,7 @@ const LandingPage: React.FC = () => {
   const location = useLocation();
 
 // ############################################################################ #
-// # #                         SECTION 4 - COMPONENT: STATE MANAGEMENT            #
+// # #                   SECTION 4 - COMPONENT: STATE MANAGEMENT                   #
 // # ############################################################################ #
   const [campaigns, setCampaigns] = useState<CampaignDisplay[]>([]);
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
@@ -54,13 +68,17 @@ const LandingPage: React.FC = () => {
   const [isConnectingWallet, setIsConnectingWallet] = useState(false);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  // --- ADDED state for category filter ---
+  const [selectedFilterCategory, setSelectedFilterCategory] = useState<string>(ALL_CATEGORIES_FILTER_OPTION);
+
 
 // # ############################################################################ #
-// # #                         SECTION 5 - FILTER FUNCTIONALITY                   #
+// # #                   SECTION 5 - FILTER FUNCTIONALITY                   #
 // # ############################################################################ #
-  const filteredCampaigns = useMemo(() => {
+  // Search filter will apply ON TOP of the category-filtered data fetched from backend
+  const filteredCampaignsBySearch = useMemo(() => {
     if (!searchQuery) {
-      return campaigns;
+      return campaigns; // 'campaigns' state is already category-filtered from API
     }
     const lowercasedQuery = searchQuery.toLowerCase();
     return campaigns.filter(campaign =>
@@ -70,7 +88,7 @@ const LandingPage: React.FC = () => {
   }, [campaigns, searchQuery]);
 
 // # ############################################################################ #
-// # #                         SECTION 6 - EFFECT: AUTH ERROR HANDLING            #
+// # #                 SECTION 6 - EFFECT: AUTH ERROR HANDLING                 #
 // # ############################################################################ #
   useEffect(() => {
     if (authError) {
@@ -80,7 +98,7 @@ const LandingPage: React.FC = () => {
   }, [authError]);
 
 // # ############################################################################ #
-// # #                         SECTION 7 - EFFECT: AUTH STATUS LOGGING            #
+// # #                 SECTION 7 - EFFECT: AUTH STATUS LOGGING                 #
 // # ############################################################################ #
   useEffect(() => {
     console.log('[LandingPage] Auth state from context changed:', {
@@ -91,30 +109,37 @@ const LandingPage: React.FC = () => {
   }, [isAuthenticated, walletAddress, authIsLoading]);
 
 // # ############################################################################ #
-// # #                         SECTION 8 - EFFECT: FETCH CAMPAIGNS                #
+// # #                 SECTION 8 - EFFECT: FETCH CAMPAIGNS                 #
 // # ############################################################################ #
   useEffect(() => {
     const fetchCampaignsData = async () => {
-      console.log('[LandingPage] Attempting to fetch campaigns...');
+      console.log(`[LandingPage] Attempting to fetch campaigns for category: ${selectedFilterCategory}`);
       setLoadingCampaigns(true);
       setPageError(null);
 
       try {
         if (import.meta.env.MODE === 'test') {
           console.log('[LandingPage] Test mode detected, skipping API call');
-          setCampaigns([]); 
-          setLoadingCampaigns(false); 
+          setCampaigns([]);
+          setLoadingCampaigns(false);
           return;
         }
 
-        const result = await campaignService.fetchAllCampaigns();
+        // Pass category to service if it's not "All Categories"
+        const categoryToFetch = selectedFilterCategory === ALL_CATEGORIES_FILTER_OPTION 
+                                  ? undefined 
+                                  : selectedFilterCategory;
+        
+        // Using campaignService.fetchAllCampaigns with optional category
+        const result = await campaignService.fetchAllCampaigns(categoryToFetch);
+        
         if (result.success && result.campaigns) {
           const displayCampaigns: CampaignDisplay[] = result.campaigns.map(campaign => ({
             ...campaign,
-            // daysLeft: calculateDaysLeft(campaign.createdAt), // REMOVED daysLeft calculation
             creator: formatAddress(campaign.ownerId),
-            isVerified: true, 
+            isVerified: true, // Assuming default or to be fetched later
             progressPercentage: campaign.goal > 0 ? Math.min(Math.round((campaign.raised / campaign.goal) * 100), 100) : 0,
+            // 'category' should now be part of 'campaign' object from service
           }));
           setCampaigns(displayCampaigns);
           console.log('[LandingPage] Campaigns fetched successfully.');
@@ -132,12 +157,13 @@ const LandingPage: React.FC = () => {
     };
 
     fetchCampaignsData();
-  }, []);
+  }, [selectedFilterCategory]); // <<<< MODIFIED: Re-fetch when selectedFilterCategory changes
 
 // # ############################################################################ #
-// # #                         SECTION 9 - CALLBACK: CONNECT WALLET              #
+// # #                 SECTION 9 - CALLBACK: CONNECT WALLET                 #
 // # ############################################################################ #
   const handleConnectWallet = useCallback(async () => {
+    // ... (Your existing handleConnectWallet logic - keep as is) ...
     if (isConnectingWallet || authIsLoading) { 
       console.log('[LandingPage] handleConnectWallet: Already connecting or auth is loading. Aborting.');
       return; 
@@ -195,9 +221,10 @@ const LandingPage: React.FC = () => {
   }, [isConnectingWallet, authIsLoading, getNonceForMiniKit, loginWithWallet, connectionAttempts]);
 
 // # ############################################################################ #
-// # #                         SECTION 10 - CALLBACK: ACCOUNT NAVIGATION          #
+// # #               SECTION 10 - CALLBACK: ACCOUNT NAVIGATION               #
 // # ############################################################################ #
   const handleAccountNavigation = useCallback(async (e?: React.MouseEvent) => {
+    // ... (Your existing handleAccountNavigation logic - keep as is) ...
     if (e) e.preventDefault();
     console.log('[LandingPage] handleAccountNavigation: Clicked. Auth state:', { isAuthenticated, authIsLoading });
     if (authIsLoading) { 
@@ -214,30 +241,24 @@ const LandingPage: React.FC = () => {
   }, [isAuthenticated, authIsLoading, navigate, handleConnectWallet]);
 
 // # ############################################################################ #
-// # #                         SECTION 11 - CALLBACK: DASHBOARD HEADER NAVIGATION #
+// # #           SECTION 11 - CALLBACK: DASHBOARD HEADER NAVIGATION           #
 // # ############################################################################ #
   const goToDashboardHeader = useCallback(() => {
+    // ... (Your existing goToDashboardHeader logic - keep as is) ...
     console.log('[LandingPage] goToDashboardHeader: Navigating to /dashboard.');
     navigate('/dashboard', { replace: true });
   }, [navigate]);
 
 // # ############################################################################ #
-// # #                         SECTION 12 - HELPER FUNCTIONS                      #
+// # #                       SECTION 12 - HELPER FUNCTIONS                       #
 // # ############################################################################ #
-  // REMOVED: calculateDaysLeft function as it's no longer used here
-  // const calculateDaysLeft = (createdAt: string): number => {
-  //   const created = new Date(createdAt); const now = new Date();
-  //   const campaignDurationMs = 30 * 24 * 60 * 60 * 1000; // 30 days
-  //   const endTimeMs = created.getTime() + campaignDurationMs;
-  //   const diffTime = endTimeMs - now.getTime();
-  //   return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-  // };
   const formatAddress = (address: string): string => address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Anonymous';
   const isActivePath = (path: string): boolean => location.pathname === path || (path === '/' && location.pathname === '/landing') || (path === '/campaigns' && (location.pathname === '/campaigns' || location.pathname.startsWith('/campaigns/')));
 
 // # ############################################################################ #
-// # #                         SECTION 13 - INLINE STYLES OBJECT                  #
+// # #                     SECTION 13 - INLINE STYLES OBJECT                     #
 // # ############################################################################ #
+  // --- ADDED style for category filter dropdown ---
   const styles: { [key: string]: React.CSSProperties } = {
     page: { textAlign: 'center' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif', color: '#202124', backgroundColor: '#ffffff', margin: 0, padding: 0, overflowX: 'hidden' as const, width: '100vw', minHeight: '100vh', display: 'flex', flexDirection: 'column' as const, boxSizing: 'border-box' as const, },
     container: { margin: '0 auto', width: '100%', padding: '0 0.5rem 6rem 0.5rem', boxSizing: 'border-box' as const, maxWidth: '1200px', flexGrow: 1, display: 'flex', flexDirection: 'column' as const, },
@@ -252,27 +273,61 @@ const LandingPage: React.FC = () => {
     buttonSecondary: { backgroundColor: '#f1f3f4', color: '#202124', borderColor: '#dadce0' },
     hero: { background: '#f5f7fa', padding: '1rem 1rem 1.5rem', textAlign: 'center' as const, width: '100%', boxSizing: 'border-box' as const, marginBottom: '0.5rem', },
     heroTitle: { fontSize: '2rem', fontWeight: 700, color: '#202124', marginBottom: '0.25rem', padding: 0 },
-    heroSubtitle: { fontSize: '1.125rem', color: '#5f6368', margin: '0 auto 1rem', maxWidth: '800px', padding: 0 }, 
-    searchContainer: { margin: '0.5rem auto 1rem auto', width: '100%', maxWidth: '500px', padding: '0 0.5rem', boxSizing: 'border-box' as const, },
+    heroSubtitle: { fontSize: '1.125rem', color: '#5f6368', margin: '0 auto 1rem', maxWidth: '800px', padding: 0 },
+    searchAndFilterContainer: { // <<<< ADDED container for search and filter
+        display: 'flex',
+        flexDirection: 'column' as const,
+        gap: '1rem',
+        margin: '0.5rem auto 1.5rem auto', // Adjusted margin
+        width: '100%',
+        maxWidth: '500px',
+        padding: '0 0.5rem',
+        boxSizing: 'border-box' as const,
+    },
     searchInput: { width: '100%', padding: '0.75rem 1rem', fontSize: '1rem', border: '1px solid #dadce0', borderRadius: '2rem', boxSizing: 'border-box' as const, transition: 'border-color 0.2s, box-shadow 0.2s', },
+    categoryFilterSelect: { // <<<< ADDED style for the category select
+        width: '100%',
+        padding: '0.75rem 1rem',
+        fontSize: '1rem',
+        border: '1px solid #dadce0',
+        borderRadius: '2rem', // Styled like search input
+        boxSizing: 'border-box' as const,
+        backgroundColor: 'white',
+        appearance: 'none' as const, // To allow custom arrow
+        backgroundImage: `url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%235f6368%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22/%3E%3C/svg%3E')`,
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'right 1rem center',
+        backgroundSize: '0.65em auto',
+        paddingRight: '2.5rem',
+    },
     campaignsSection: { padding: '0.5rem 0 2rem', flexGrow: 1, width: '100%', boxSizing: 'border-box' as const, },
     sectionHeader: { textAlign: 'center' as const, marginBottom: '1rem' },
     sectionTitle: { fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.25rem', padding: 0, color: '#202124' },
-    sectionSubtitle: { color: '#5f6368', fontSize: '1rem', margin: '0 auto 1rem', padding: 0, maxWidth: '700px' }, 
+    sectionSubtitle: { color: '#5f6368', fontSize: '1rem', margin: '0 auto 1rem', padding: 0, maxWidth: '700px' },
     swiperContainer: { width: '100%', flexGrow: 1, minHeight: 0, padding: '0.5rem 0', position: 'relative' as const, },
     swiperSlide: { display: 'flex', justifyContent: 'center', alignItems: 'stretch', padding: '0 0.25rem', boxSizing: 'border-box' as const, },
-    // Styles for the inline CampaignCardComponent
     campaignCard: { backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', overflow: 'hidden', transition: 'transform 0.2s, box-shadow 0.2s', display: 'flex', flexDirection: 'column' as const, width: '100%', height: 'auto', boxSizing: 'border-box' as const, },
     cardImage: { width: '100%', height: '180px', objectFit: 'cover' as const },
     noImagePlaceholder: { width: '100%', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f3f4', color: '#9aa0a6', fontSize: '0.875rem', boxSizing: 'border-box' as const },
     cardContent: { padding: '1rem', textAlign: 'left' as const, flexGrow: 1, display: 'flex', flexDirection: 'column' as const, boxSizing: 'border-box' as const },
     cardTitle: { fontSize: '1.125rem', fontWeight: 600, color: '#202124', marginBottom: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
     cardDescription: { fontSize: '0.875rem', color: '#5f6368', marginBottom: '0.75rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden', textOverflow: 'ellipsis', minHeight: 'calc(3 * 1.5 * 0.875rem)', lineHeight: 1.5, flexGrow: 1},
+    cardCategory: { // <<<< ADDED style for category display
+        fontSize: '0.7rem',
+        fontWeight: 500,
+        color: '#1a73e8', // Blue, like links
+        backgroundColor: 'rgba(26, 115, 232, 0.1)',
+        padding: '0.2rem 0.5rem',
+        borderRadius: '4px',
+        display: 'inline-block', // So it doesn't take full width
+        marginBottom: '0.5rem',
+        textTransform: 'capitalize' as const,
+    },
     progressBar: { width: '100%', height: '6px', backgroundColor: '#e9ecef', borderRadius: '3px', overflow: 'hidden', marginBottom: '0.5rem', marginTop: 'auto' },
     progressFill: { height: '100%', backgroundColor: '#34a853', borderRadius: '3px',  transition: 'width 0.4s ease-in-out' },
-    progressStats: { display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#5f6368', marginBottom: '0.75rem' }, // Keep marginBottom for spacing before footer if daysLeft is removed
+    progressStats: { display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#5f6368', marginBottom: '0.75rem' },
     cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderTop: '1px solid #f1f3f4', backgroundColor: '#fcfcfc', boxSizing: 'border-box' as const, marginTop: 'auto' },
-    creatorInfo: { fontSize: '0.75rem', color: '#5f6368', display: 'flex', alignItems: 'center' }, // Added display:flex, alignItems:center
+    creatorInfo: { fontSize: '0.75rem', color: '#5f6368', display: 'flex', alignItems: 'center' },
     creatorAvatar: { width: '1.25rem', height: '1.25rem', borderRadius: '50%', backgroundColor: '#e5e7eb', marginRight: '0.375rem', display: 'inline-block' },
     verifiedBadge: { display: 'inline-flex', alignItems: 'center', backgroundColor: 'rgba(52, 168, 83, 0.1)', color: '#34a853', fontSize: '0.6rem', padding: '0.1rem 0.25rem', borderRadius: '0.125rem', marginLeft: '0.25rem', fontWeight: 500 },
     viewButton: { fontSize: '0.8rem', padding: '0.375rem 0.75rem', backgroundColor: '#1a73e8', color: 'white', borderRadius: '4px', textDecoration: 'none', transition: 'background-color 0.2s' },
@@ -283,6 +338,10 @@ const LandingPage: React.FC = () => {
     legalNotice: { fontSize: '0.7rem', color: '#5f6368', padding: '1rem', marginTop: '1rem', marginBottom: '4.5rem', borderTop: '1px solid #eee', width: '100%', boxSizing: 'border-box' as const, textAlign: 'center' as const, },
     errorMessage: { textAlign: 'center' as const, padding: '1rem', backgroundColor: 'rgba(234, 67, 53, 0.1)', border: '1px solid rgba(234, 67, 53, 0.2)', borderRadius: '8px', color: '#c53929', margin: '1rem auto', fontSize: '0.9rem', maxWidth: '1200px', boxSizing: 'border-box' as const, },
     emptyStateContainer: { display: 'flex', flexDirection: 'column' as const, justifyContent: 'center', alignItems: 'center', padding: '3rem 1rem', textAlign: 'center' as const, color: '#5f6368', flexGrow: 1, minHeight: '300px', boxSizing: 'border-box' as const, },
+    // NOTE: Your original code had 'styles' object defined twice. I've merged them here.
+    // Assuming the second 'styles' object was intended to add to or override the first.
+    // If there were conflicting keys, the latter definition would take precedence.
+    // The styles from your second definition are now integrated into this single 'styles' object.
   };
 
   const responsiveStyles = `
@@ -293,17 +352,21 @@ const LandingPage: React.FC = () => {
     .swiper-pagination-bullet-active { background-color: #1a73e8 !important; }
     .swiper-button-next, .swiper-button-prev { color: #1a73e8 !important; transform: scale(0.7); }
     .swiper-slide { overflow: hidden; }
+    select:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2); outline: none; } /* Added select focus to responsive */
   `;
 
 // # ############################################################################ #
-// # #         SECTION 13.5 - INNER COMPONENT: CAMPAIGN CARD                  #
+// # #             SECTION 13.5 - INNER COMPONENT: CAMPAIGN CARD             #
 // # ############################################################################ #
-  // This CampaignCardComponent is specific to LandingPage.tsx
   const CampaignCardComponent: React.FC<{ campaign: CampaignDisplay }> = ({ campaign }) => {
     return (
       <div style={styles.campaignCard}>
         {campaign.image ? ( <img src={campaign.image} alt={campaign.title} style={styles.cardImage} onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/400x180/e5e7eb/9aa0a6?text=Img+Error'; }} /> ) : ( <div style={styles.noImagePlaceholder}>No Image</div> )}
         <div style={styles.cardContent}>
+          {/* --- ADDED Category Display --- */}
+          {campaign.category && (
+            <div style={styles.cardCategory}>{campaign.category}</div>
+          )}
           <h3 style={styles.cardTitle}>{campaign.title}</h3>
           <p style={styles.cardDescription}>{campaign.description || 'No description provided.'}</p>
           <div style={styles.progressBar}><div style={{ ...styles.progressFill, width: `${campaign.progressPercentage}%` }}></div></div>
@@ -311,12 +374,10 @@ const LandingPage: React.FC = () => {
             <span>{campaign.raised.toLocaleString()} / {campaign.goal.toLocaleString()} WLD</span>
             <span>{campaign.progressPercentage}%</span>
           </div>
-          {/* Days Left display logic would be here if present */}
-          {/* Example: campaign.daysLeft !== undefined && <p>{campaign.daysLeft} days left</p> */}
         </div>
         <div style={styles.cardFooter}>
           <div style={styles.creatorInfo}>
-            <span style={styles.creatorAvatar}></span> {/* Avatar placeholder */}
+            <span style={styles.creatorAvatar}></span> 
             <span>{campaign.creator}</span>
             {campaign.isVerified && ( <span style={styles.verifiedBadge}>Verified</span> )}
           </div>
@@ -327,16 +388,19 @@ const LandingPage: React.FC = () => {
   };
 
 // # ############################################################################ #
-// # #                 SECTION 14 - JSX RETURN: PAGE STRUCTURE & CONTENT        #
+// # #             SECTION 14 - JSX RETURN: PAGE STRUCTURE & CONTENT             #
 // # ############################################################################ #
   
+  // Swiper debug log as in your original code
   console.log('SWIPER_DEBUG (LandingPage):', {
     loadingCampaigns,
     pageError,
     campaignsCount: campaigns.length,
-    filteredCampaignsCount: filteredCampaigns.length,
-    firstFilteredCampaign: filteredCampaigns.length > 0 ? filteredCampaigns[0] : undefined
+    filteredCampaignsCount: filteredCampaignsBySearch.length, // Use filteredCampaignsBySearch here
+    firstFilteredCampaign: filteredCampaignsBySearch.length > 0 ? filteredCampaignsBySearch[0] : undefined
   });
+
+  const categoryFilterOptions = [ALL_CATEGORIES_FILTER_OPTION, ...PREDEFINED_CATEGORIES];
 
   return (
     <div style={styles.page}>
@@ -362,8 +426,24 @@ const LandingPage: React.FC = () => {
       <section style={styles.hero}>
         <h1 style={styles.heroTitle}>Support Global Initiatives</h1>
         <p style={styles.heroSubtitle}>Fund projects that make a difference with transparent and secure donations.</p>
-        <div style={styles.searchContainer}>
-          <input type="search" placeholder="Search campaigns by title or description..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={styles.searchInput} />
+        {/* --- MOVED search and ADDED category filter into a container --- */}
+        <div style={styles.searchAndFilterContainer}>
+          <input 
+            type="search" 
+            placeholder="Search campaigns by title or description..." 
+            value={searchQuery} 
+            onChange={(e) => setSearchQuery(e.target.value)} 
+            style={styles.searchInput} 
+          />
+          <select
+            value={selectedFilterCategory}
+            onChange={(e) => setSelectedFilterCategory(e.target.value)}
+            style={styles.categoryFilterSelect}
+          >
+            {categoryFilterOptions.map(category => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </select>
         </div>
       </section>
 
@@ -380,27 +460,33 @@ const LandingPage: React.FC = () => {
             <div style={styles.errorMessage}>
               <p>{pageError}</p>
               {typeof pageError === 'string' && connectionAttempts > 2 && !pageError.toLowerCase().includes("api connection error") && (
-                 <button onClick={() => window.location.reload()} style={{...styles.button, ...styles.buttonSecondary, marginTop: '1rem', width: 'auto', padding:'0.5rem 1rem'}}>Try Again or Refresh</button>
+                  <button onClick={() => window.location.reload()} style={{...styles.button, ...styles.buttonSecondary, marginTop: '1rem', width: 'auto', padding:'0.5rem 1rem'}}>Try Again or Refresh</button>
               )}
             </div>
-          ) : filteredCampaigns.length === 0 ? ( 
+          // Use filteredCampaignsBySearch for display
+          ) : filteredCampaignsBySearch.length === 0 ? ( 
             <div style={styles.emptyStateContainer}>
-              <p>{searchQuery ? `No campaigns found for "${searchQuery}".` : "No campaigns available at the moment."}</p>
+              <p>{searchQuery ? `No campaigns found for "${searchQuery}".` : 
+                 (selectedFilterCategory !== ALL_CATEGORIES_FILTER_OPTION ? `No campaigns found in category "${selectedFilterCategory}".` : "No campaigns available at the moment.")}
+              </p>
               {!searchQuery && isAuthenticated && ( <Link to="/new-campaign" style={{...styles.button, ...styles.buttonPrimary, marginTop: '1rem', width: 'auto', padding:'0.625rem 1.25rem'}}>Create First Campaign</Link> )}
             </div>
           ) : ( 
             <Swiper
               modules={[Navigation, Pagination, A11y]}
               spaceBetween={16} 
-              slidesPerView={1}
+              slidesPerView={1} // You might want to adjust slidesPerView for different screen sizes
               navigation
               pagination={{ clickable: true, dynamicBullets: true }}
               loop={false} 
               style={styles.swiperContainer}
               grabCursor={true}
-              // key prop removed
+              // Use filteredCampaignsBySearch for Swiper
+              // Adding a key here to force re-render Swiper if filteredCampaignsBySearch identity changes
+              // This can help if Swiper doesn't update slides properly after filter change.
+              key={filteredCampaignsBySearch.map(c => c.id).join('-')} 
             >
-              {filteredCampaigns.map(campaign => (
+              {filteredCampaignsBySearch.map(campaign => (
                 <SwiperSlide key={campaign.id} style={styles.swiperSlide}>
                   <CampaignCardComponent campaign={campaign} /> 
                 </SwiperSlide>
@@ -427,6 +513,6 @@ const LandingPage: React.FC = () => {
 };
 
 // # ############################################################################ #
-// # #                         SECTION 15 - DEFAULT EXPORT                      #
+// # #                       SECTION 15 - DEFAULT EXPORT                       #
 // # ############################################################################ #
 export default LandingPage;

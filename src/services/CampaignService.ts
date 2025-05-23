@@ -1,69 +1,70 @@
 // src/services/CampaignService.ts
+// (MODIFIED to include category in payloads and update fetchAllCampaigns for filtering)
 
 // # ############################################################################ #
-// # #                               SECTION 1 - IMPORTS                                #
+// # #                           SECTION 1 - IMPORTS                           #
 // # ############################################################################ #
 import { authService } from './AuthService';
 
 // # ############################################################################ #
-// # #                       SECTION 2 - INTERFACE DEFINITIONS                    #
+// # #                   SECTION 2 - INTERFACE DEFINITIONS                   #
 // # ############################################################################ #
 export interface Donation {
   id: string;
   amount: number;
-  donor: string;
+  donor: string; // Should be walletAddress of donor
   txHash: string;
   createdAt: string;
   currency: 'WLD';
+  // Added from your Lambda's verifiedDonation structure for completeness
+  onChainAmountSmallestUnit?: string;
+  verifiedStatus?: 'VERIFIED' | 'PENDING' | 'FAILED';
+  verifiedAt?: string;
+  chainId?: number;
+  blockNumber?: string;
 }
 
 export interface Campaign {
-  id: string;
+  id: string; // Or campaignId, ensure consistency with backend
   title: string;
   description: string;
   goal: number;
   raised: number;
-  ownerId: string; // ownerId is correctly here for the full Campaign object
-  image?: string;
-  status: 'active' | 'completed' | 'cancelled';
+  ownerId: string;
+  category: string; // <<<< ADDED category here for full Campaign object
+  image?: string;   // This would be the final S3 URL of the processed image, or the S3 key
+  status: 'active' | 'completed' | 'cancelled' | 'PENDING_REVIEW'; // Added PENDING_REVIEW
   createdAt: string;
   updatedAt: string;
   donations: Donation[];
   currency: 'WLD';
 }
 
-// --- MODIFIED CampaignPayload ---
+// Payload for creating a new campaign
 export interface CampaignPayload {
   title: string;
-  description: string; // Made description non-optional for creation for consistency, can be empty string. Or keep as string?
+  description: string;
   goal: number;
-  image?: string;
-  ownerId: string;   // <<< THIS IS THE CRUCIAL FIX: ADDED ownerId
-  // status?: 'active' | 'completed' | 'cancelled'; // Consider if status can be sent on creation
+  category: string;   // <<<< ADDED category (mandatory for new campaigns)
+  ownerId: string;    // This was correctly added by you previously
+  image?: string;      // Optional: This will be the S3 key of the raw uploaded image
+  // Status is usually set by the backend on creation (e.g., to 'PENDING_REVIEW' or 'active')
 }
 
-// Consider a separate type for updates if it's different, or use Partial<CampaignPayload>
-// If status can be updated, CampaignPayload might need it, or a specific UpdateCampaignPayload type.
-// For now, updateCampaign uses Partial<CampaignPayload>, which will now correctly allow ownerId
-// if you were to update it, though typically ownerId isn't updated.
-// If `status` is updatable via `updateCampaign` and not part of `CampaignPayload`,
-// then `Partial<CampaignPayload>` might not be the best type for `updateCampaign`'s payload.
-// Let's assume for now `updateCampaign` payload is meant to update fields defined in `CampaignPayload`.
-// The `EditCampaignPage.tsx` sends `formData` which includes `status`.
-// So, `CampaignPayload` (or a specific `UpdateCampaignPayload`) should ideally include `status` if it's an updatable field.
-
-export interface UpdateCampaignPayload { // More specific type for updates
+// Payload for updating an existing campaign
+export interface UpdateCampaignPayload {
   title?: string;
   description?: string;
   goal?: number;
-  image?: string;
-  status?: 'active' | 'completed' | 'cancelled';
-  // ownerId is typically NOT updatable, so it's omitted here.
+  category?: string;   // <<<< ADDED optional category for updates
+  image?: string;      // Optional: New S3 key if image is changed
+  status?: 'active' | 'completed' | 'cancelled' | 'PENDING_REVIEW';
+  // ownerId is typically NOT updatable
 }
 
 
 // # ############################################################################ #
-// # #                 SECTION 3 - SERVICE CLASS: CAMPAIGNSERVICE - DEFINITION                  #
+// # #             SECTION 3 - SERVICE CLASS: CAMPAIGNSERVICE - DEFINITION             #
 // # ############################################################################ #
 class CampaignService {
   private static instance: CampaignService;
@@ -71,7 +72,7 @@ class CampaignService {
   private API_KEY?: string;
 
 // # ############################################################################ #
-// # #                 SECTION 4 - SERVICE CLASS: CAMPAIGNSERVICE - CONSTRUCTOR                 #
+// # #           SECTION 4 - SERVICE CLASS: CAMPAIGNSERVICE - CONSTRUCTOR           #
 // # ############################################################################ #
   private constructor() {
     const envApi = import.meta.env.VITE_AMPLIFY_API || import.meta.env.VITE_APP_BACKEND_API_URL;
@@ -79,14 +80,15 @@ class CampaignService {
       this.API_BASE = envApi;
     } else {
       console.warn('[CampaignService] No VITE_AMPLIFY_API or VITE_APP_BACKEND_API_URL set; defaulting to /api');
-      this.API_BASE = '/api';
+      this.API_BASE = '/api'; // Should not happen if VITE_AMPLIFY_API is correctly set
     }
+    // API_KEY usage depends on your backend API Gateway setup for specific endpoints
     this.API_KEY = import.meta.env.VITE_WORLD_APP_API || import.meta.env.VITE_APP_BACKEND_API_KEY;
     console.log('[CampaignService] Initialized with API base:', this.API_BASE);
   }
 
 // # ############################################################################ #
-// # #                 SECTION 5 - SERVICE CLASS: CAMPAIGNSERVICE - GET INSTANCE                  #
+// # #         SECTION 5 - SERVICE CLASS: CAMPAIGNSERVICE - GET INSTANCE         #
 // # ############################################################################ #
   public static getInstance(): CampaignService {
     if (!CampaignService.instance) {
@@ -96,28 +98,33 @@ class CampaignService {
   }
 
 // # ############################################################################ #
-// # #                         SECTION 6 - PRIVATE HELPER: GET HEADERS                         #
+// # #                   SECTION 6 - PRIVATE HELPER: GET HEADERS                   #
 // # ############################################################################ #
   private async getHeaders(): Promise<HeadersInit> {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
-    const authData = await authService.checkAuthStatus(); // Directly use the object
+    // Assuming authService.checkAuthStatus() correctly provides the current token
+    // or authService has a method like authService.getToken()
+    const authData = await authService.checkAuthStatus(); 
     if (authData.token) {
       headers['Authorization'] = `Bearer ${authData.token}`;
     }
-    if (this.API_KEY) {
-      headers['x-api-key'] = this.API_KEY;
-    }
+    // Only add x-api-key if your specific endpoint is configured to require it
+    // AND it's not mutually exclusive with Bearer token auth.
+    // Typically, for user actions, Bearer token is sufficient if endpoint is protected by an authorizer.
+    // if (this.API_KEY) {
+    //   headers['x-api-key'] = this.API_KEY;
+    // }
     return headers;
   }
 
 // # ############################################################################ #
-// # #                         SECTION 7 - PUBLIC METHOD: CREATE CAMPAIGN                         #
+// # #                 SECTION 7 - PUBLIC METHOD: CREATE CAMPAIGN                 #
 // # ############################################################################ #
   public async createCampaign(
-    payload: CampaignPayload // This now expects ownerId due to the fix above
-  ): Promise<{ success: boolean; id?: string; error?: string }> {
+    payload: CampaignPayload 
+  ): Promise<{ success: boolean; campaign?: Campaign; id?: string; error?: string }> { // Return full campaign on success
     try {
       const headers = await this.getHeaders();
       const res = await fetch(`${this.API_BASE}/campaigns`, {
@@ -125,18 +132,15 @@ class CampaignService {
         headers,
         body: JSON.stringify(payload),
       });
-      // Improved error handling for JSON parsing and response body
+      
+      const responseBody = await res.json(); // Try to parse JSON body regardless of res.ok for error details
+
       if (!res.ok) {
-        let errorBody;
-        try {
-          errorBody = await res.json();
-        } catch (e) {
-          errorBody = { message: res.statusText }; // Fallback if JSON parsing fails
-        }
-        throw new Error(errorBody?.message || `Failed to create campaign (${res.status})`);
+        throw new Error(responseBody?.message || `Failed to create campaign (${res.status})`);
       }
-      const body = await res.json(); // Assuming successful response has JSON body with id
-      return { success: true, id: body.id };
+      // Assuming backend returns the full created campaign object upon success (201 status)
+      // which now includes id, createdAt, status, category, etc.
+      return { success: true, campaign: responseBody as Campaign, id: responseBody.id };
     } catch (error: any) {
       console.error('[CampaignService] createCampaign error:', error);
       return { success: false, error: error.message || 'An unexpected error occurred while creating the campaign.' };
@@ -144,23 +148,38 @@ class CampaignService {
   }
 
 // # ############################################################################ #
-// # #                 SECTION 8 - PUBLIC METHOD: FETCH ALL CAMPAIGNS                 #
+// # #               SECTION 8 - PUBLIC METHOD: FETCH ALL CAMPAIGNS               #
 // # ############################################################################ #
-  public async fetchAllCampaigns(): Promise<{ success: boolean; campaigns?: Campaign[]; error?: string }> {
+  public async fetchAllCampaigns(
+    category?: string // <<<< ADDED optional category parameter
+  ): Promise<{ success: boolean; campaigns?: Campaign[]; error?: string }> {
     try {
-      const headers = await this.getHeaders(); // No auth needed for public listing usually, but keeping for consistency
-      const res = await fetch(`${this.API_BASE}/campaigns`, {
-        method: 'GET',
-        headers, // Remove if auth is not needed for this public endpoint
-      });
-      if (!res.ok) {
-         let errorBody;
-        try { errorBody = await res.json(); } catch (e) { errorBody = { message: res.statusText }; }
-        throw new Error(errorBody?.message || `Failed to fetch campaigns (${res.status})`);
+      // Public listing of campaigns might not need auth headers,
+      // but if your /campaigns endpoint requires it, getHeaders() will add it.
+      // const headers = await this.getHeaders(); 
+      const headers: HeadersInit = { 'Content-Type': 'application/json' }; // Simpler for public GET
+
+      let url = `${this.API_BASE}/campaigns`;
+      if (category && category !== "All Categories") { // Assuming "All Categories" means no filter
+        url += `?category=${encodeURIComponent(category)}`;
       }
-      const data = await res.json();
-      // Ensure data.campaigns is an array, even if empty, to prevent runtime errors.
-      return { success: true, campaigns: Array.isArray(data.campaigns) ? data.campaigns : Array.isArray(data) ? data : [] };
+      console.log(`[CampaignService] Fetching from URL: ${url}`);
+
+      const res = await fetch(url, {
+        method: 'GET',
+        headers, 
+      });
+
+      const responseBody = await res.json();
+
+      if (!res.ok) {
+        throw new Error(responseBody?.message || `Failed to fetch campaigns (${res.status})`);
+      }
+      
+      // Ensure backend returns { campaigns: [...] } or just [...]
+      // The provided code handles both data.campaigns or data directly being the array.
+      const campaignsArray = Array.isArray(responseBody.campaigns) ? responseBody.campaigns : Array.isArray(responseBody) ? responseBody : [];
+      return { success: true, campaigns: campaignsArray as Campaign[] };
     } catch (error: any) {
       console.error('[CampaignService] fetchAllCampaigns error:', error);
       return { success: false, error: error.message || 'Failed to fetch campaigns.' };
@@ -168,27 +187,29 @@ class CampaignService {
   }
 
 // # ############################################################################ #
-// # #                 SECTION 9 - PUBLIC METHOD: FETCH CAMPAIGN (BY ID)                 #
+// # #             SECTION 9 - PUBLIC METHOD: FETCH CAMPAIGN (BY ID)             #
 // # ############################################################################ #
   public async fetchCampaign(
     id: string
   ): Promise<{ success: boolean; campaign?: Campaign; error?: string }> {
-    if (!id || id.trim() === "") { // Basic validation for ID
+    if (!id || id.trim() === "") {
         return { success: false, error: "Campaign ID is required." };
     }
     try {
-      const headers = await this.getHeaders(); // Auth might be needed if details are sensitive or for owner checks later
+      // const headers = await this.getHeaders(); // Potentially needed if accessing private campaign details
+      const headers: HeadersInit = { 'Content-Type': 'application/json' }; // Simpler for public GET
+
       const res = await fetch(`${this.API_BASE}/campaigns/${id}`, {
         method: 'GET',
         headers,
       });
+
+      const responseBody = await res.json();
+
       if (!res.ok) {
-        let errorBody;
-        try { errorBody = await res.json(); } catch (e) { errorBody = { message: res.statusText }; }
-        throw new Error(errorBody?.message || (res.status === 404 ? 'Campaign not found' : `Failed to fetch campaign (${res.status})`));
+        throw new Error(responseBody?.message || (res.status === 404 ? 'Campaign not found' : `Failed to fetch campaign (${res.status})`));
       }
-      const campaign: Campaign = await res.json(); // Assuming response directly is the campaign object
-      return { success: true, campaign };
+      return { success: true, campaign: responseBody as Campaign };
     } catch (error: any) {
       console.error(`[CampaignService] fetchCampaign (id: ${id}) error:`, error);
       return { success: false, error: error.message || 'An unexpected error occurred while fetching the campaign.' };
@@ -200,10 +221,13 @@ class CampaignService {
 // # ############################################################################ #
   public async updateCampaign(
     id: string,
-    payload: UpdateCampaignPayload // MODIFIED to use UpdateCampaignPayload
-  ): Promise<{ success: boolean; campaign?: Campaign; error?: string }> { // Return updated campaign
+    payload: UpdateCampaignPayload 
+  ): Promise<{ success: boolean; campaign?: Campaign; error?: string }> {
     if (!id || id.trim() === "") {
         return { success: false, error: "Campaign ID is required for update." };
+    }
+    if (Object.keys(payload).length === 0) {
+        return { success: false, error: "No update payload provided." };
     }
     try {
       const headers = await this.getHeaders(); // Auth is definitely needed here
@@ -212,13 +236,14 @@ class CampaignService {
         headers,
         body: JSON.stringify(payload),
       });
+
+      const responseBody = await res.json();
+
       if (!res.ok) {
-        let errorBody;
-        try { errorBody = await res.json(); } catch (e) { errorBody = { message: res.statusText }; }
-        throw new Error(errorBody?.message || `Failed to update campaign (${res.status})`);
+        throw new Error(responseBody?.message || `Failed to update campaign (${res.status})`);
       }
-      const updatedCampaign: Campaign = await res.json(); // Assuming backend returns the updated campaign
-      return { success: true, campaign: updatedCampaign };
+      // Assuming backend returns the full updated campaign object
+      return { success: true, campaign: responseBody as Campaign };
     } catch (error: any) {
       console.error(`[CampaignService] updateCampaign (id: ${id}) error:`, error);
       return { success: false, error: error.message || 'An unexpected error occurred while updating the campaign.' };
@@ -240,17 +265,18 @@ class CampaignService {
         method: 'DELETE',
         headers,
       });
-      if (!res.ok) {
-         // DELETE might return 204 No Content on success, or specific error body
-        if (res.status === 204) {
-            return { success: true };
-        }
-        let errorBody;
-        try { errorBody = await res.json(); } catch (e) { errorBody = { message: res.statusText }; }
-        throw new Error(errorBody?.message || `Failed to delete campaign (${res.status})`);
+      
+      if (res.status === 204) { // Successfully deleted, no content
+          return { success: true };
       }
-      // If not 204, but still ok (e.g. 200 with a body), handle as success
-      return { success: true };
+
+      // For other success statuses (like 200 with a body) or error statuses
+      const responseBody = await res.json().catch(() => ({ message: res.statusText })); // Graceful fallback
+
+      if (!res.ok) {
+        throw new Error(responseBody?.message || `Failed to delete campaign (${res.status})`);
+      }
+      return { success: true }; // Assuming other 2xx statuses are also success
     } catch (error: any) {
       console.error(`[CampaignService] deleteCampaign (id: ${id}) error:`, error);
       return { success: false, error: error.message || 'An unexpected error occurred while deleting the campaign.' };
@@ -262,30 +288,33 @@ class CampaignService {
 // # ############################################################################ #
   public async recordDonation(
     campaignId: string,
-    amount: number,
-    txHash: string
-    // Consider adding donorWalletAddress if needed by backend and not inferred from auth token
-  ): Promise<{ success: boolean; donation?: Donation; error?: string }> { // Return created donation
-    if (!campaignId || !amount || !txHash) {
-        return { success: false, error: "Campaign ID, amount, and transaction hash are required." };
+    donatedAmount: number, // Changed from 'amount' to match Lambda's expected 'donatedAmount'
+    transactionHash: string, // Changed from 'txHash'
+    chainId: number // Added chainId as per Lambda's expectation
+  ): Promise<{ success: boolean; donation?: Donation; error?: string }> { 
+    if (!campaignId || donatedAmount === undefined || !transactionHash || chainId === undefined ) {
+        return { success: false, error: "Campaign ID, donated amount, transaction hash, and chainId are required." };
     }
-    if (amount <= 0) {
+    if (donatedAmount <= 0) {
         return { success: false, error: "Donation amount must be positive." };
     }
     try {
-      const headers = await this.getHeaders(); // Auth might be needed to link donation to a user
+      const headers = await this.getHeaders(); 
       const res = await fetch(`${this.API_BASE}/campaigns/${campaignId}/donate`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ amount, txHash }),
+        body: JSON.stringify({ donatedAmount, transactionHash, chainId }), // Match Lambda payload
       });
+      
+      const responseBody = await res.json();
+
       if (!res.ok) {
-        let errorBody;
-        try { errorBody = await res.json(); } catch (e) { errorBody = { message: res.statusText }; }
-        throw new Error(errorBody?.message || `Failed to record donation (${res.status})`);
+        throw new Error(responseBody?.message || `Failed to record donation (${res.status})`);
       }
-      const newDonation: Donation = await res.json(); // Assuming backend returns the created donation object
-      return { success: true, donation: newDonation };
+      // Assuming backend returns { verified: true, message: "...", donationId: "..." }
+      // and we might want to return a reconstructed/fetched Donation object or just success status
+      // For now, let's assume backend might return the donation object or its ID for confirmation
+      return { success: true, donation: responseBody.donation || { id: responseBody.donationId } as any };
     } catch (error: any) {
       console.error(`[CampaignService] recordDonation (campaignId: ${campaignId}) error:`, error);
       return { success: false, error: error.message || 'An unexpected error occurred while recording the donation.' };
@@ -293,7 +322,7 @@ class CampaignService {
   }
 
 // # ############################################################################ #
-// # #                 SECTION 13 - PUBLIC METHOD: FETCH USER CAMPAIGNS                 #
+// # #               SECTION 13 - PUBLIC METHOD: FETCH USER CAMPAIGNS               #
 // # ############################################################################ #
   public async fetchUserCampaigns(
     walletAddress: string
@@ -302,18 +331,19 @@ class CampaignService {
         return { success: false, error: "Wallet address is required to fetch user campaigns." };
     }
     try {
-      const headers = await this.getHeaders(); // Auth needed to ensure user can only fetch their own
+      const headers = await this.getHeaders(); // Auth needed
       const res = await fetch(`${this.API_BASE}/users/${walletAddress}/campaigns`, {
         method: 'GET',
         headers,
       });
+      
+      const responseBody = await res.json();
+
       if (!res.ok) {
-        let errorBody;
-        try { errorBody = await res.json(); } catch (e) { errorBody = { message: res.statusText }; }
-        throw new Error(errorBody?.message || `Failed to fetch user campaigns (${res.status})`);
+        throw new Error(responseBody?.message || `Failed to fetch user campaigns (${res.status})`);
       }
-      const data = await res.json();
-      return { success: true, campaigns: Array.isArray(data.campaigns) ? data.campaigns : Array.isArray(data) ? data : [] };
+      const campaignsArray = Array.isArray(responseBody.campaigns) ? responseBody.campaigns : Array.isArray(responseBody) ? responseBody : [];
+      return { success: true, campaigns: campaignsArray as Campaign[] };
     } catch (error: any) {
       console.error(`[CampaignService] fetchUserCampaigns (wallet: ${walletAddress}) error:`, error);
       return { success: false, error: error.message || 'Failed to fetch user campaigns.' };

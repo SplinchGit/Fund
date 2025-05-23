@@ -1,12 +1,14 @@
 // src/pages/Dashboard.tsx
-// (Full fix incorporating button resizing and consolidation, Logout button style preserved)
+// (Full fix: Addresses 'logout' error by ensuring correct destructuring,
+// includes button consolidation/resizing, whitespace adjustment, stats fetching,
+// and preserves Logout button style)
 
 // # ############################################################################ #
 // # #                           SECTION 1 - IMPORTS                           #
 // # ############################################################################ #
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../components/AuthContext';
+import { useAuth } from '../components/AuthContext'; // Ensure this path is correct
 import { CampaignTracker } from './CampaignTracker'; // Assuming this path is correct
 
 // # ############################################################################ #
@@ -31,7 +33,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   container: {
     margin: '0 auto',
     width: '100%',
-    padding: '1rem 0.5rem 6rem 0.5rem', // Ensure enough bottom padding for fixed tabs
+    padding: '1rem 0.5rem 2rem 0.5rem', // Reduced bottom padding
     boxSizing: 'border-box' as const,
     maxWidth: '1200px',
     flexGrow: 1,
@@ -74,12 +76,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     lineHeight: 1,
   },
   buttonPrimary: {
-    // This can be spread with styles.button if needed elsewhere, or used as a standalone addition
     backgroundColor: '#1a73e8',
     color: 'white',
     borderColor: '#1a73e8',
   },
-  // --- Logout Button Style - UNCHANGED as per your request ---
+  // --- Logout Button Style - UNCHANGED ---
   buttonDanger: {
     padding: '0.5rem 0.75rem',
     borderRadius: '0.25rem',
@@ -111,36 +112,46 @@ const styles: { [key: string]: React.CSSProperties } = {
   statValue: { fontSize: '1.75rem', fontWeight: 700, color: '#1a73e8', margin: '0 0 0.25rem 0', padding: 0, },
   statLabel: { fontSize: '0.8rem', color: '#5f6368', marginTop: '0.25rem', padding: 0, },
   createButtonContainer: { textAlign: 'center' as const, margin: '1.5rem 0 2rem 0', },
-  // --- MODIFIED createButton style for better sizing and standard button look ---
+  // MODIFIED createButton style
   createButton: {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '0.6rem 1.2rem',      // Adjusted padding
-    backgroundColor: '#1a73e8',    // Primary blue
+    padding: '0.6rem 1.2rem',
+    backgroundColor: '#1a73e8',
     color: 'white',
-    borderRadius: '0.25rem',     // Standard border radius (like styles.button)
+    borderRadius: '0.25rem', // Standard button shape
     fontWeight: 500,
     textDecoration: 'none',
     boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
     transition: 'transform 0.2s, box-shadow 0.2s',
     border: 'none',
-    fontSize: '0.85rem',           // Adjusted font size
+    fontSize: '0.85rem',
     cursor: 'pointer',
-    lineHeight: 1.2,              // Adjusted for better text display with icons
+    lineHeight: 1.2,
   },
-  // --- MODIFIED createButtonIcon style ---
+  // MODIFIED createButtonIcon style
   createButtonIcon: {
     marginRight: '0.5rem',
-    width: '1rem',               // Adjusted size
-    height: '1rem',              // Adjusted size
-    fill: 'currentColor',        // Changed to currentColor to inherit button text color (white)
+    width: '1rem',
+    height: '1rem',
+    fill: 'currentColor',
   },
   tabs: { display: 'flex', justifyContent: 'space-around', backgroundColor: '#fff', borderTop: '1px solid #e0e0e0', position: 'fixed' as const, bottom: 0, left: 0, width: '100%', zIndex: 100, padding: '0.75rem 0', boxShadow: '0 -1px 3px rgba(0,0,0,0.1)', boxSizing: 'border-box' as const, },
   tab: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', fontSize: '0.65rem', color: '#5f6368', textDecoration: 'none', padding: '0.1rem 0.5rem', flexGrow: 1, textAlign: 'center' as const, transition: 'color 0.2s', },
   tabActive: { color: '#1a73e8', },
   tabIcon: { width: '1.125rem', height: '1.125rem', marginBottom: '0.125rem', },
-  legalNotice: { fontSize: '0.7rem', color: '#5f6368', padding: '1rem', marginTop: '1rem', marginBottom: 'calc(4.5rem + 1rem)', borderTop: '1px solid #eee', textAlign: 'center' as const, width: '100%', boxSizing: 'border-box' as const, },
+  legalNotice: {
+    fontSize: '0.7rem',
+    color: '#5f6368',
+    padding: '1rem',
+    marginTop: 'auto', 
+    marginBottom: '5rem', 
+    borderTop: '1px solid #eee',
+    textAlign: 'center' as const,
+    width: '100%',
+    boxSizing: 'border-box' as const,
+  },
   loadingContainer: { display: 'flex', flexDirection: 'column' as const, justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f7fa', boxSizing: 'border-box' as const, },
   loadingSpinner: { borderRadius: '50%', width: '40px', height: '40px', border: '3px solid rgba(0, 0, 0, 0.1)', borderTopColor: '#1a73e8', animation: 'spin 1s ease-in-out infinite', },
   loadingText: { marginTop: '1rem', color: '#5f6368', fontSize: '0.9rem', },
@@ -149,7 +160,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   quickLinks: { display: 'flex', flexDirection: 'column' as const, gap: '0.5rem', },
   quickLink: { padding: '0.75rem 0.5rem', color: '#1a73e8', textDecoration: 'none', textAlign: 'left' as const, display: 'flex', alignItems: 'center', fontSize: '0.875rem', transition: 'background-color 0.2s, color 0.2s', borderRadius: '4px', },
   quickLinkIcon: { marginRight: '0.75rem', width: '1rem', height: '1rem', flexShrink: 0, },
-  infoSection: { // Style for the container remains
+  infoSection: { 
     backgroundColor: 'white',
     borderRadius: '8px',
     boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
@@ -157,10 +168,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: '1.5rem',
     boxSizing: 'border-box' as const,
   },
-  infoText: { // Style for the text remains
+  infoText: { 
     fontSize: '0.875rem',
     color: '#5f6368',
-    marginBottom: '0rem', // Button below is removed, so no extra margin needed here
+    marginBottom: '0rem', 
     lineHeight: '1.6',
     textAlign: 'left' as const,
   },
@@ -179,9 +190,8 @@ const responsiveStyles = `
   *, *::before, *::after { 
     box-sizing: inherit; 
   }
-  /* Added hover for .quickLink defined in JSX via className */
   .quickLinkHoverable:hover { 
-    background-color: #f0f0f0 !important; /* Use !important if needed to override inline styles, though ideally avoid */
+    background-color: #f0f0f0 !important; 
     color: #1a73e8 !important;
   }
   @keyframes spin {
@@ -194,51 +204,101 @@ const responsiveStyles = `
 // # #                 SECTION 3 - COMPONENT: PAGE DEFINITION & HOOKS                #
 // # ############################################################################ #
 const Dashboard: React.FC = () => {
-  const { walletAddress, isAuthenticated, logout } = useAuth();
+  // Ensure 'logout' and 'sessionToken' (if used for stats) are correctly provided by your AuthContext
+  const { walletAddress, isAuthenticated, logout, sessionToken } = useAuth(); 
   const navigate = useNavigate();
   const [stats, setStats] = useState({
-    totalCampaigns: 0, // Initial value, will be updated by API call
+    totalCampaigns: 0, 
     totalRaised: 0
   });
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
 // # ############################################################################ #
-// # #                 SECTION 4 - EFFECT: AUTHENTICATION CHECK                  #
+// # # SECTION 4 - EFFECT: AUTHENTICATION CHECK & FETCH DASHBOARD STATS        #
 // # ############################################################################ #
   useEffect(() => {
     if (!isAuthenticated) {
       console.log('[Dashboard] User not authenticated, redirecting to landing page');
       navigate('/landing');
+      return; 
     }
-    // TODO: Fetch actual dashboard stats if authenticated
-    // This function should update setStats, for example:
-    // const fetchDashboardData = async () => {
-    //   try {
-    //     // const response = await yourApi.getDashboardStats();
-    //     // setStats({
-    //     //   totalCampaigns: response.data.totalCampaigns,
-    //     //   totalRaised: response.data.totalRaised,
-    //     // });
-    //   } catch (error) {
-    //     console.error("Failed to fetch dashboard stats:", error);
-    //   }
-    // };
-    // if (isAuthenticated) {
-    //   fetchDashboardData();
-    // }
-  }, [isAuthenticated, navigate]);
+
+    const fetchDashboardData = async () => {
+      setIsLoadingStats(true);
+      setStatsError(null);
+      console.log('[Dashboard] Fetching dashboard stats...');
+      const statsApiUrl = `${import.meta.env.VITE_AMPLIFY_API}/dashboard-stats`;
+      
+      try {
+        // IMPORTANT: Ensure 'sessionToken' is valid and provided by useAuth()
+        // or retrieve it via your AuthService if that's your pattern.
+        if (!sessionToken) {
+          console.error('[Dashboard] No session token available for fetching stats.');
+          setStatsError("Authentication token not found. Cannot fetch stats.");
+          setIsLoadingStats(false);
+          return;
+        }
+
+        const response = await fetch(statsApiUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${sessionToken}`, 
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[Dashboard] Error fetching stats - Status: ${response.status}`, errorText);
+          throw new Error(`Failed to fetch dashboard stats: ${response.status} ${errorText || response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('[Dashboard] Stats received:', data);
+        setStats({
+          totalCampaigns: data.totalCampaigns || 0,
+          totalRaised: data.totalRaised || 0,
+        });
+      } catch (error) {
+        console.error("[Dashboard] Failed to fetch dashboard stats:", error);
+        setStatsError(error instanceof Error ? error.message : "An unknown error occurred while fetching stats.");
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    fetchDashboardData();
+
+  }, [isAuthenticated, navigate, sessionToken]);
 
 // # ############################################################################ #
 // # #                   SECTION 5 - EVENT HANDLER: LOGOUT                     #
 // # ############################################################################ #
   const handleLogout = async () => {
-    await logout();
-    navigate('/landing');
+    // This assumes 'logout' is a function provided by useAuth() that handles the logout logic.
+    // If 'Cannot find name logout' error persists, the issue is in how 'logout' is provided
+    // by your AuthContext (../components/AuthContext.tsx)
+    if (logout) { // Check if logout exists before calling
+      try {
+        await logout();
+        navigate('/landing');
+      } catch (error) {
+        console.error("Error during logout:", error);
+        // Optionally navigate to landing anyway or show error
+        navigate('/landing');
+      }
+    } else {
+      console.error("Logout function is not available from AuthContext.");
+      // Fallback or error display if logout function is missing
+      navigate('/landing'); 
+    }
   };
 
 // # ############################################################################ #
 // # #           SECTION 6 - CONDITIONAL RENDERING: UNAUTHENTICATED FALLBACK         #
 // # ############################################################################ #
-  if (!isAuthenticated) {
+  if (!isAuthenticated && isLoadingStats) { // Show loading if not authenticated AND initial stats load hasn't determined auth state fully
     return (
       <div style={styles.loadingContainer}>
         <style>{responsiveStyles}</style>
@@ -265,7 +325,7 @@ const Dashboard: React.FC = () => {
                 </span>
             )}
             <button
-              style={styles.buttonDanger} // Using UNCHANGED buttonDanger style
+              style={styles.buttonDanger} 
               onClick={handleLogout}
             >
               Logout
@@ -284,24 +344,51 @@ const Dashboard: React.FC = () => {
 
         <div style={styles.statsGrid}>
           <div style={styles.statCard}>
-            <h3 style={styles.statValue}>{stats.totalCampaigns}</h3>
+            {isLoadingStats ? (
+              <div style={styles.loadingSpinner}></div>
+            ) : statsError ? (
+              <p style={{color: 'red', fontSize: '0.8rem'}}>{statsError.length > 100 ? `${statsError.substring(0,100)}...` : statsError}</p>
+            ) : (
+              <h3 style={styles.statValue}>{stats.totalCampaigns}</h3>
+            )}
             <p style={styles.statLabel}>Total Campaigns</p>
           </div>
           <div style={styles.statCard}>
-            <h3 style={styles.statValue}>{stats.totalRaised.toLocaleString()}</h3>
+             {isLoadingStats ? (
+              <div style={styles.loadingSpinner}></div>
+            ) : statsError ? (
+              <p style={{color: 'red', fontSize: '0.8rem'}}>{/* Can also show statsError here */}</p>
+            ) : (
+              <h3 style={styles.statValue}>{stats.totalRaised.toLocaleString()}</h3>
+            )}
             <p style={styles.statLabel}>Total Raised (WLD)</p>
           </div>
         </div>
-
-        {/* --- Main "Create Campaign" button with dynamic text --- */}
-        <div style={styles.createButtonContainer}>
-          <Link to="/new-campaign" style={styles.createButton}>
-            <svg style={styles.createButtonIcon} viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path>
-            </svg>
-            {stats.totalCampaigns === 0 ? 'Create Your First Campaign' : 'Create New Campaign'}
-          </Link>
-        </div>
+        
+        {stats.totalCampaigns === 0 && !isLoadingStats && !statsError && (
+          <div style={styles.createButtonContainer}>
+            <Link to="/new-campaign" style={styles.createButton}>
+              <svg style={styles.createButtonIcon} viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path>
+              </svg>
+              Create Your First Campaign
+            </Link>
+          </div>
+        )}
+        {/* If you want a "Create New Campaign" button to ALWAYS be visible if stats.totalCampaigns > 0, 
+            even if one "Create Your First Campaign" was shown initially, uncomment and adapt this:
+        */}
+        {/* {stats.totalCampaigns > 0 && !isLoadingStats && !statsError && (
+          <div style={styles.createButtonContainer}>
+            <Link to="/new-campaign" style={styles.createButton}>
+              <svg style={styles.createButtonIcon} viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path>
+              </svg>
+              Create New Campaign
+            </Link>
+          </div>
+        )}
+        */}
 
         <div style={styles.contentSection}>
           <h2 style={styles.sectionTitle}>Your Campaigns</h2>
@@ -311,9 +398,8 @@ const Dashboard: React.FC = () => {
         <div style={styles.quickAccessSection}>
           <h2 style={styles.sectionTitle}>Quick Access</h2>
           <div style={styles.quickLinks}>
-            {/* Added className for explicit hover styling via <style> tag */}
             <Link to="/campaigns" style={styles.quickLink} className="quickLinkHoverable">
-              <svg style={styles.quickLinkIcon} viewBox="0 0 24 24" fill="currentColor">
+              <svg style={styles.quickIcon} viewBox="0 0 24 24" fill="currentColor">
                 <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"></path>
               </svg>
               Browse All Campaigns
@@ -327,14 +413,12 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* --- Conditionally render infoSection AND REMOVED its internal button --- */}
-        {stats.totalCampaigns === 0 && (
+        {stats.totalCampaigns === 0 && !isLoadingStats && !statsError && (
           <div style={styles.infoSection}>
             <h2 style={styles.sectionTitle}>Getting Started</h2>
             <p style={styles.infoText}>
               Create and manage campaigns to raise funds for your projects using WLD tokens.
               Start by creating a new campaign and sharing it with your network.
-              {/* The button that was here has been removed to consolidate to the main createButton */}
             </p>
           </div>
         )}
