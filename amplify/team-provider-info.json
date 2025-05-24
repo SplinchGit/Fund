@@ -29,5 +29,12 @@
       "worldChainId": "480",
       "frontendUrl": "https://main.d2fvyjulmwt6nl.amplifyapp.com"
     }
+  },
+  "prod": {
+    "categories": {
+      "auth": {
+        "0worldfunddebugd1266f95": {}
+      }
+    }
   }
 }
