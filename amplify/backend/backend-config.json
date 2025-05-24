@@ -1,43 +1,43 @@
-{
-  "auth": {
-    "0worldfunddebugd1266f95": {
-      "customAuth": false,
-      "dependsOn": [],
-      "frontendAuthConfig": {
-        "mfaConfiguration": "OFF",
-        "mfaTypes": [
-          "SMS"
-        ],
-        "passwordProtectionSettings": {
-          "passwordPolicyCharacters": [],
-          "passwordPolicyMinLength": 8
-        },
-        "signupAttributes": [
-          "EMAIL"
-        ],
-        "socialProviders": [],
-        "usernameAttributes": [],
-        "verificationMechanisms": [
-          "EMAIL"
-        ]
-      },
-      "providerPlugin": "awscloudformation",
-      "service": "Cognito"
-    }
-  },
-  "function": {
-    "0worldfunddebug56fd6525": {
-      "build": true,
-      "dependsOn": [
-        {
-          "attributes": [
-            "Name",
-            "Arn",
-            "StreamArn"
+  {
+    "auth": {
+      "0worldfunddebugd1266f95": {
+        "customAuth": false,
+        "dependsOn": [],
+        "frontendAuthConfig": {
+          "mfaConfiguration": "OFF",
+          "mfaTypes": [
+            "SMS"
           ],
-          "category": "storage",
-          "resourceName": "Splinch"
+          "passwordProtectionSettings": {
+            "passwordPolicyCharacters": [],
+            "passwordPolicyMinLength": 8
+          },
+          "signupAttributes": [
+            "EMAIL"
+          ],
+          "socialProviders": [],
+          "usernameAttributes": [],
+          "verificationMechanisms": [
+            "EMAIL"
+          ]
         },
+        "providerPlugin": "awscloudformation",
+        "service": "Cognito"
+      }
+    },
+    "function": {
+      "worldfundAuthFunction": {
+        "build": true,
+        "dependsOn": [
+          {
+            "attributes": [
+              "Name",
+              "Arn",
+              "StreamArn"
+            ],
+            "category": "storage",
+            "resourceName": "Splinch"
+          },
         {
           "attributes": [
             "Name",

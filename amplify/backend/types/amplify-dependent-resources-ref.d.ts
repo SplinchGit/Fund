@@ -16,15 +16,7 @@ export type AmplifyDependentResourcesAttributes = {
       "UserPoolId": "string",
       "UserPoolName": "string"
     }
-  },
-  "function": {
-    "0worldfunddebug56fd6525": {
-      "Arn": "string",
-      "LambdaExecutionRole": "string",
-      "LambdaExecutionRoleArn": "string",
-      "Name": "string",
-      "Region": "string"
-    },
+,
     "worldfundSharedLayer": {
       "Arn": "string"
     },
