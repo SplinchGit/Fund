@@ -710,7 +710,7 @@ exports.handler = async (event) => {
     }
 
 // # ############################################################################ #
-// # #            SECTION 27 - MAIN LAMBDA HANDLER: DEFAULT ROUTE (NOT FOUND)     #
+// # #           SECTION 27 - MAIN LAMBDA HANDLER: DEFAULT ROUTE (NOT FOUND)     #
 // # ############################################################################ #
     console.log(`Unhandled path: ${httpMethod} ${path}`);
     return createResponse(404, { message: `Not Found: The requested path ${path} with method ${httpMethod} was not found on this server.` }, requestOrigin);
