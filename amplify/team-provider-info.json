@@ -122,7 +122,10 @@
           "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
           "s3Key": "amplify-builds/campaignImageHandler-684b776839384e373537-build.zip"
         },
-        "WorldFundAPI": {}
+        "WorldFundAPI": {},
+        "worldfundAuthFunction": {},
+        "worldfundCampaignsFunction": {},
+        "worldfundDonationsFunction": {}
       },
       "api": {
         "WorldFundAPI": {}

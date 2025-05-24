@@ -4,12 +4,13 @@
 // # ############################################################################ #
 // # #                         SECTION 1 - MODULE IMPORTS                       #
 // # ############################################################################ #
-const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
-const { SecretsManagerClient, GetSecretValueCommand } = require("@aws-sdk/client-secrets-manager");
-const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, PutCommand, UpdateCommand, GetCommand, ScanCommand, QueryCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
-const fetch = require('node-fetch'); // Assuming v2.7.0 (CommonJS) as per previous context
+// All dependencies moved to dynamic imports
+let crypto;
+let jwt;
+let SecretsManagerClient, GetSecretValueCommand;
+let DynamoDBClient;
+let DynamoDBDocumentClient, PutCommand, UpdateCommand, GetCommand, ScanCommand, QueryCommand, DeleteCommand;
+let fetch;
 
 // Variables for Dynamically Loaded Modules & Shared Instances
 let SiweMessage;
@@ -24,6 +25,33 @@ async function initializeDependencies() {
     if (dependenciesInitialized) return;
     console.log("Initializing dynamic dependencies...");
     try {
+        // Core Node.js modules
+        crypto = await import('crypto');
+        
+        // AWS SDK modules
+        const awsSecretsModule = await import('@aws-sdk/client-secrets-manager');
+        SecretsManagerClient = awsSecretsModule.SecretsManagerClient;
+        GetSecretValueCommand = awsSecretsModule.GetSecretValueCommand;
+        
+        const awsDynamoModule = await import('@aws-sdk/client-dynamodb');
+        DynamoDBClient = awsDynamoModule.DynamoDBClient;
+        
+        const awsDynamoDocModule = await import('@aws-sdk/lib-dynamodb');
+        DynamoDBDocumentClient = awsDynamoDocModule.DynamoDBDocumentClient;
+        PutCommand = awsDynamoDocModule.PutCommand;
+        UpdateCommand = awsDynamoDocModule.UpdateCommand;
+        GetCommand = awsDynamoDocModule.GetCommand;
+        ScanCommand = awsDynamoDocModule.ScanCommand;
+        QueryCommand = awsDynamoDocModule.QueryCommand;
+        DeleteCommand = awsDynamoDocModule.DeleteCommand;
+        
+        // Third-party modules
+        const jwtModule = await import('jsonwebtoken');
+        jwt = jwtModule.default || jwtModule;
+        
+        const fetchModule = await import('node-fetch');
+        fetch = fetchModule.default || fetchModule;
+        
         const badWordsModule = await import('bad-words');
         BadWordsFilterClass = badWordsModule.default || badWordsModule;
         profanityFilter = new BadWordsFilterClass();
