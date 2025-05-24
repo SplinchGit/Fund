@@ -2,10 +2,9 @@
   "lambdaLayers": [
     {
       "type": "ProjectLayer",
-      "resourceName": "0worldfunddebugAuthLibsLayer",
+      "resourceName": "worldfundSharedLayer",
       "version": "Always choose latest version",
-      "isLatestVersionSelected": true,
-      "env": "prod"
+      "isLatestVersionSelected": true
     }
   ],
   "environmentVariableList": [
@@ -26,43 +25,24 @@
       "environmentVariableName": "WLD_DONATION_VERIFY_ACTION_ID"
     },
     {
-      "cloudFormationParameterName": "worldchainRpcUrl",
-      "environmentVariableName": "WORLDCHAIN_RPC_URL"
-    },
-    {
-      "cloudFormationParameterName": "wldContractAddressWorldchain",
-      "environmentVariableName": "WLD_CONTRACT_ADDRESS_WORLDCHAIN"
-    },
-    {
-      "cloudFormationParameterName": "wldTokenDecimals",
-      "environmentVariableName": "WLD_TOKEN_DECIMALS"
-    },
-    {
-      "cloudFormationParameterName": "worldChainId",
-      "environmentVariableName": "WORLD_CHAIN_ID"
-    },
-    {
       "cloudFormationParameterName": "usersTableName",
       "environmentVariableName": "USERS_TABLE_NAME"
     },
     {
-      "cloudFormationParameterName": "campaignsTableName",
-      "environmentVariableName": "CAMPAIGNS_TABLE_NAME"
+      "cloudFormationParameterName": "noncesTableName",
+      "environmentVariableName": "NONCES_TABLE_NAME"
+    },
+    {
+      "cloudFormationParameterName": "frontendUrl",
+      "environmentVariableName": "FRONTEND_URL"
     }
   ],
   "permissions": {
     "storage": {
-      "Splinch": [
-        "create",
-        "read",
-        "update",
-        "delete"
-      ],
       "Users": [
         "create",
         "read",
-        "update",
-        "delete"
+        "update"
       ]
     }
   }

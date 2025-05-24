@@ -1,7 +1,0 @@
-{
-  "name": "0worldfunddebug56fd6525",
-  "version": "1.0.0",
-  "description": "WorldFund API Lambda function",
-  "main": "index.js",
-  "dependencies": {}
-}

@@ -1,137 +1,33 @@
 {
-  "dev": {
-    "awscloudformation": {
-      "AuthRoleName": "amplify-0worldfunddebug-dev-7f503-authRole",
-      "UnauthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-dev-7f503-unauthRole",
-      "AuthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-dev-7f503-authRole",
-      "Region": "eu-west-2",
-      "DeploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
-      "UnauthRoleName": "amplify-0worldfunddebug-dev-7f503-unauthRole",
-      "StackName": "amplify-0worldfunddebug-dev-7f503",
-      "StackId": "arn:aws:cloudformation:eu-west-2:152034782674:stack/amplify-0worldfunddebug-dev-7f503/8c4b21f0-1c9e-11f0-b26b-06072f3ae149",
-      "AmplifyAppId": "d2fvyjulmwt6nl"
+  "function": {
+    "worldfundAuthFunction": {
+      "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
+      "s3Key": "amplify-builds/worldfundAuthFunction-build.zip",
+      "jwtSecretArn": "arn:aws:secretsmanager:eu-west-2:152034782674:secret:JWT_SESSION_SECRET-GcRucs",
+      "worldIdAppId": "app_0da912869c4818fc1a1ec64306551b69",
+      "generalUserVerifyActionId": "verify-user",
+      "wldDonationVerifyActionId": "worldfund-donate-campaign",
+      "usersTableName": "Users-prod",
+      "noncesTableName": "Nonces-prod",
+      "frontendUrl": "https://main.d2fvyjulmwt6nl.amplifyapp.com"
     },
-    "categories": {
-      "storage": {
-        "Splinch": {},
-        "Users": {},
-        "CampaignImageAssets": {}
-      },
-      "auth": {
-        "0worldfunddebugd1266f95": {}
-      },
-      "function": {
-        "0worldfunddebug56fd6525": {
-          "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
-          "s3Key": "amplify-builds/0worldfunddebug56fd6525-2b4951686b5949383564-build.zip"
-        },
-        "worldfundSharedLayer": {
-          "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
-          "s3Key": "amplify-builds/worldfundSharedLayer-LambdaLayerVersion9168254a-build.zip"
-        },
-        "campaignImageHandler": {
-          "processedImageS3Prefix": "public/processed-campaign-images/",
-          "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
-          "s3Key": "amplify-builds/campaignImageHandler-684b776839384e373537-build.zip"
-        }
-      },
-      "api": {
-        "WorldFundAPI": {}
-      }
-    }
-  },
-  "main": {
-    "awscloudformation": {
-      "AuthRoleName": "amplify-0worldfunddebug-dev-7f503-authRole",
-      "UnauthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-dev-7f503-unauthRole",
-      "AuthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-dev-7f503-authRole",
-      "Region": "eu-west-2",
-      "DeploymentBucketName": "",
-      "UnauthRoleName": "amplify-0worldfunddebug-dev-7f503-unauthRole",
-      "StackName": "",
-      "StackId": "",
-      "AmplifyAppId": "d2fvyjulmwt6nl"
+    "worldfundCampaignsFunction": {
+      "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
+      "s3Key": "amplify-builds/worldfundCampaignsFunction-build.zip",
+      "jwtSecretArn": "arn:aws:secretsmanager:eu-west-2:152034782674:secret:JWT_SESSION_SECRET-GcRucs",
+      "campaignsTableName": "Campaigns-prod",
+      "frontendUrl": "https://main.d2fvyjulmwt6nl.amplifyapp.com"
     },
-    "categories": {
-      "storage": {
-        "Splinch": {},
-        "Users": {},
-        "CampaignImageAssets": {}
-      },
-      "auth": {
-        "0worldfunddebugd1266f95": {}
-      },
-      "function": {
-        "0worldfunddebug56fd6525": {
-          "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
-          "s3Key": "amplify-builds/0worldfunddebug56fd6525-2b4951686b5949383564-build.zip"
-        },
-        "worldfundSharedLayer": {
-          "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
-          "s3Key": "amplify-builds/worldfundSharedLayer-LambdaLayerVersion9168254a-build.zip"
-        },
-        "campaignImageHandler": {
-          "processedImageS3Prefix": "public/processed-campaign-images/",
-          "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
-          "s3Key": "amplify-builds/campaignImageHandler-684b776839384e373537-build.zip"
-        },
-        "WorldFundAPI": {}
-      },
-      "api": {
-        "WorldFundAPI": {}
-      }
-    }
-  },
-  "prod": {
-    "awscloudformation": {
-      "AuthRoleName": "amplify-0worldfunddebug-prod-952c1-authRole",
-      "UnauthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-prod-952c1-unauthRole",
-      "AuthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-prod-952c1-authRole",
-      "Region": "eu-west-2",
-      "DeploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
-      "UnauthRoleName": "amplify-0worldfunddebug-prod-952c1-unauthRole",
-      "StackName": "amplify-0worldfunddebug-prod-952c1",
-      "StackId": "arn:aws:cloudformation:eu-west-2:152034782674:stack/amplify-0worldfunddebug-prod-952c1/5b7a86e0-3514-11f0-91b7-0a144bdb5449",
-      "AmplifyAppId": "d2fvyjulmwt6nl"
-    },
-    "categories": {
-      "auth": {
-        "0worldfunddebugd1266f95": {}
-      },
-      "function": {
-        "0worldfunddebug56fd6525": {
-          "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
-          "s3Key": "amplify-builds/0worldfunddebug56fd6525-37364d32417063523853-build.zip",
-          "jwtSecretArn": "arn:aws:secretsmanager:eu-west-2:152034782674:secret:JWT_SESSION_SECRET-GcRucs",
-          "worldIdAppId": "app_0da912869c4818fc1a1ec64306551b69",
-          "generalUserVerifyActionId": "verify-user",
-          "wldDonationVerifyActionId": "worldfund-donate-campaign",
-          "worldchainRpcUrl": "https://worldchain.drpc.org",
-          "wldContractAddressWorldchain": "0x2cfc85d8e48f8eab294be644d9e25c3030863003",
-          "wldTokenDecimals": "18",
-          "worldChainId": "480",
-          "usersTableName": "Users-prod",
-          "campaignsTableName": "Campaings-prod"
-        },
-        "worldfundSharedLayer": {
-          "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
-          "s3Key": "amplify-builds/worldfundSharedLayer-LambdaLayerVersion4972f7fd-build.zip"
-        },
-        "campaignImageHandler": {
-          "processedImageS3Prefix": "public/processed-campaign-images/",
-          "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
-          "s3Key": "amplify-builds/campaignImageHandler-684b776839384e373537-build.zip"
-        },
-        "WorldFundAPI": {}
-      },
-      "api": {
-        "WorldFundAPI": {}
-      },
-      "storage": {
-        "CampaignImageAssets": {},
-        "Splinch": {},
-        "Users": {}
-      }
+    "worldfundDonationsFunction": {
+      "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
+      "s3Key": "amplify-builds/worldfundDonationsFunction-build.zip",
+      "jwtSecretArn": "arn:aws:secretsmanager:eu-west-2:152034782674:secret:JWT_SESSION_SECRET-GcRucs",
+      "campaignsTableName": "Campaigns-prod",
+      "worldchainRpcUrl": "https://worldchain.drpc.org",
+      "wldContractAddressWorldchain": "0x2cfc85d8e48f8eab294be644d9e25c3030863003",
+      "wldTokenDecimals": "18",
+      "worldChainId": "480",
+      "frontendUrl": "https://main.d2fvyjulmwt6nl.amplifyapp.com"
     }
   }
 }

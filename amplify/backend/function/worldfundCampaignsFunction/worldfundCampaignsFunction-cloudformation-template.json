@@ -4,8 +4,8 @@
     "Parameters": {
         "CloudWatchRule": {
             "Type": "String",
-            "Default" : "NONE",
-            "Description" : " Schedule Expression"
+            "Default": "NONE",
+            "Description": "Schedule Expression"
         },
         "deploymentBucketName": {
             "Type": "String"
@@ -15,9 +15,33 @@
         },
         "s3Key": {
             "Type": "String"
+        },
+        "functionworldfundSharedLayerArn": {
+            "Type": "String",
+            "Default": "functionworldfundSharedLayerArn"
+        },
+        "jwtSecretArn": {
+            "Type": "String"
+        },
+        "campaignsTableName": {
+            "Type": "String"
+        },
+        "frontendUrl": {
+            "Type": "String",
+            "Default": "https://main.d2fvyjulmwt6nl.amplifyapp.com"
+        },
+        "storageSplinchName": {
+            "Type": "String",
+            "Default": "storageSplinchName"
+        },
+        "storageSplinchArn": {
+            "Type": "String",
+            "Default": "storageSplinchArn"
+        },
+        "storageSplinchStreamArn": {
+            "Type": "String",
+            "Default": "storageSplinchStreamArn"
         }
-        
-    
     },
     "Conditions": {
         "ShouldNotCreateEnvResources": {
@@ -31,48 +55,81 @@
     },
     "Resources": {
         "LambdaFunction": {
-          "Type": "AWS::Lambda::Function",
-          "Metadata": {
-            "aws:asset:path": "./src",
-            "aws:asset:property": "Code"
-          },
-          "Properties": {
-            "Code": {
-                "S3Bucket": {
-                    "Ref": "deploymentBucketName"
-                },
-                "S3Key": {
-                    "Ref": "s3Key"
-                }
+            "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "aws:asset:path": "./src",
+                "aws:asset:property": "Code"
             },
-            "Handler": "index.handler",
-            "FunctionName": {
-                "Fn::If": [
-                    "ShouldNotCreateEnvResources",
-                    "worldfundCampaignsFunction",
-                    {
-
-                        "Fn::Join": [
-                            "",
-                            [
-                                "worldfundCampaignsFunction",
-                                "-",
-                                {
-                                    "Ref": "env"
-                                }
-                            ]
-                        ]
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "deploymentBucketName"
+                    },
+                    "S3Key": {
+                        "Ref": "s3Key"
                     }
-                ]
-            },
-            "Environment": {
-                "Variables" : {"ENV":{"Ref":"env"},"REGION":{"Ref":"AWS::Region"}}
-            },
-            "Role": { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
-            "Runtime": "nodejs22.x",
-            "Layers": [],
-            "Timeout": 25
-          }
+                },
+                "Handler": "index.handler",
+                "FunctionName": {
+                    "Fn::If": [
+                        "ShouldNotCreateEnvResources",
+                        "worldfundCampaignsFunction",
+                        {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "worldfundCampaignsFunction",
+                                    "-",
+                                    {
+                                        "Ref": "env"
+                                    }
+                                ]
+                            ]
+                        }
+                    ]
+                },
+                "Environment": {
+                    "Variables": {
+                        "ENV": {
+                            "Ref": "env"
+                        },
+                        "REGION": {
+                            "Ref": "AWS::Region"
+                        },
+                        "JWT_SECRET_ARN": {
+                            "Ref": "jwtSecretArn"
+                        },
+                        "CAMPAIGNS_TABLE_NAME": {
+                            "Ref": "campaignsTableName"
+                        },
+                        "FRONTEND_URL": {
+                            "Ref": "frontendUrl"
+                        },
+                        "STORAGE_SPLINCH_NAME": {
+                            "Ref": "storageSplinchName"
+                        },
+                        "STORAGE_SPLINCH_ARN": {
+                            "Ref": "storageSplinchArn"
+                        },
+                        "STORAGE_SPLINCH_STREAMARN": {
+                            "Ref": "storageSplinchStreamArn"
+                        }
+                    }
+                },
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaExecutionRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "nodejs22.x",
+                "Layers": [
+                    {
+                        "Ref": "functionworldfundSharedLayerArn"
+                    }
+                ],
+                "Timeout": 25
+            }
         },
         "LambdaExecutionRole": {
             "Type": "AWS::IAM::Role",
@@ -80,13 +137,12 @@
                 "RoleName": {
                     "Fn::If": [
                         "ShouldNotCreateEnvResources",
-                        "0worldfunddebugLambdaRole64c85b97",
+                        "worldfundCampaignsLambdaRole",
                         {
-
                             "Fn::Join": [
                                 "",
                                 [
-                                    "0worldfunddebugLambdaRole64c85b97",
+                                    "worldfundCampaignsLambdaRole",
                                     "-",
                                     {
                                         "Ref": "env"
@@ -113,29 +169,132 @@
                     ]
                 }
             }
-        }
-        ,"lambdaexecutionpolicy": {
-            "DependsOn": ["LambdaExecutionRole"],
+        },
+        "lambdaexecutionpolicy": {
+            "DependsOn": [
+                "LambdaExecutionRole"
+            ],
             "Type": "AWS::IAM::Policy",
             "Properties": {
                 "PolicyName": "lambda-execution-policy",
-                "Roles": [{ "Ref": "LambdaExecutionRole" }],
+                "Roles": [
+                    {
+                        "Ref": "LambdaExecutionRole"
+                    }
+                ],
                 "PolicyDocument": {
                     "Version": "2012-10-17",
                     "Statement": [
                         {
                             "Effect": "Allow",
-                            "Action": ["logs:CreateLogGroup",
-                            "logs:CreateLogStream",
-                            "logs:PutLogEvents"],
-                            "Resource": { "Fn::Sub": [ "arn:aws:logs:${region}:${account}:log-group:/aws/lambda/${lambda}:log-stream:*", { "region": {"Ref": "AWS::Region"}, "account": {"Ref": "AWS::AccountId"}, "lambda": {"Ref": "LambdaFunction"}} ]}
+                            "Action": [
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            "Resource": {
+                                "Fn::Sub": [
+                                    "arn:aws:logs:${region}:${account}:log-group:/aws/lambda/${lambda}:log-stream:*",
+                                    {
+                                        "region": {
+                                            "Ref": "AWS::Region"
+                                        },
+                                        "account": {
+                                            "Ref": "AWS::AccountId"
+                                        },
+                                        "lambda": {
+                                            "Ref": "LambdaFunction"
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "CustomLambdaExecutionPolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName": "custom-lambda-execution-policy",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "secretsmanager:GetSecretValue"
+                            ],
+                            "Resource": [
+                                "arn:aws:secretsmanager:eu-west-2:152034782674:secret:JWT_SESSION_SECRET-GcRucs"
+                            ]
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "LambdaExecutionRole"
+                    }
+                ]
+            },
+            "DependsOn": "LambdaExecutionRole"
+        },
+        "AmplifyResourcesPolicy": {
+            "DependsOn": [
+                "LambdaExecutionRole"
+            ],
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName": "amplify-lambda-execution-policy",
+                "Roles": [
+                    {
+                        "Ref": "LambdaExecutionRole"
+                    }
+                ],
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "dynamodb:Put*",
+                                "dynamodb:Create*",
+                                "dynamodb:BatchWriteItem",
+                                "dynamodb:PartiQLInsert",
+                                "dynamodb:Get*",
+                                "dynamodb:BatchGetItem",
+                                "dynamodb:List*",
+                                "dynamodb:Describe*",
+                                "dynamodb:Scan",
+                                "dynamodb:Query",
+                                "dynamodb:PartiQLSelect",
+                                "dynamodb:Update*",
+                                "dynamodb:RestoreTable*",
+                                "dynamodb:PartiQLUpdate",
+                                "dynamodb:Delete*",
+                                "dynamodb:PartiQLDelete"
+                            ],
+                            "Resource": [
+                                {
+                                    "Ref": "storageSplinchArn"
+                                },
+                                {
+                                    "Fn::Join": [
+                                        "/",
+                                        [
+                                            {
+                                                "Ref": "storageSplinchArn"
+                                            },
+                                            "index/*"
+                                        ]
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 }
             }
         }
-        
-        
     },
     "Outputs": {
         "Name": {
@@ -144,7 +303,12 @@
             }
         },
         "Arn": {
-            "Value": {"Fn::GetAtt": ["LambdaFunction", "Arn"]}
+            "Value": {
+                "Fn::GetAtt": [
+                    "LambdaFunction",
+                    "Arn"
+                ]
+            }
         },
         "Region": {
             "Value": {
@@ -155,7 +319,14 @@
             "Value": {
                 "Ref": "LambdaExecutionRole"
             }
+        },
+        "LambdaExecutionRoleArn": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "LambdaExecutionRole",
+                    "Arn"
+                ]
+            }
         }
-        
     }
 }
