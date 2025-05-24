@@ -58,11 +58,6 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
-    "worldfundSharedLayer": {
-      "build": true,
-      "providerPlugin": "awscloudformation",
-      "service": "LambdaLayer"
-    },
     "campaignImageHandler": {
       "build": true,
       "dependsOn": [
@@ -71,150 +66,16 @@
             "ApiName",
             "ApiId"
           ],
-          "category": "api",
-          "resourceName": "WorldFundAPI"
+          "category": "api"
         }
       ],
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
-    }
-  },
-  "parameters": {
-    "AMPLIFY_function_0worldfunddebug56fd6525_campaignsTableName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug56fd6525"
-        }
-      ]
     },
-    "AMPLIFY_function_0worldfunddebug56fd6525_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug56fd6525"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug56fd6525_generalUserVerifyActionId": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug56fd6525"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug56fd6525_jwtSecretArn": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug56fd6525"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug56fd6525_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug56fd6525"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug56fd6525_usersTableName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug56fd6525"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug56fd6525_wldContractAddressWorldchain": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug56fd6525"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug56fd6525_wldDonationVerifyActionId": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug56fd6525"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug56fd6525_wldTokenDecimals": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug56fd6525"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug56fd6525_worldChainId": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug56fd6525"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug56fd6525_worldIdAppId": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug56fd6525"
-        }
-      ]
-    },
-    "AMPLIFY_function_0worldfunddebug56fd6525_worldchainRpcUrl": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "0worldfunddebug56fd6525"
-        }
-      ]
-    },
-    "AMPLIFY_function_worldfundSharedLayer_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "worldfundSharedLayer"
-        }
-      ]
-    },
-    "AMPLIFY_function_worldfundSharedLayer_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "worldfundSharedLayer"
-        }
-      ]
-    },
-    "AMPLIFY_function_campaignImageHandler_deploymentBucketName": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "campaignImageHandler"
-        }
-      ]
-    },
-    "AMPLIFY_function_campaignImageHandler_processedImageS3Prefix": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "campaignImageHandler"
-        }
-      ]
-    },
-    "AMPLIFY_function_campaignImageHandler_s3Key": {
-      "usedBy": [
-        {
-          "category": "function",
-          "resourceName": "campaignImageHandler"
-        }
-      ]
+    "worldfundSharedLayer": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "LambdaLayer"
     }
   },
   "storage": {

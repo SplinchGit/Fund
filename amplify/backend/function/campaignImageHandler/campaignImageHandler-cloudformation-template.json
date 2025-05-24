@@ -16,16 +16,10 @@
     "s3Key": {
       "Type": "String"
     },
-    "processedImageS3Prefix": {
-      "Type": "String"
-    },
-    "apiWorldFundAPIApiName": {
-      "Type": "String",
-      "Default": "apiWorldFundAPIApiName"
-    },
-    "apiWorldFundAPIApiId": {
-      "Type": "String",
-      "Default": "apiWorldFundAPIApiId"
+  "processedImageS3Prefix": {
+    "Type": "String"
+  },
+  "apiWorldFundAPIApiId": {
     }
   },
   "Conditions": {
