@@ -111,7 +111,7 @@ exports.handler = async (event) => {
     // 4. Store Processed Image in S3 (public location)
     const originalFileName = sourceKey.substring(sourceKey.lastIndexOf('/') + 1);
     const baseName = originalFileName.substring(0, originalFileName.lastIndexOf('.')) || `campaign-image-${Date.now()}`;
-    const processedObjectKey = `${process.env.PROCESSED_IMAGE_S3_PREFIX}${baseName}.${newExtension}`;
+    const processedImageKey = `${process.env.PROCESSED_IMAGE_S3_PREFIX}${baseName}.${newExtension}`;
 
     const putObjectParams = {
       Bucket: sourceBucket, // Or a different bucket if desired
@@ -158,7 +158,7 @@ exports.handler = async (event) => {
     await s3Client.send(new DeleteObjectCommand(getObjectParams));
     console.log(`Original raw file ${sourceKey} deleted successfully.`);
 
-    return { status: 'success', processedImageKey, imageUrl: publicImageUrl };
+    const processedObjectKey = `${process.env.PROCESSED_IMAGE_S3_PREFIX}${baseName}.${newExtension}`;
 
   } catch (error) {
     console.error("Error processing S3 image:", error);

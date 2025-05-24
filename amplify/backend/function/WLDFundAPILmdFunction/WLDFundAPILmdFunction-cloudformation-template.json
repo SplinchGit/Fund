@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "{\"createdOn\":\"Windows\",\"createdBy\":\"Amplify\",\"createdWith\":\"13.0.1\",\"stackType\":\"function-Lambda\",\"metadata\":{\"whyContinueWithGen1\":\"Prefer not to answer\"}}",
+  "Description": "Lambda Function resource stack creation using Amplify CLI",
   "Parameters": {
     "CloudWatchRule": {
       "Type": "String",
@@ -15,11 +15,7 @@
     },
     "s3Key": {
       "Type": "String"
-    },
-    "processedImageS3Prefix": {
-      "Type": "String"
-    },
-    "apiWorldFundAPIApiId": {}
+    }
   },
   "Conditions": {
     "ShouldNotCreateEnvResources": {
@@ -51,12 +47,12 @@
         "FunctionName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "campaignImageHandler",
+            "WLDFundAPILmdFunction",
             {
               "Fn::Join": [
                 "",
                 [
-                  "campaignImageHandler",
+                  "WLDFundAPILmdFunction",
                   "-",
                   {
                     "Ref": "env"
@@ -73,15 +69,6 @@
             },
             "REGION": {
               "Ref": "AWS::Region"
-            },
-            "API_WORLDFUNDAPI_APINAME": {
-              "Ref": "apiWorldFundAPIApiName"
-            },
-            "API_WORLDFUNDAPI_APIID": {
-              "Ref": "apiWorldFundAPIApiId"
-            },
-            "PROCESSED_IMAGE_S3_PREFIX": {
-              "Ref": "processedImageS3Prefix"
             }
           }
         },
@@ -102,12 +89,12 @@
         "RoleName": {
           "Fn::If": [
             "ShouldNotCreateEnvResources",
-            "0worldfunddebugLambdaRoleed3f97ea",
+            "0worldfunddebugLambdaRolef6817b33",
             {
               "Fn::Join": [
                 "",
                 [
-                  "0worldfunddebugLambdaRoleed3f97ea",
+                  "0worldfunddebugLambdaRolef6817b33",
                   "-",
                   {
                     "Ref": "env"
@@ -173,49 +160,6 @@
                   }
                 ]
               }
-            }
-          ]
-        }
-      }
-    },
-    "AmplifyResourcesPolicy": {
-      "DependsOn": [
-        "LambdaExecutionRole"
-      ],
-      "Type": "AWS::IAM::Policy",
-      "Properties": {
-        "PolicyName": "amplify-lambda-execution-policy",
-        "Roles": [
-          {
-            "Ref": "LambdaExecutionRole"
-          }
-        ],
-        "PolicyDocument": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Action": [
-                "apigateway:PATCH"
-              ],
-              "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:aws:apigateway:",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      "::/restapis/",
-                      {
-                        "Ref": "apiWorldFundAPIApiName"
-                      },
-                      "/*"
-                    ]
-                  ]
-                }
-              ]
             }
           ]
         }

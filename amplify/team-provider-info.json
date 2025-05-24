@@ -34,6 +34,12 @@
     "categories": {
       "auth": {
         "0worldfunddebugd1266f95": {}
+      },
+      "function": {
+        "WLDFundAPILmdFunction": {},
+        "campaignImageHandler": {
+          "processedImageS3Prefix": "public/processed-campaign-images/"
+        }
       }
     }
   }

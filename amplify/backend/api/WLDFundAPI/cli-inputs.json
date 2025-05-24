@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "paths": {
+    "/WLDFundAPI": {
+      "name": "/WLDFundAPI",
+      "lambdaFunction": "WLDFundAPILmdFunction",
+      "permissions": {
+        "setting": "open"
+      }
+    }
+  }
+}
