@@ -39,7 +39,7 @@
         },
         "LayerName": {
           "Fn::Sub": [
-            "0worldfunddebugAuthLibsLayer-${env}",
+            "worldfundSharedLayer-${env}",
             {
               "env": {
                 "Ref": "env"

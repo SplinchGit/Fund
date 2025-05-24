@@ -25,9 +25,9 @@
           "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
           "s3Key": "amplify-builds/0worldfunddebug56fd6525-2b4951686b5949383564-build.zip"
         },
-        "0worldfunddebugAuthLibsLayer": {
+        "worldfundSharedLayer": {
           "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
-          "s3Key": "amplify-builds/0worldfunddebugAuthLibsLayer-LambdaLayerVersion9168254a-build.zip"
+          "s3Key": "amplify-builds/worldfundSharedLayer-LambdaLayerVersion9168254a-build.zip"
         },
         "campaignImageHandler": {
           "processedImageS3Prefix": "public/processed-campaign-images/",
@@ -66,9 +66,9 @@
           "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
           "s3Key": "amplify-builds/0worldfunddebug56fd6525-2b4951686b5949383564-build.zip"
         },
-        "0worldfunddebugAuthLibsLayer": {
+        "worldfundSharedLayer": {
           "deploymentBucketName": "amplify-0worldfunddebug-dev-7f503-deployment",
-          "s3Key": "amplify-builds/0worldfunddebugAuthLibsLayer-LambdaLayerVersion9168254a-build.zip"
+          "s3Key": "amplify-builds/worldfundSharedLayer-LambdaLayerVersion9168254a-build.zip"
         },
         "campaignImageHandler": {
           "processedImageS3Prefix": "public/processed-campaign-images/",
@@ -113,19 +113,16 @@
           "usersTableName": "Users-prod",
           "campaignsTableName": "Campaings-prod"
         },
-        "0worldfunddebugAuthLibsLayer": {
+        "worldfundSharedLayer": {
           "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
-          "s3Key": "amplify-builds/0worldfunddebugAuthLibsLayer-LambdaLayerVersion4972f7fd-build.zip"
+          "s3Key": "amplify-builds/worldfundSharedLayer-LambdaLayerVersion4972f7fd-build.zip"
         },
         "campaignImageHandler": {
           "processedImageS3Prefix": "public/processed-campaign-images/",
           "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
           "s3Key": "amplify-builds/campaignImageHandler-684b776839384e373537-build.zip"
         },
-        "WorldFundAPI": {},
-        "worldfundAuthFunction": {},
-        "worldfundCampaignsFunction": {},
-        "worldfundDonationsFunction": {}
+        "WorldFundAPI": {}
       },
       "api": {
         "WorldFundAPI": {}

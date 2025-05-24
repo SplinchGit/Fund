@@ -16,9 +16,9 @@
     "s3Key": {
       "Type": "String"
     },
-    "function0worldfunddebugAuthLibsLayerArn": {
+    "functionworldfundSharedLayerArn": {
       "Type": "String",
-      "Default": "function0worldfunddebugAuthLibsLayerArn"
+      "Default": "functionworldfundSharedLayerArn"
     },
     "storageSplinchName": {
       "Type": "String",
@@ -187,7 +187,7 @@
         "Runtime": "nodejs22.x",
         "Layers": [
           {
-            "Ref": "function0worldfunddebugAuthLibsLayerArn"
+            "Ref": "functionworldfundSharedLayerArn"
           }
         ],
         "Timeout": 25

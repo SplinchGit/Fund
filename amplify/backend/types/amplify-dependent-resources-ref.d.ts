@@ -25,7 +25,7 @@ export type AmplifyDependentResourcesAttributes = {
       "Name": "string",
       "Region": "string"
     },
-    "0worldfunddebugAuthLibsLayer": {
+    "worldfundSharedLayer": {
       "Arn": "string"
     },
     "campaignImageHandler": {
