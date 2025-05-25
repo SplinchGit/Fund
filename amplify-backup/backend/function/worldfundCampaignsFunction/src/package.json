@@ -1,7 +1,0 @@
-{
-  "name": "worldfund-campaigns-function",
-  "version": "1.0.0",
-  "description": "WorldFund campaigns management function",
-  "main": "index.js",
-  "dependencies": {}
-}
