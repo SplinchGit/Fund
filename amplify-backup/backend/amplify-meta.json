@@ -1,0 +1,126 @@
+{
+  "providers": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-0worldfunddebug-prod-952c1-authRole",
+      "UnauthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-prod-952c1-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-prod-952c1-authRole",
+      "Region": "eu-west-2",
+      "DeploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
+      "UnauthRoleName": "amplify-0worldfunddebug-prod-952c1-unauthRole",
+      "StackName": "amplify-0worldfunddebug-prod-952c1",
+      "StackId": "arn:aws:cloudformation:eu-west-2:152034782674:stack/amplify-0worldfunddebug-prod-952c1/5b7a86e0-3514-11f0-91b7-0a144bdb5449",
+      "AmplifyAppId": "d2fvyjulmwt6nl"
+    }
+  },
+  "api": {
+    "WorldFundAPI": {
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "0worldfunddebug56fd6525"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "API Gateway"
+    }
+  },
+  "auth": {
+    "0worldfunddebugd1266f95": {
+      "customAuth": false,
+      "dependsOn": [],
+      "frontendAuthConfig": {
+        "mfaConfiguration": "OFF",
+        "mfaTypes": [
+          "SMS"
+        ],
+        "passwordProtectionSettings": {
+          "passwordPolicyCharacters": [],
+          "passwordPolicyMinLength": 8
+        },
+        "signupAttributes": [
+          "EMAIL"
+        ],
+        "socialProviders": [],
+        "usernameAttributes": [],
+        "verificationMechanisms": [
+          "EMAIL"
+        ]
+      },
+      "providerPlugin": "awscloudformation",
+      "service": "Cognito"
+    }
+  },
+  "function": {
+    "0worldfunddebug56fd6525": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "Splinch"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "Users"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "0worldfunddebugAuthLibsLayer"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "0worldfunddebugAuthLibsLayer": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "LambdaLayer"
+    },
+    "campaignImageHandler": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "ApiName",
+            "ApiId"
+          ],
+          "category": "api",
+          "resourceName": "WorldFundAPI"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    }
+  },
+  "storage": {
+    "CampaignImageAssets": {
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "S3"
+    },
+    "Splinch": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB"
+    },
+    "Users": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB"
+    }
+  }
+}

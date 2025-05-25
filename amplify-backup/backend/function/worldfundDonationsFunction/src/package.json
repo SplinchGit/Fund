@@ -1,0 +1,9 @@
+{
+  "name": "worldfund-donations-function",
+  "version": "1.0.0",
+  "description": "WorldFund donations processing function",
+  "main": "index.js",
+  "dependencies": {
+    "ethers": "^6.13.1"
+  }
+}

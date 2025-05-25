@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "paths": {
+    "/campaigns": {
+      "name": "/campaigns",
+      "lambdaFunction": "0worldfunddebug56fd6525",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/users": {
+      "name": "/users",
+      "lambdaFunction": "0worldfunddebug56fd6525",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/auth": {
+      "name": "/auth",
+      "lambdaFunction": "0worldfunddebug56fd6525",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/donate": {
+      "name": "/donate",
+      "lambdaFunction": "0worldfunddebug56fd6525",
+      "permissions": {
+        "setting": "open"
+      }
+    }
+  }
+}

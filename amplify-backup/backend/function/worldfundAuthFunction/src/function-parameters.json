@@ -1,0 +1,49 @@
+{
+  "lambdaLayers": [
+    {
+      "type": "ProjectLayer",
+      "resourceName": "worldfundSharedLayer",
+      "version": "Always choose latest version",
+      "isLatestVersionSelected": true
+    }
+  ],
+  "environmentVariableList": [
+    {
+      "cloudFormationParameterName": "jwtSecretArn",
+      "environmentVariableName": "JWT_SECRET_ARN"
+    },
+    {
+      "cloudFormationParameterName": "worldIdAppId",
+      "environmentVariableName": "WORLD_ID_APP_ID"
+    },
+    {
+      "cloudFormationParameterName": "generalUserVerifyActionId",
+      "environmentVariableName": "GENERAL_USER_VERIFY_ACTION_ID"
+    },
+    {
+      "cloudFormationParameterName": "wldDonationVerifyActionId",
+      "environmentVariableName": "WLD_DONATION_VERIFY_ACTION_ID"
+    },
+    {
+      "cloudFormationParameterName": "usersTableName",
+      "environmentVariableName": "USERS_TABLE_NAME"
+    },
+    {
+      "cloudFormationParameterName": "noncesTableName",
+      "environmentVariableName": "NONCES_TABLE_NAME"
+    },
+    {
+      "cloudFormationParameterName": "frontendUrl",
+      "environmentVariableName": "FRONTEND_URL"
+    }
+  ],
+  "permissions": {
+    "storage": {
+      "Users": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  }
+}

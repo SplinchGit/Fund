@@ -1,0 +1,9 @@
+{
+  "name": "worldfund-auth-function",
+  "version": "1.0.0",
+  "description": "WorldFund authentication function",
+  "main": "index.js",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.0"
+  }
+}

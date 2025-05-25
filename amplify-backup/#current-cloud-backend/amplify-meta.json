@@ -1,0 +1,249 @@
+{
+  "providers": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-0worldfunddebug-prod-952c1-authRole",
+      "UnauthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-prod-952c1-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::152034782674:role/amplify-0worldfunddebug-prod-952c1-authRole",
+      "Region": "eu-west-2",
+      "DeploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
+      "UnauthRoleName": "amplify-0worldfunddebug-prod-952c1-unauthRole",
+      "StackName": "amplify-0worldfunddebug-prod-952c1",
+      "StackId": "arn:aws:cloudformation:eu-west-2:152034782674:stack/amplify-0worldfunddebug-prod-952c1/5b7a86e0-3514-11f0-91b7-0a144bdb5449",
+      "AmplifyAppId": "d2fvyjulmwt6nl"
+    }
+  },
+  "api": {
+    "WorldFundAPI": {
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "0worldfunddebug56fd6525"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "API Gateway",
+      "output": {
+        "ApiName": "WorldFundAPI",
+        "RootUrl": "https://3jbvfeoni9.execute-api.eu-west-2.amazonaws.com/prod",
+        "ApiId": "3jbvfeoni9"
+      },
+      "lastPushTimeStamp": "2025-05-24T02:13:00.061Z",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-0worldfunddebug-prod-952c1-deployment/amplify-cfn-templates/api/WorldFundAPI-cloudformation-template.json",
+        "logicalId": "apiWorldFundAPI"
+      },
+      "lastPushDirHash": "jIcACkmgHvjYoTX/AHQHDvveQuQ="
+    }
+  },
+  "auth": {
+    "0worldfunddebugd1266f95": {
+      "customAuth": false,
+      "dependsOn": [],
+      "frontendAuthConfig": {
+        "mfaConfiguration": "OFF",
+        "mfaTypes": [
+          "SMS"
+        ],
+        "passwordProtectionSettings": {
+          "passwordPolicyCharacters": [],
+          "passwordPolicyMinLength": 8
+        },
+        "signupAttributes": [
+          "EMAIL"
+        ],
+        "socialProviders": [],
+        "usernameAttributes": [],
+        "verificationMechanisms": [
+          "EMAIL"
+        ]
+      },
+      "providerPlugin": "awscloudformation",
+      "service": "Cognito",
+      "output": {
+        "UserPoolId": "eu-west-2_Yf5bm71tA",
+        "AppClientIDWeb": "7tv8kgcops83gcg4r17j0epnsf",
+        "AppClientID": "25jnq3p36lkd14qlrom9ntra4h",
+        "IdentityPoolId": "eu-west-2:5489abdb-65d7-4518-9652-ae08a2265d82",
+        "UserPoolArn": "arn:aws:cognito-idp:eu-west-2:152034782674:userpool/eu-west-2_Yf5bm71tA",
+        "IdentityPoolName": "0worldfunddebugd1266f95_identitypool_d1266f95__prod",
+        "UserPoolName": "0worldfunddebugd1266f95_userpool_d1266f95"
+      },
+      "lastPushTimeStamp": "2025-05-24T02:13:00.061Z",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-0worldfunddebug-prod-952c1-deployment/amplify-cfn-templates/auth/0worldfunddebugd1266f95-cloudformation-template.json",
+        "logicalId": "auth0worldfunddebugd1266f95"
+      },
+      "lastPushDirHash": "QdPleIk+xUB2cu7HcPZBGiGljS4="
+    }
+  },
+  "function": {
+    "0worldfunddebug56fd6525": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "Splinch"
+        },
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "StreamArn"
+          ],
+          "category": "storage",
+          "resourceName": "Users"
+        },
+        {
+          "attributes": [
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "0worldfunddebugAuthLibsLayer"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::152034782674:role/0worldfunddebugLambdaRole2dda8aec-prod",
+        "Region": "eu-west-2",
+        "Arn": "arn:aws:lambda:eu-west-2:152034782674:function:0worldfunddebug56fd6525-prod",
+        "Name": "0worldfunddebug56fd6525-prod",
+        "LambdaExecutionRole": "0worldfunddebugLambdaRole2dda8aec-prod"
+      },
+      "lastPushTimeStamp": "2025-05-24T02:13:00.061Z",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-0worldfunddebug-prod-952c1-deployment/amplify-cfn-templates/function/0worldfunddebug56fd6525-cloudformation-template.json",
+        "logicalId": "function0worldfunddebug56fd6525"
+      },
+      "lastBuildTimeStamp": "2025-05-24T02:10:28.302Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2025-05-24T02:10:34.544Z",
+      "distZipFilename": "0worldfunddebug56fd6525-7a62426b4952554f4874-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
+        "s3Key": "amplify-builds/0worldfunddebug56fd6525-7a62426b4952554f4874-build.zip"
+      },
+      "lastPushDirHash": "QLJ0G0gijlwKg4BYjcPw3rdbZR8="
+    },
+    "0worldfunddebugAuthLibsLayer": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "LambdaLayer",
+      "output": {
+        "Arn": "arn:aws:lambda:eu-west-2:152034782674:layer:0worldfunddebugAuthLibsLayer-prod:9"
+      },
+      "lastPushTimeStamp": "2025-05-24T02:13:00.061Z",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-0worldfunddebug-prod-952c1-deployment/amplify-cfn-templates/function/0worldfunddebugAuthLibsLayer-awscloudformation-template.json",
+        "logicalId": "function0worldfunddebugAuthLibsLayer"
+      },
+      "lastBuildTimeStamp": "2025-05-24T02:10:40.915Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2025-05-24T02:10:46.689Z",
+      "distZipFilename": "0worldfunddebugAuthLibsLayer-LambdaLayerVersion182fa841-build.zip",
+      "latestPushedVersionHash": "65962253d77569aebde56b8be85bed3679c9a7d735aef10a081d5e85901b4035",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
+        "s3Key": "amplify-builds/0worldfunddebugAuthLibsLayer-LambdaLayerVersion182fa841-build.zip"
+      }
+    },
+    "campaignImageHandler": {
+      "build": true,
+      "dependsOn": [
+        {
+          "attributes": [
+            "ApiName",
+            "ApiId"
+          ],
+          "category": "api",
+          "resourceName": "WorldFundAPI"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::152034782674:role/0worldfunddebugLambdaRoleed3f97ea-prod",
+        "Region": "eu-west-2",
+        "Arn": "arn:aws:lambda:eu-west-2:152034782674:function:campaignImageHandler-prod",
+        "Name": "campaignImageHandler-prod",
+        "LambdaExecutionRole": "0worldfunddebugLambdaRoleed3f97ea-prod"
+      },
+      "lastPushTimeStamp": "2025-05-24T02:13:00.061Z",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-0worldfunddebug-prod-952c1-deployment/amplify-cfn-templates/function/campaignImageHandler-cloudformation-template.json",
+        "logicalId": "functioncampaignImageHandler"
+      },
+      "lastBuildTimeStamp": "2025-05-24T02:10:52.517Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2025-05-24T02:10:54.922Z",
+      "distZipFilename": "campaignImageHandler-54384c4f333637754c45-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-0worldfunddebug-prod-952c1-deployment",
+        "s3Key": "amplify-builds/campaignImageHandler-54384c4f333637754c45-build.zip"
+      },
+      "lastPushDirHash": "KxGsbD/LBssla855TV8PT4CavmE="
+    }
+  },
+  "storage": {
+    "CampaignImageAssets": {
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "S3",
+      "output": {
+        "BucketName": "worldfund-campaign-images952c1-prod",
+        "Region": "eu-west-2"
+      },
+      "lastPushTimeStamp": "2025-05-24T02:13:00.061Z",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-0worldfunddebug-prod-952c1-deployment/amplify-cfn-templates/storage/cloudformation-template.json",
+        "logicalId": "storageCampaignImageAssets"
+      },
+      "lastPushDirHash": "rbiWPTiEvyOs64cS2gK7MOqBEkI="
+    },
+    "Splinch": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB",
+      "output": {
+        "PartitionKeyName": "id",
+        "Region": "eu-west-2",
+        "Arn": "arn:aws:dynamodb:eu-west-2:152034782674:table/Campaigns-prod",
+        "StreamArn": "arn:aws:dynamodb:eu-west-2:152034782674:table/Campaigns-prod/stream/2025-05-20T00:56:43.153",
+        "PartitionKeyType": "S",
+        "Name": "Campaigns-prod"
+      },
+      "lastPushTimeStamp": "2025-05-24T02:13:00.061Z",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-0worldfunddebug-prod-952c1-deployment/amplify-cfn-templates/storage/Splinch-cloudformation-template.json",
+        "logicalId": "storageSplinch"
+      },
+      "lastPushDirHash": "gSplGd+QoAwsFAHhAthdOpzb5qM="
+    },
+    "Users": {
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB",
+      "output": {
+        "PartitionKeyName": "walletAddress",
+        "Region": "eu-west-2",
+        "Arn": "arn:aws:dynamodb:eu-west-2:152034782674:table/Users-prod",
+        "StreamArn": "arn:aws:dynamodb:eu-west-2:152034782674:table/Users-prod/stream/2025-05-20T00:56:42.979",
+        "PartitionKeyType": "S",
+        "Name": "Users-prod"
+      },
+      "lastPushTimeStamp": "2025-05-24T02:13:00.061Z",
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-0worldfunddebug-prod-952c1-deployment/amplify-cfn-templates/storage/Users-cloudformation-template.json",
+        "logicalId": "storageUsers"
+      },
+      "lastPushDirHash": "Pyn33P+ShNWGzv+EPni79ubi1A0="
+    }
+  }
+}

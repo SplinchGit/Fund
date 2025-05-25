@@ -1,0 +1,16 @@
+{
+  "resourceName": "CampaignImageAssets",
+  "policyUUID": "c37c05d8",
+  "bucketName": "worldfund-campaign-images",
+  "storageAccess": "authAndGuest",
+  "guestAccess": [
+    "READ"
+  ],
+  "authAccess": [
+    "CREATE_AND_UPDATE",
+    "READ",
+    "DELETE"
+  ],
+  "triggerFunction": "NONE",
+  "groupAccess": {}
+}
