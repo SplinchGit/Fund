@@ -1,0 +1,67 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Minimal Amplify stack to match existing configuration",
+  "Resources": {
+    "DeploymentBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": "amplify-0worldfunddebug-prod-952c1-deployment-2025",
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      }
+    },
+    "AuthRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "amplify-0worldfunddebug-prod-952c1-authRole",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": "cognito-identity.amazonaws.com"
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/AWSLambdaExecute"
+        ]
+      }
+    },
+    "UnauthRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "amplify-0worldfunddebug-prod-952c1-unauthRole",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": "cognito-identity.amazonaws.com"
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "Region": {
+      "Value": "eu-west-2"
+    },
+    "StackName": {
+      "Value": "amplify-0worldfunddebug-prod-952c1"
+    },
+    "StackId": {
+      "Value": {
+        "Ref": "AWS::StackId"
+      }
+    }
+  }
+}
