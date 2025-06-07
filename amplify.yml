@@ -25,7 +25,7 @@ backend:
       commands:
         - echo "GEN 2 BACKEND BUILD STARTING"
         - npm ci --include=dev
-        - npx ampx generate
+        - npx ampx generate outputs
 
 frontend:
   phases:
