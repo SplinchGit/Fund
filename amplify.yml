@@ -1,37 +1,8 @@
-# ───────────────────────────────────────────────────────────────────────────────
-# AMPLIFY GEN 2 CONFIG NOTES:
-#
-# 1. STATIC VITE SITE:
-#    - baseDirectory must match Vite's outDir ("dist" by default).
-#    - If you change Vite's outDir, update baseDirectory immediately.
-#
-# 2. GEN 2 BACKEND:
-#    - Uses npx ampx generate instead of amplifyPush
-#    - Backend deploys automatically via amplify/ folder detection
-#
-# 3. SPEED OPTIMIZATIONS:
-#    - Cache Vite & npm caches to slash install times.
-#    - Dev dependencies needed for Gen 2 backend build
-#
-# 4. KEEP FILE AT REPO ROOT:
-#    - amplify.yml beside package.json & amplify/ folder.
-#    - Watch indentation—YAML is sensitive!
-# ───────────────────────────────────────────────────────────────────────────────
-
 version: 1
-backend:
-  phases:
-    build:
-      commands:
-        - echo "GEN 2 BACKEND BUILD STARTING"
-        - npm ci --include=dev
-        - npx ampx generate outputs
-
 frontend:
   phases:
     preBuild:
       commands:
-        # faster npm install: offline cache & no audit
         - npm ci --prefer-offline --no-audit
     build:
       commands:
@@ -39,18 +10,17 @@ frontend:
         - echo "Frontend build completed"
 
   artifacts:
-    baseDirectory: dist    # ← Vite's default outDir
+    baseDirectory: dist
     files:
       - '**/*'
 
   cache:
     paths:
-      - node_modules/**/*   # dependency cache
-      - .vite/**/*          # Vite's cache
-      - ~/.npm/**/*         # npm global cache
+      - node_modules/**/*
+      - .vite/**/*
+      - ~/.npm/**/*
 
   customHeaders:
-    # MIME type configuration for JavaScript modules
     - pattern: '*.js'
       headers:
         - key: 'Content-Type'
@@ -67,7 +37,6 @@ frontend:
       headers:
         - key: 'Content-Type'
           value: 'text/css'
-    # Cache control settings
     - pattern: '**/*'
       headers:
         - key: 'Cache-Control'
