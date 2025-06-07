@@ -1,0 +1,43 @@
+{
+  "api": {
+    "authApi": {
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "authHandler"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "API Gateway"
+    }
+  },
+  "function": {
+    "authHandler": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    }
+  },
+  "parameters": {
+    "AMPLIFY_function_authHandler_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "authHandler"
+        }
+      ]
+    },
+    "AMPLIFY_function_authHandler_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "authHandler"
+        }
+      ]
+    }
+  }
+}

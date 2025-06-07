@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "paths": {
+    "/auth": {
+      "name": "/auth",
+      "lambdaFunction": "authHandler",
+      "permissions": {
+        "setting": "open"
+      }
+    }
+  }
+}
