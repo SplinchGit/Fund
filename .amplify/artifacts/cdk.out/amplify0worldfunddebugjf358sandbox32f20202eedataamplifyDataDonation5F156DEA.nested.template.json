@@ -1,0 +1,2108 @@
+{
+ "Parameters": {
+  "DynamoDBModelTableReadIOPS": {
+   "Type": "Number",
+   "Default": 5,
+   "Description": "The number of read IOPS the table should support."
+  },
+  "DynamoDBModelTableWriteIOPS": {
+   "Type": "Number",
+   "Default": 5,
+   "Description": "The number of write IOPS the table should support."
+  },
+  "DynamoDBBillingMode": {
+   "Type": "String",
+   "Default": "PAY_PER_REQUEST",
+   "AllowedValues": [
+    "PAY_PER_REQUEST",
+    "PROVISIONED"
+   ],
+   "Description": "Configure @model types to create DynamoDB tables with PAY_PER_REQUEST or PROVISIONED billing modes."
+  },
+  "DynamoDBEnablePointInTimeRecovery": {
+   "Type": "String",
+   "Default": "false",
+   "AllowedValues": [
+    "true",
+    "false"
+   ],
+   "Description": "Whether to enable Point in Time Recovery on the table."
+  },
+  "DynamoDBEnableServerSideEncryption": {
+   "Type": "String",
+   "Default": "true",
+   "AllowedValues": [
+    "true",
+    "false"
+   ],
+   "Description": "Enable server side encryption powered by KMS."
+  },
+  "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataAmplifyTableManagerNestedStackAmplifyTableManagerNestedStackResource47DF414COutputsamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataAmplifyTableManagerTableManaD7DB254D": {
+   "Type": "String"
+  },
+  "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId": {
+   "Type": "String"
+  },
+  "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name": {
+   "Type": "String"
+  },
+  "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthauthenticatedUserRole783CC1FBRef": {
+   "Type": "String"
+  },
+  "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthunauthenticatedUserRoleD31E1FB5Ref": {
+   "Type": "String"
+  },
+  "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthIdentityPool44CDB0DCRef": {
+   "Type": "String"
+  }
+ },
+ "Conditions": {
+  "HasEnvironmentParameter": {
+   "Fn::Not": [
+    {
+     "Fn::Equals": [
+      "NONE",
+      "NONE"
+     ]
+    }
+   ]
+  },
+  "ShouldUsePayPerRequestBilling": {
+   "Fn::Equals": [
+    {
+     "Ref": "DynamoDBBillingMode"
+    },
+    "PAY_PER_REQUEST"
+   ]
+  },
+  "ShouldUsePointInTimeRecovery": {
+   "Fn::Equals": [
+    {
+     "Ref": "DynamoDBEnablePointInTimeRecovery"
+    },
+    "true"
+   ]
+  },
+  "CDKMetadataAvailable": {
+   "Fn::Or": [
+    {
+     "Fn::Or": [
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "af-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-east-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-northeast-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-northeast-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-northeast-3"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-south-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-southeast-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-southeast-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-southeast-3"
+       ]
+      }
+     ]
+    },
+    {
+     "Fn::Or": [
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-southeast-4"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ca-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ca-west-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "cn-north-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "cn-northwest-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-central-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-north-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-south-2"
+       ]
+      }
+     ]
+    },
+    {
+     "Fn::Or": [
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-west-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-west-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-west-3"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "il-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "me-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "me-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "sa-east-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-east-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-east-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-west-1"
+       ]
+      }
+     ]
+    },
+    {
+     "Fn::Equals": [
+      {
+       "Ref": "AWS::Region"
+      },
+      "us-west-2"
+     ]
+    }
+   ]
+  }
+ },
+ "Resources": {
+  "DonationTable": {
+   "Type": "Custom::AmplifyDynamoDBTable",
+   "Properties": {
+    "ServiceToken": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataAmplifyTableManagerNestedStackAmplifyTableManagerNestedStackResource47DF414COutputsamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataAmplifyTableManagerTableManaD7DB254D"
+    },
+    "tableName": {
+     "Fn::Join": [
+      "",
+      [
+       "Donation-",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+       },
+       "-NONE"
+      ]
+     ]
+    },
+    "attributeDefinitions": [
+     {
+      "attributeName": "id",
+      "attributeType": "S"
+     }
+    ],
+    "keySchema": [
+     {
+      "attributeName": "id",
+      "keyType": "HASH"
+     }
+    ],
+    "provisionedThroughput": {
+     "Fn::If": [
+      "ShouldUsePayPerRequestBilling",
+      {
+       "Ref": "AWS::NoValue"
+      },
+      {
+       "ReadCapacityUnits": {
+        "Ref": "DynamoDBModelTableReadIOPS"
+       },
+       "WriteCapacityUnits": {
+        "Ref": "DynamoDBModelTableWriteIOPS"
+       }
+      }
+     ]
+    },
+    "sseSpecification": {
+     "sseEnabled": false
+    },
+    "streamSpecification": {
+     "streamViewType": "NEW_AND_OLD_IMAGES"
+    },
+    "deletionProtectionEnabled": false,
+    "allowDestructiveGraphqlSchemaUpdates": true,
+    "replaceTableUponGsiUpdate": true,
+    "pointInTimeRecoverySpecification": {
+     "Fn::If": [
+      "ShouldUsePointInTimeRecovery",
+      {
+       "PointInTimeRecoveryEnabled": true
+      },
+      {
+       "Ref": "AWS::NoValue"
+      }
+     ]
+    },
+    "billingMode": {
+     "Fn::If": [
+      "ShouldUsePayPerRequestBilling",
+      "PAY_PER_REQUEST",
+      {
+       "Ref": "AWS::NoValue"
+      }
+     ]
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/DonationTable/Default/Default"
+   }
+  },
+  "DonationIAMRole6705FB84": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "appsync.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "dynamodb:BatchGetItem",
+          "dynamodb:BatchWriteItem",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:GetItem",
+          "dynamodb:Scan",
+          "dynamodb:Query",
+          "dynamodb:UpdateItem",
+          "dynamodb:ConditionCheckItem",
+          "dynamodb:DescribeTable",
+          "dynamodb:GetRecords",
+          "dynamodb:GetShardIterator"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          {
+           "Fn::Sub": [
+            "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tablename}",
+            {
+             "tablename": {
+              "Fn::Join": [
+               "",
+               [
+                "Donation-",
+                {
+                 "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+                },
+                "-NONE"
+               ]
+              ]
+             }
+            }
+           ]
+          },
+          {
+           "Fn::Sub": [
+            "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tablename}/*",
+            {
+             "tablename": {
+              "Fn::Join": [
+               "",
+               [
+                "Donation-",
+                {
+                 "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+                },
+                "-NONE"
+               ]
+              ]
+             }
+            }
+           ]
+          }
+         ]
+        }
+       ],
+       "Version": "2012-10-17"
+      },
+      "PolicyName": "DynamoDBAccess"
+     }
+    ],
+    "RoleName": {
+     "Fn::Join": [
+      "",
+      [
+       "DonationIAMRole477c67-",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+       },
+       "-NONE"
+      ]
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "amplify:deployment-type",
+      "Value": "sandbox"
+     },
+     {
+      "Key": "amplify:friendly-name",
+      "Value": "amplifyData"
+     },
+     {
+      "Key": "created-by",
+      "Value": "amplify"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/DonationIAMRole/Resource"
+   }
+  },
+  "DonationDataSource": {
+   "Type": "AWS::AppSync::DataSource",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DynamoDBConfig": {
+     "AwsRegion": {
+      "Ref": "AWS::Region"
+     },
+     "TableName": {
+      "Fn::Select": [
+       1,
+       {
+        "Fn::Split": [
+         "/",
+         {
+          "Fn::Select": [
+           5,
+           {
+            "Fn::Split": [
+             ":",
+             {
+              "Fn::GetAtt": [
+               "DonationTable",
+               "TableArn"
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    },
+    "Name": "DonationTable",
+    "ServiceRoleArn": {
+     "Fn::GetAtt": [
+      "DonationIAMRole6705FB84",
+      "Arn"
+     ]
+    },
+    "Type": "AMAZON_DYNAMODB"
+   },
+   "DependsOn": [
+    "DonationIAMRole6705FB84"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/DonationDataSource/Resource"
+   }
+  },
+  "QuerygetDonationauth0FunctionQuerygetDonationauth0FunctionAppSyncFunctionFEB383A2": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "QuerygetDonationauth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c198324ea51bbec9cebb98ea3502cd4efb8cea55edece7e137710efb94ab930b.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/QuerygetDonationauth0Function/QuerygetDonationauth0Function.AppSyncFunction"
+   }
+  },
+  "QuerygetDonationpostAuth0FunctionQuerygetDonationpostAuth0FunctionAppSyncFunctionAA775C93": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "QuerygetDonationpostAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c1721bcd774e27c514d3454b5be4f9bdd094c0161b57ddf053d618e3b0086a77.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/QuerygetDonationpostAuth0Function/QuerygetDonationpostAuth0Function.AppSyncFunction"
+   }
+  },
+  "QueryGetDonationDataResolverFnQueryGetDonationDataResolverFnAppSyncFunctionC8A7E1CA": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Fn::GetAtt": [
+      "DonationDataSource",
+      "Name"
+     ]
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "QueryGetDonationDataResolverFn",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/08f4d557693d96c1a4efba0f9dc91330e4b19772fd5477c156468843e3d9cb5e.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/4c6a2d29f01c6091bd1d9afe16e5849d456c96f17c3b215938c8067399532719.vtl"
+    }
+   },
+   "DependsOn": [
+    "DonationDataSource"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/QueryGetDonationDataResolverFn/QueryGetDonationDataResolverFn.AppSyncFunction"
+   }
+  },
+  "GetDonationResolver": {
+   "Type": "AWS::AppSync::Resolver",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "FieldName": "getDonation",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "Fn::GetAtt": [
+        "QuerygetDonationauth0FunctionQuerygetDonationauth0FunctionAppSyncFunctionFEB383A2",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "QuerygetDonationpostAuth0FunctionQuerygetDonationpostAuth0FunctionAppSyncFunctionAA775C93",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "QueryGetDonationDataResolverFnQueryGetDonationDataResolverFnAppSyncFunctionC8A7E1CA",
+        "FunctionId"
+       ]
+      }
+     ]
+    },
+    "RequestMappingTemplate": {
+     "Fn::Join": [
+      "",
+      [
+       "$util.qr($ctx.stash.put(\"typeName\", \"Query\"))\n$util.qr($ctx.stash.put(\"fieldName\", \"getDonation\"))\n$util.qr($ctx.stash.put(\"conditions\", []))\n$util.qr($ctx.stash.put(\"metadata\", {}))\n$util.qr($ctx.stash.metadata.put(\"dataSourceType\", \"AMAZON_DYNAMODB\"))\n$util.qr($ctx.stash.metadata.put(\"apiId\", \"",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"connectionAttributes\", {}))\n$util.qr($ctx.stash.put(\"tableName\", \"",
+       {
+        "Fn::Select": [
+         1,
+         {
+          "Fn::Split": [
+           "/",
+           {
+            "Fn::Select": [
+             5,
+             {
+              "Fn::Split": [
+               ":",
+               {
+                "Fn::GetAtt": [
+                 "DonationTable",
+                 "TableArn"
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"authRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthauthenticatedUserRole783CC1FBRef"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"unauthRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthunauthenticatedUserRoleD31E1FB5Ref"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"identityPoolId\", \"",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthIdentityPool44CDB0DCRef"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"adminRoles\", []))\n$util.toJson({})"
+      ]
+     ]
+    },
+    "ResponseMappingTemplate": "$util.toJson($ctx.prev.result)",
+    "TypeName": "Query"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/queryGetDonationResolver"
+   }
+  },
+  "QuerylistDonationsauth0FunctionQuerylistDonationsauth0FunctionAppSyncFunctionD2A3E63A": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "QuerylistDonationsauth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c198324ea51bbec9cebb98ea3502cd4efb8cea55edece7e137710efb94ab930b.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/QuerylistDonationsauth0Function/QuerylistDonationsauth0Function.AppSyncFunction"
+   }
+  },
+  "QuerylistDonationspostAuth0FunctionQuerylistDonationspostAuth0FunctionAppSyncFunction4706500D": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "QuerylistDonationspostAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c1721bcd774e27c514d3454b5be4f9bdd094c0161b57ddf053d618e3b0086a77.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/QuerylistDonationspostAuth0Function/QuerylistDonationspostAuth0Function.AppSyncFunction"
+   }
+  },
+  "QueryListDonationsDataResolverFnQueryListDonationsDataResolverFnAppSyncFunctionDEF16B86": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Fn::GetAtt": [
+      "DonationDataSource",
+      "Name"
+     ]
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "QueryListDonationsDataResolverFn",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/9fcbe070ecd3023c5bf5b966fa9584757db9762eef123bad0820bd87591b2174.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/cc01911d0269d4080ea57505dc445dfc315ef7ad85d3d9d4ea1357858bff451d.vtl"
+    }
+   },
+   "DependsOn": [
+    "DonationDataSource"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/QueryListDonationsDataResolverFn/QueryListDonationsDataResolverFn.AppSyncFunction"
+   }
+  },
+  "ListDonationResolver": {
+   "Type": "AWS::AppSync::Resolver",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "FieldName": "listDonations",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "Fn::GetAtt": [
+        "QuerylistDonationsauth0FunctionQuerylistDonationsauth0FunctionAppSyncFunctionD2A3E63A",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "QuerylistDonationspostAuth0FunctionQuerylistDonationspostAuth0FunctionAppSyncFunction4706500D",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "QueryListDonationsDataResolverFnQueryListDonationsDataResolverFnAppSyncFunctionDEF16B86",
+        "FunctionId"
+       ]
+      }
+     ]
+    },
+    "RequestMappingTemplate": {
+     "Fn::Join": [
+      "",
+      [
+       "$util.qr($ctx.stash.put(\"typeName\", \"Query\"))\n$util.qr($ctx.stash.put(\"fieldName\", \"listDonations\"))\n$util.qr($ctx.stash.put(\"conditions\", []))\n$util.qr($ctx.stash.put(\"metadata\", {}))\n$util.qr($ctx.stash.metadata.put(\"dataSourceType\", \"AMAZON_DYNAMODB\"))\n$util.qr($ctx.stash.metadata.put(\"apiId\", \"",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"connectionAttributes\", {}))\n$util.qr($ctx.stash.put(\"tableName\", \"",
+       {
+        "Fn::Select": [
+         1,
+         {
+          "Fn::Split": [
+           "/",
+           {
+            "Fn::Select": [
+             5,
+             {
+              "Fn::Split": [
+               ":",
+               {
+                "Fn::GetAtt": [
+                 "DonationTable",
+                 "TableArn"
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"authRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthauthenticatedUserRole783CC1FBRef"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"unauthRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthunauthenticatedUserRoleD31E1FB5Ref"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"identityPoolId\", \"",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthIdentityPool44CDB0DCRef"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"adminRoles\", []))\n$util.toJson({})"
+      ]
+     ]
+    },
+    "ResponseMappingTemplate": "$util.toJson($ctx.prev.result)",
+    "TypeName": "Query"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/queryListDonationsResolver"
+   }
+  },
+  "MutationcreateDonationinit0FunctionMutationcreateDonationinit0FunctionAppSyncFunction1C905CC1": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationcreateDonationinit0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/a183ddccbd956316c38ef97177b8f088ef0826f62023323f5ae6053d348ccffc.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/MutationcreateDonationinit0Function/MutationcreateDonationinit0Function.AppSyncFunction"
+   }
+  },
+  "MutationcreateDonationinit1FunctionMutationcreateDonationinit1FunctionAppSyncFunction7F3496F2": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationcreateDonationinit1Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/1f4edfe247ceb6acc51779100dbb31e6ede916053814db561b9f19622deaa6d3.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/MutationcreateDonationinit1Function/MutationcreateDonationinit1Function.AppSyncFunction"
+   }
+  },
+  "MutationcreateDonationauth0FunctionMutationcreateDonationauth0FunctionAppSyncFunctionCA5295BC": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationcreateDonationauth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/163f1e92c10dcaf85e4690f19146fc5a18d1291ad6a6ad84db40c0c36d101fe9.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/MutationcreateDonationauth0Function/MutationcreateDonationauth0Function.AppSyncFunction"
+   }
+  },
+  "MutationcreateDonationpostAuth0FunctionMutationcreateDonationpostAuth0FunctionAppSyncFunction0F90D356": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationcreateDonationpostAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c1721bcd774e27c514d3454b5be4f9bdd094c0161b57ddf053d618e3b0086a77.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/MutationcreateDonationpostAuth0Function/MutationcreateDonationpostAuth0Function.AppSyncFunction"
+   }
+  },
+  "MutationCreateDonationDataResolverFnMutationCreateDonationDataResolverFnAppSyncFunction94853C89": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Fn::GetAtt": [
+      "DonationDataSource",
+      "Name"
+     ]
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationCreateDonationDataResolverFn",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/28c1d2244d3758ea843bde77b2d0542cc99c48a23311e1e5f31d0dde5247cfa7.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/f4a52b72209a9dfa197b5e7367a5c378c5bb86de6e29ddd9e48b49a3fe54b249.vtl"
+    }
+   },
+   "DependsOn": [
+    "DonationDataSource"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/MutationCreateDonationDataResolverFn/MutationCreateDonationDataResolverFn.AppSyncFunction"
+   }
+  },
+  "CreateDonationResolver": {
+   "Type": "AWS::AppSync::Resolver",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "FieldName": "createDonation",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "Fn::GetAtt": [
+        "MutationcreateDonationinit0FunctionMutationcreateDonationinit0FunctionAppSyncFunction1C905CC1",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationcreateDonationinit1FunctionMutationcreateDonationinit1FunctionAppSyncFunction7F3496F2",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationcreateDonationauth0FunctionMutationcreateDonationauth0FunctionAppSyncFunctionCA5295BC",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationcreateDonationpostAuth0FunctionMutationcreateDonationpostAuth0FunctionAppSyncFunction0F90D356",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationCreateDonationDataResolverFnMutationCreateDonationDataResolverFnAppSyncFunction94853C89",
+        "FunctionId"
+       ]
+      }
+     ]
+    },
+    "RequestMappingTemplate": {
+     "Fn::Join": [
+      "",
+      [
+       "$util.qr($ctx.stash.put(\"typeName\", \"Mutation\"))\n$util.qr($ctx.stash.put(\"fieldName\", \"createDonation\"))\n$util.qr($ctx.stash.put(\"conditions\", []))\n$util.qr($ctx.stash.put(\"metadata\", {}))\n$util.qr($ctx.stash.metadata.put(\"dataSourceType\", \"AMAZON_DYNAMODB\"))\n$util.qr($ctx.stash.metadata.put(\"apiId\", \"",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"connectionAttributes\", {}))\n$util.qr($ctx.stash.put(\"tableName\", \"",
+       {
+        "Fn::Select": [
+         1,
+         {
+          "Fn::Split": [
+           "/",
+           {
+            "Fn::Select": [
+             5,
+             {
+              "Fn::Split": [
+               ":",
+               {
+                "Fn::GetAtt": [
+                 "DonationTable",
+                 "TableArn"
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"authRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthauthenticatedUserRole783CC1FBRef"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"unauthRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthunauthenticatedUserRoleD31E1FB5Ref"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"identityPoolId\", \"",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthIdentityPool44CDB0DCRef"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"adminRoles\", []))\n$util.toJson({})"
+      ]
+     ]
+    },
+    "ResponseMappingTemplate": "$util.toJson($ctx.prev.result)",
+    "TypeName": "Mutation"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/mutationCreateDonationResolver"
+   }
+  },
+  "MutationupdateDonationinit0FunctionMutationupdateDonationinit0FunctionAppSyncFunctionDCFB38AE": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationupdateDonationinit0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/06db846fd14e6fc371f22b12b5545ba8e2dbfeda85d8c8d586c71c282166657b.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/MutationupdateDonationinit0Function/MutationupdateDonationinit0Function.AppSyncFunction"
+   }
+  },
+  "MutationupdateDonationauth0FunctionMutationupdateDonationauth0FunctionAppSyncFunctionC797FA7A": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Fn::GetAtt": [
+      "DonationDataSource",
+      "Name"
+     ]
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationupdateDonationauth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/1f5fed297da9c32ae3af922bf3a38ccf23b956078887d16891ec06c20c64722c.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/fe139862c8f0faccbaea00d381f2ee946ff166b4a3ff39527a46c14858c9626f.vtl"
+    }
+   },
+   "DependsOn": [
+    "DonationDataSource"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/MutationupdateDonationauth0Function/MutationupdateDonationauth0Function.AppSyncFunction"
+   }
+  },
+  "MutationupdateDonationpostAuth0FunctionMutationupdateDonationpostAuth0FunctionAppSyncFunctionB297A4B1": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationupdateDonationpostAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c1721bcd774e27c514d3454b5be4f9bdd094c0161b57ddf053d618e3b0086a77.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/MutationupdateDonationpostAuth0Function/MutationupdateDonationpostAuth0Function.AppSyncFunction"
+   }
+  },
+  "MutationUpdateDonationDataResolverFnMutationUpdateDonationDataResolverFnAppSyncFunction3BF0BD41": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Fn::GetAtt": [
+      "DonationDataSource",
+      "Name"
+     ]
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationUpdateDonationDataResolverFn",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/474bf0776ec2164a13191d1a0a9e057154931e4918fea5086f49850d02a5371b.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/f4a52b72209a9dfa197b5e7367a5c378c5bb86de6e29ddd9e48b49a3fe54b249.vtl"
+    }
+   },
+   "DependsOn": [
+    "DonationDataSource"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/MutationUpdateDonationDataResolverFn/MutationUpdateDonationDataResolverFn.AppSyncFunction"
+   }
+  },
+  "UpdateDonationResolver": {
+   "Type": "AWS::AppSync::Resolver",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "FieldName": "updateDonation",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "Fn::GetAtt": [
+        "MutationupdateDonationinit0FunctionMutationupdateDonationinit0FunctionAppSyncFunctionDCFB38AE",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationupdateDonationauth0FunctionMutationupdateDonationauth0FunctionAppSyncFunctionC797FA7A",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationupdateDonationpostAuth0FunctionMutationupdateDonationpostAuth0FunctionAppSyncFunctionB297A4B1",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationUpdateDonationDataResolverFnMutationUpdateDonationDataResolverFnAppSyncFunction3BF0BD41",
+        "FunctionId"
+       ]
+      }
+     ]
+    },
+    "RequestMappingTemplate": {
+     "Fn::Join": [
+      "",
+      [
+       "$util.qr($ctx.stash.put(\"typeName\", \"Mutation\"))\n$util.qr($ctx.stash.put(\"fieldName\", \"updateDonation\"))\n$util.qr($ctx.stash.put(\"conditions\", []))\n$util.qr($ctx.stash.put(\"metadata\", {}))\n$util.qr($ctx.stash.metadata.put(\"dataSourceType\", \"AMAZON_DYNAMODB\"))\n$util.qr($ctx.stash.metadata.put(\"apiId\", \"",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"connectionAttributes\", {}))\n$util.qr($ctx.stash.put(\"tableName\", \"",
+       {
+        "Fn::Select": [
+         1,
+         {
+          "Fn::Split": [
+           "/",
+           {
+            "Fn::Select": [
+             5,
+             {
+              "Fn::Split": [
+               ":",
+               {
+                "Fn::GetAtt": [
+                 "DonationTable",
+                 "TableArn"
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"authRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthauthenticatedUserRole783CC1FBRef"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"unauthRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthunauthenticatedUserRoleD31E1FB5Ref"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"identityPoolId\", \"",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthIdentityPool44CDB0DCRef"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"adminRoles\", []))\n$util.toJson({})"
+      ]
+     ]
+    },
+    "ResponseMappingTemplate": "$util.toJson($ctx.prev.result)",
+    "TypeName": "Mutation"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/mutationUpdateDonationResolver"
+   }
+  },
+  "MutationdeleteDonationauth0FunctionMutationdeleteDonationauth0FunctionAppSyncFunction3C84494E": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Fn::GetAtt": [
+      "DonationDataSource",
+      "Name"
+     ]
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationdeleteDonationauth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/1f5fed297da9c32ae3af922bf3a38ccf23b956078887d16891ec06c20c64722c.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/05de9eab8d843ef7ef353a7792e3969abe58aae4a1016c0995c6ebddc6f9068f.vtl"
+    }
+   },
+   "DependsOn": [
+    "DonationDataSource"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/MutationdeleteDonationauth0Function/MutationdeleteDonationauth0Function.AppSyncFunction"
+   }
+  },
+  "MutationdeleteDonationpostAuth0FunctionMutationdeleteDonationpostAuth0FunctionAppSyncFunctionFAA7E15C": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationdeleteDonationpostAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c1721bcd774e27c514d3454b5be4f9bdd094c0161b57ddf053d618e3b0086a77.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/MutationdeleteDonationpostAuth0Function/MutationdeleteDonationpostAuth0Function.AppSyncFunction"
+   }
+  },
+  "MutationDeleteDonationDataResolverFnMutationDeleteDonationDataResolverFnAppSyncFunctionC7E22971": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Fn::GetAtt": [
+      "DonationDataSource",
+      "Name"
+     ]
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "MutationDeleteDonationDataResolverFn",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/4f7907d1209a2c9953a0c053df402c634e359546d70c7cc5c2e8e21ea734880f.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/f4a52b72209a9dfa197b5e7367a5c378c5bb86de6e29ddd9e48b49a3fe54b249.vtl"
+    }
+   },
+   "DependsOn": [
+    "DonationDataSource"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/MutationDeleteDonationDataResolverFn/MutationDeleteDonationDataResolverFn.AppSyncFunction"
+   }
+  },
+  "DeleteDonationResolver": {
+   "Type": "AWS::AppSync::Resolver",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "FieldName": "deleteDonation",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "Fn::GetAtt": [
+        "MutationdeleteDonationauth0FunctionMutationdeleteDonationauth0FunctionAppSyncFunction3C84494E",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationdeleteDonationpostAuth0FunctionMutationdeleteDonationpostAuth0FunctionAppSyncFunctionFAA7E15C",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "MutationDeleteDonationDataResolverFnMutationDeleteDonationDataResolverFnAppSyncFunctionC7E22971",
+        "FunctionId"
+       ]
+      }
+     ]
+    },
+    "RequestMappingTemplate": {
+     "Fn::Join": [
+      "",
+      [
+       "$util.qr($ctx.stash.put(\"typeName\", \"Mutation\"))\n$util.qr($ctx.stash.put(\"fieldName\", \"deleteDonation\"))\n$util.qr($ctx.stash.put(\"conditions\", []))\n$util.qr($ctx.stash.put(\"metadata\", {}))\n$util.qr($ctx.stash.metadata.put(\"dataSourceType\", \"AMAZON_DYNAMODB\"))\n$util.qr($ctx.stash.metadata.put(\"apiId\", \"",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"connectionAttributes\", {}))\n$util.qr($ctx.stash.put(\"tableName\", \"",
+       {
+        "Fn::Select": [
+         1,
+         {
+          "Fn::Split": [
+           "/",
+           {
+            "Fn::Select": [
+             5,
+             {
+              "Fn::Split": [
+               ":",
+               {
+                "Fn::GetAtt": [
+                 "DonationTable",
+                 "TableArn"
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"authRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthauthenticatedUserRole783CC1FBRef"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"unauthRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthunauthenticatedUserRoleD31E1FB5Ref"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"identityPoolId\", \"",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthIdentityPool44CDB0DCRef"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"adminRoles\", []))\n$util.toJson({})"
+      ]
+     ]
+    },
+    "ResponseMappingTemplate": "$util.toJson($ctx.prev.result)",
+    "TypeName": "Mutation"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/mutationDeleteDonationResolver"
+   }
+  },
+  "SubscriptiononCreateDonationauth0FunctionSubscriptiononCreateDonationauth0FunctionAppSyncFunction165D7BDF": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptiononCreateDonationauth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/1d1fc1ddf435f301f89c9d0239d1040afb5fa61ba26cd289c29b8349f558e43d.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/SubscriptiononCreateDonationauth0Function/SubscriptiononCreateDonationauth0Function.AppSyncFunction"
+   }
+  },
+  "SubscriptiononCreateDonationpostAuth0FunctionSubscriptiononCreateDonationpostAuth0FunctionAppSyncFunction15F29D96": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptiononCreateDonationpostAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c1721bcd774e27c514d3454b5be4f9bdd094c0161b57ddf053d618e3b0086a77.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/SubscriptiononCreateDonationpostAuth0Function/SubscriptiononCreateDonationpostAuth0Function.AppSyncFunction"
+   }
+  },
+  "SubscriptionOnCreateDonationDataResolverFnSubscriptionOnCreateDonationDataResolverFnAppSyncFunctionA6A0E9B5": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptionOnCreateDonationDataResolverFn",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/fe3c43ada4b9d681a5e2312663ef7a73386424d73b73e51f8e2e9d4b50f7c502.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/e0cff47fb007f0bbf2a4e43ca256d6aa7ec109821769fd79fa7c5e83f0e7f9fc.vtl"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/SubscriptionOnCreateDonationDataResolverFn/SubscriptionOnCreateDonationDataResolverFn.AppSyncFunction"
+   }
+  },
+  "SubscriptiononCreateDonationResolver": {
+   "Type": "AWS::AppSync::Resolver",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "FieldName": "onCreateDonation",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "Fn::GetAtt": [
+        "SubscriptiononCreateDonationauth0FunctionSubscriptiononCreateDonationauth0FunctionAppSyncFunction165D7BDF",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "SubscriptiononCreateDonationpostAuth0FunctionSubscriptiononCreateDonationpostAuth0FunctionAppSyncFunction15F29D96",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "SubscriptionOnCreateDonationDataResolverFnSubscriptionOnCreateDonationDataResolverFnAppSyncFunctionA6A0E9B5",
+        "FunctionId"
+       ]
+      }
+     ]
+    },
+    "RequestMappingTemplate": {
+     "Fn::Join": [
+      "",
+      [
+       "$util.qr($ctx.stash.put(\"typeName\", \"Subscription\"))\n$util.qr($ctx.stash.put(\"fieldName\", \"onCreateDonation\"))\n$util.qr($ctx.stash.put(\"conditions\", []))\n$util.qr($ctx.stash.put(\"metadata\", {}))\n$util.qr($ctx.stash.metadata.put(\"dataSourceType\", \"NONE\"))\n$util.qr($ctx.stash.metadata.put(\"apiId\", \"",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"connectionAttributes\", {}))\n\n$util.qr($ctx.stash.put(\"authRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthauthenticatedUserRole783CC1FBRef"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"unauthRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthunauthenticatedUserRoleD31E1FB5Ref"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"identityPoolId\", \"",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthIdentityPool44CDB0DCRef"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"adminRoles\", []))\n$util.toJson({})"
+      ]
+     ]
+    },
+    "ResponseMappingTemplate": "$util.toJson($ctx.prev.result)",
+    "TypeName": "Subscription"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/subscriptionOnCreateDonationResolver"
+   }
+  },
+  "SubscriptiononUpdateDonationauth0FunctionSubscriptiononUpdateDonationauth0FunctionAppSyncFunction50D791AD": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptiononUpdateDonationauth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/1d1fc1ddf435f301f89c9d0239d1040afb5fa61ba26cd289c29b8349f558e43d.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/SubscriptiononUpdateDonationauth0Function/SubscriptiononUpdateDonationauth0Function.AppSyncFunction"
+   }
+  },
+  "SubscriptiononUpdateDonationpostAuth0FunctionSubscriptiononUpdateDonationpostAuth0FunctionAppSyncFunction7AFA634D": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptiononUpdateDonationpostAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c1721bcd774e27c514d3454b5be4f9bdd094c0161b57ddf053d618e3b0086a77.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/SubscriptiononUpdateDonationpostAuth0Function/SubscriptiononUpdateDonationpostAuth0Function.AppSyncFunction"
+   }
+  },
+  "SubscriptionOnUpdateDonationDataResolverFnSubscriptionOnUpdateDonationDataResolverFnAppSyncFunctionC290C8ED": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptionOnUpdateDonationDataResolverFn",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/fe3c43ada4b9d681a5e2312663ef7a73386424d73b73e51f8e2e9d4b50f7c502.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/e0cff47fb007f0bbf2a4e43ca256d6aa7ec109821769fd79fa7c5e83f0e7f9fc.vtl"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/SubscriptionOnUpdateDonationDataResolverFn/SubscriptionOnUpdateDonationDataResolverFn.AppSyncFunction"
+   }
+  },
+  "SubscriptiononUpdateDonationResolver": {
+   "Type": "AWS::AppSync::Resolver",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "FieldName": "onUpdateDonation",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "Fn::GetAtt": [
+        "SubscriptiononUpdateDonationauth0FunctionSubscriptiononUpdateDonationauth0FunctionAppSyncFunction50D791AD",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "SubscriptiononUpdateDonationpostAuth0FunctionSubscriptiononUpdateDonationpostAuth0FunctionAppSyncFunction7AFA634D",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "SubscriptionOnUpdateDonationDataResolverFnSubscriptionOnUpdateDonationDataResolverFnAppSyncFunctionC290C8ED",
+        "FunctionId"
+       ]
+      }
+     ]
+    },
+    "RequestMappingTemplate": {
+     "Fn::Join": [
+      "",
+      [
+       "$util.qr($ctx.stash.put(\"typeName\", \"Subscription\"))\n$util.qr($ctx.stash.put(\"fieldName\", \"onUpdateDonation\"))\n$util.qr($ctx.stash.put(\"conditions\", []))\n$util.qr($ctx.stash.put(\"metadata\", {}))\n$util.qr($ctx.stash.metadata.put(\"dataSourceType\", \"NONE\"))\n$util.qr($ctx.stash.metadata.put(\"apiId\", \"",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"connectionAttributes\", {}))\n\n$util.qr($ctx.stash.put(\"authRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthauthenticatedUserRole783CC1FBRef"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"unauthRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthunauthenticatedUserRoleD31E1FB5Ref"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"identityPoolId\", \"",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthIdentityPool44CDB0DCRef"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"adminRoles\", []))\n$util.toJson({})"
+      ]
+     ]
+    },
+    "ResponseMappingTemplate": "$util.toJson($ctx.prev.result)",
+    "TypeName": "Subscription"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/subscriptionOnUpdateDonationResolver"
+   }
+  },
+  "SubscriptiononDeleteDonationauth0FunctionSubscriptiononDeleteDonationauth0FunctionAppSyncFunction42D11B65": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptiononDeleteDonationauth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/1d1fc1ddf435f301f89c9d0239d1040afb5fa61ba26cd289c29b8349f558e43d.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/SubscriptiononDeleteDonationauth0Function/SubscriptiononDeleteDonationauth0Function.AppSyncFunction"
+   }
+  },
+  "SubscriptiononDeleteDonationpostAuth0FunctionSubscriptiononDeleteDonationpostAuth0FunctionAppSyncFunction74339B72": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptiononDeleteDonationpostAuth0Function",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/c1721bcd774e27c514d3454b5be4f9bdd094c0161b57ddf053d618e3b0086a77.vtl"
+    },
+    "ResponseMappingTemplate": "$util.toJson({})"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/SubscriptiononDeleteDonationpostAuth0Function/SubscriptiononDeleteDonationpostAuth0Function.AppSyncFunction"
+   }
+  },
+  "SubscriptionOnDeleteDonationDataResolverFnSubscriptionOnDeleteDonationDataResolverFnAppSyncFunctionD9F8E0A8": {
+   "Type": "AWS::AppSync::FunctionConfiguration",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "DataSourceName": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPINONEDS7296AD84Name"
+    },
+    "FunctionVersion": "2018-05-29",
+    "Name": "SubscriptionOnDeleteDonationDataResolverFn",
+    "RequestMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/fe3c43ada4b9d681a5e2312663ef7a73386424d73b73e51f8e2e9d4b50f7c502.vtl"
+    },
+    "ResponseMappingTemplateS3Location": {
+     "Fn::Sub": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/e0cff47fb007f0bbf2a4e43ca256d6aa7ec109821769fd79fa7c5e83f0e7f9fc.vtl"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/SubscriptionOnDeleteDonationDataResolverFn/SubscriptionOnDeleteDonationDataResolverFn.AppSyncFunction"
+   }
+  },
+  "SubscriptiononDeleteDonationResolver": {
+   "Type": "AWS::AppSync::Resolver",
+   "Properties": {
+    "ApiId": {
+     "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+    },
+    "FieldName": "onDeleteDonation",
+    "Kind": "PIPELINE",
+    "PipelineConfig": {
+     "Functions": [
+      {
+       "Fn::GetAtt": [
+        "SubscriptiononDeleteDonationauth0FunctionSubscriptiononDeleteDonationauth0FunctionAppSyncFunction42D11B65",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "SubscriptiononDeleteDonationpostAuth0FunctionSubscriptiononDeleteDonationpostAuth0FunctionAppSyncFunction74339B72",
+        "FunctionId"
+       ]
+      },
+      {
+       "Fn::GetAtt": [
+        "SubscriptionOnDeleteDonationDataResolverFnSubscriptionOnDeleteDonationDataResolverFnAppSyncFunctionD9F8E0A8",
+        "FunctionId"
+       ]
+      }
+     ]
+    },
+    "RequestMappingTemplate": {
+     "Fn::Join": [
+      "",
+      [
+       "$util.qr($ctx.stash.put(\"typeName\", \"Subscription\"))\n$util.qr($ctx.stash.put(\"fieldName\", \"onDeleteDonation\"))\n$util.qr($ctx.stash.put(\"conditions\", []))\n$util.qr($ctx.stash.put(\"metadata\", {}))\n$util.qr($ctx.stash.metadata.put(\"dataSourceType\", \"NONE\"))\n$util.qr($ctx.stash.metadata.put(\"apiId\", \"",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"connectionAttributes\", {}))\n\n$util.qr($ctx.stash.put(\"authRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthauthenticatedUserRole783CC1FBRef"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"unauthRole\", \"arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":sts::",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":assumed-role/",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthunauthenticatedUserRoleD31E1FB5Ref"
+       },
+       "/CognitoIdentityCredentials\"))\n$util.qr($ctx.stash.put(\"identityPoolId\", \"",
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eeauthNestedStackauthNestedStackResource946CF46BOutputsamplify0worldfunddebugjf358sandbox32f20202eeauthamplifyAuthIdentityPool44CDB0DCRef"
+       },
+       "\"))\n$util.qr($ctx.stash.put(\"adminRoles\", []))\n$util.toJson({})"
+      ]
+     ]
+    },
+    "ResponseMappingTemplate": "$util.toJson($ctx.prev.result)",
+    "TypeName": "Subscription"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/subscriptionOnDeleteDonationResolver"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/1WOwW6DMAyGn6X34A26w3ZcQT1uE+xemcSglJCg2GlVId59gk6ddvr9yZ/sv4D89Q3yHV4502bInG1h/iAWMo2gHlTZ+S+MOJJQXKEM3lixwauaOKSoSZWJJYx/2PnHjFc+zebmcQymhW9sHR2QSVkcYa6Du9vB0aJwmvjmNczVpldthYLN4+R/Oiav1xJl8J3tU8St0e9nd6G4KN6fkJmE4X0NxXs4JD2QrAWW1f1MMiVR27oR7K3vF+WDITjz06UoIH+B592Zrc1i8mJHgvqeP5F/auE2AQAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "amplify-0worldfunddebug-jf358-sandbox-32f20202ee/data/amplifyData/Donation/CDKMetadata/Default"
+   },
+   "Condition": "CDKMetadataAvailable"
+  }
+ },
+ "Outputs": {
+  "GetAttDonationTableStreamArn": {
+   "Description": "Your DynamoDB table StreamArn.",
+   "Value": {
+    "Fn::GetAtt": [
+     "DonationTable",
+     "TableStreamArn"
+    ]
+   },
+   "Export": {
+    "Name": {
+     "Fn::Join": [
+      ":",
+      [
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+       },
+       "GetAtt:DonationTable:StreamArn"
+      ]
+     ]
+    }
+   }
+  },
+  "GetAttDonationTableName": {
+   "Description": "Your DynamoDB table name.",
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "Donation-",
+      {
+       "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+      },
+      "-NONE"
+     ]
+    ]
+   },
+   "Export": {
+    "Name": {
+     "Fn::Join": [
+      ":",
+      [
+       {
+        "Ref": "referencetoamplify0worldfunddebugjf358sandbox32f20202eedataamplifyDataGraphQLAPI5259FD73ApiId"
+       },
+       "GetAtt:DonationTable:Name"
+      ]
+     ]
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,49 @@
+type Campaign @model @auth(rules: [{allow: public, provider: apiKey, operations: [read]},
+  {allow: private, operations: [create, read, update, delete]}])
+{
+  title: String!
+  description: String!
+  goal: Float!
+  raised: Float @default(value: "0")
+  ownerId: String!
+  category: String!
+  image: String
+  status: CampaignStatus
+  currency: String @default(value: "WLD")
+}
+
+type Donation @model @auth(rules: [{allow: public, provider: apiKey, operations: [read]},
+  {allow: private, operations: [create, read]}])
+{
+  campaignId: String!
+  amount: Float!
+  donor: String!
+  txHash: String!
+  currency: String @default(value: "WLD")
+  onChainAmountSmallestUnit: String
+  verifiedStatus: DonationVerifiedStatus
+  verifiedAt: AWSDateTime
+  chainId: Int
+  blockNumber: String
+}
+
+type User @model @auth(rules: [{allow: private, operations: [create, read, update]}])
+{
+  walletAddress: String! @primaryKey
+  isWorldIdVerified: Boolean @default(value: "false")
+  worldIdNullifier: String
+  worldIdVerifiedAt: AWSDateTime
+}
+
+enum CampaignStatus {
+  active
+  completed
+  cancelled
+  PENDING_REVIEW
+}
+
+enum DonationVerifiedStatus {
+  VERIFIED
+  PENDING
+  FAILED
+}
