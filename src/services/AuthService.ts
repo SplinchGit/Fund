@@ -48,6 +48,7 @@ enum ErrorType {
   AUTH = 'authentication_error',
   VALIDATION = 'validation_error',
   CORS = 'cors_error',
+  WORLD_APP = 'world_app_error',
   UNKNOWN = 'unknown_error'
 }
 
@@ -72,11 +73,15 @@ class AuthService {
   private API_KEY?: string;
   private activeRequests: Map<string, RequestMetadata>;
   private retryConfig: RetryConfig;
+  private isWorldApp: boolean;
 
 // # ############################################################################ #
 // # #      SECTION 8 - SERVICE CLASS: CONSTRUCTOR (INITIALIZATION LOGIC)     #
 // # ############################################################################ #
   private constructor() {
+    // Detect if running in World App webview
+    this.isWorldApp = this.detectWorldApp();
+
     // Determine API base URL from env vars, fallback to '/api'
     const envUrl =
       import.meta.env.VITE_AMPLIFY_API ||
@@ -109,8 +114,10 @@ class AuthService {
     // Initialize request tracking
     this.activeRequests = new Map();
 
-    // Initialize retry configuration
-    this.retryConfig = DEFAULT_RETRY_CONFIG;
+    // Initialize retry configuration - Enhanced for World App
+    this.retryConfig = this.isWorldApp ? 
+      { ...DEFAULT_RETRY_CONFIG, maxRetries: 3, timeoutMs: 25000 } : 
+      DEFAULT_RETRY_CONFIG;
 
     console.log('[AuthService] Initialized with API base:', this.API_BASE);
   }
@@ -138,6 +145,43 @@ class AuthService {
 // # ############################################################################ #
 // # #          SECTION 11 - PRIVATE HELPERS: STORAGE & REQUEST ID          #
 // # ############################################################################ #
+  /** Detect if running in World App webview */
+  private detectWorldApp(): boolean {
+    if (typeof window === 'undefined') return false;
+    
+    // Check for MiniKit
+    if (typeof (window as any).MiniKit !== 'undefined') {
+      try {
+        const MiniKit = (window as any).MiniKit;
+        if (MiniKit && typeof MiniKit.isInstalled === 'function') {
+          return MiniKit.isInstalled();
+        }
+      } catch (e) {
+        console.warn('[AuthService] Error checking MiniKit:', e);
+      }
+    }
+    
+    // Check user agent patterns for World App
+    const userAgent = navigator.userAgent || '';
+    const isWorldAppUA = userAgent.includes('WorldApp') || 
+                        userAgent.includes('Worldcoin') ||
+                        userAgent.includes('MiniKit');
+    
+    // Check for webview indicators
+    const isWebView = userAgent.includes('wv') || 
+                     userAgent.includes('WebView') ||
+                     window.location.protocol === 'worldapp:';
+    
+    console.log('[AuthService] World App detection:', {
+      userAgent: userAgent.substring(0, 100),
+      isWorldAppUA,
+      isWebView,
+      hasMiniKit: typeof (window as any).MiniKit !== 'undefined'
+    });
+    
+    return isWorldAppUA || isWebView;
+  }
+
   /** Safely access localStorage and sessionStorage with improved error handling */
   private safeLocalStorage = {
     // Get item with session storage priority
@@ -322,6 +366,11 @@ class AuthService {
       return ErrorType.CORS;
     }
 
+    // World App specific errors
+    if (this.isWorldApp && errorMsg.includes('ERR_NAME_NOT_RESOLVED')) {
+      return ErrorType.WORLD_APP;
+    }
+
     if (status) {
       if (status >= 400 && status < 500) {
         return ErrorType.VALIDATION;
@@ -361,6 +410,9 @@ class AuthService {
     // Server errors (5xx) are retryable
     if (errorType === ErrorType.SERVER) return true;
 
+    // World App specific errors may be retryable
+    if (errorType === ErrorType.WORLD_APP) return true;
+
     // Some specific status codes might be retryable
     if (status === 429 || status === 503) return true;
 
@@ -387,6 +439,13 @@ class AuthService {
       // Add correlation ID header for tracing
       'X-Request-ID': this.generateRequestId()
     };
+
+    // Add World App indicator
+    if (this.isWorldApp) {
+      headers['X-World-App'] = 'true';
+      headers['Cache-Control'] = 'no-cache';
+      headers['Pragma'] = 'no-cache';
+    }
 
     if (this.API_KEY) {
       headers['x-api-key'] = this.API_KEY;
@@ -431,11 +490,14 @@ class AuthService {
         // Create abort controller for this attempt
         const controller = new AbortController();
 
+        // Enhanced timeout for World App
+        const timeoutMs = this.isWorldApp ? this.retryConfig.timeoutMs * 1.5 : this.retryConfig.timeoutMs;
+
         // Set timeout to abort request after specified time
         timeoutId = window.setTimeout(() => {
           controller.abort();
-          console.warn(`[AuthService] ${requestId} - Request timeout after ${this.retryConfig.timeoutMs}ms`);
-        }, this.retryConfig.timeoutMs);
+          console.warn(`[AuthService] ${requestId} - Request timeout after ${timeoutMs}ms`);
+        }, timeoutMs);
 
         // Prepare fetch options
         const fetchOptions = {
@@ -450,6 +512,12 @@ class AuthService {
         // If mode is not specified, set it to cors
         if (!fetchOptions.mode) {
           fetchOptions.mode = 'cors';
+        }
+
+        // World App specific configurations
+        if (this.isWorldApp) {
+          fetchOptions.credentials = 'omit'; // Don't send credentials for World App
+          fetchOptions.cache = 'no-store'; // Prevent caching issues in webview
         }
 
         // Log the request details
@@ -547,6 +615,12 @@ class AuthService {
         if (error && error.name === 'AbortError') {
           console.error(`[AuthService] ${requestId} - Request aborted (timeout)`);
           lastError = new Error(`Request timeout after ${this.retryConfig.timeoutMs}ms`);
+        }
+
+        // Handle World App specific network errors
+        if (this.isWorldApp && error.message?.includes('ERR_NAME_NOT_RESOLVED')) {
+          console.error('[AuthService] DNS resolution failed in World App - check domain whitelist');
+          lastError = new Error('Network error: Please check your internet connection or domain configuration');
         }
 
         // Determine error type and if we should retry
@@ -657,6 +731,8 @@ class AuthService {
         friendlyError = `Network error. Please check your internet connection.`;
       } else if (errorType === ErrorType.SERVER) {
         friendlyError = `Server error. The authentication service is currently experiencing issues.`;
+      } else if (errorType === ErrorType.WORLD_APP) {
+        friendlyError = `World App connection issue. Please check your internet connection and try again.`;
       }
 
       console.error(`[AuthService] ${requestId} - Error fetching nonce:`, error);
@@ -751,6 +827,8 @@ class AuthService {
         friendlyError = `Server error. The authentication service is currently experiencing issues.`;
       } else if (errorType === ErrorType.VALIDATION) {
         friendlyError = `Validation error: ${errorMessage}`;
+      } else if (errorType === ErrorType.WORLD_APP) {
+        friendlyError = `World App connection issue. Please try again.`;
       }
 
       console.error(`[AuthService] ${requestId} - Error verifying signature:`, error);
@@ -822,6 +900,8 @@ class AuthService {
         friendlyError = `Server error. The verification service is currently experiencing issues.`;
       } else if (errorType === ErrorType.AUTH) {
         friendlyError = `Authentication error: ${errorMessage}`;
+      } else if (errorType === ErrorType.WORLD_APP) {
+        friendlyError = `World App connection issue. Please try again.`;
       }
 
       console.error(`[AuthService] ${requestId} - Error verifying World ID proof:`, error);

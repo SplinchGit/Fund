@@ -1,3 +1,5 @@
+// amplify/backend/function/authHandler/src/index.js
+
 /**
  * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
  */
@@ -9,11 +11,15 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'your-dev-secret-key';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
-// CORS headers
+// UPDATED CORS headers for World App compatibility
 const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Request-ID",
-    "Access-Control-Allow-Methods": "GET,POST,OPTIONS"
+    "Access-Control-Allow-Origin": "*", // Allow all origins for World App
+    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Request-ID,X-Amz-User-Agent",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS,PUT,DELETE,PATCH",
+    "Access-Control-Allow-Credentials": "false", // Set to false when using * origin
+    "Access-Control-Max-Age": "86400", // Cache preflight for 24 hours
+    "Vary": "Origin", // Important for caching
+    "Content-Type": "application/json"
 };
 
 // Generate a secure nonce
@@ -55,14 +61,23 @@ function generateJWT(walletAddress) {
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
     
-    const { httpMethod, path, pathParameters, body } = event;
+    const { httpMethod, path, pathParameters, body, headers } = event;
     
-    // Handle CORS preflight
+    // Log request details for debugging
+    console.log('Request details:', {
+        httpMethod,
+        path,
+        origin: headers?.origin || headers?.Origin,
+        userAgent: headers?.['"user-agent"'] || headers?.['User-Agent'],
+        referer: headers?.referer || headers?.Referer
+    });
+    
+    // Handle CORS preflight - ALWAYS respond to OPTIONS
     if (httpMethod === 'OPTIONS') {
         return {
             statusCode: 200,
             headers: corsHeaders,
-            body: JSON.stringify('OK')
+            body: JSON.stringify({ message: 'CORS preflight successful' })
         };
     }
     
@@ -73,10 +88,11 @@ exports.handler = async (event) => {
             
             return {
                 statusCode: 200,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: corsHeaders,
                 body: JSON.stringify({
                     nonce,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
+                    environment: process.env.NODE_ENV || 'development'
                 })
             };
         }
@@ -86,7 +102,7 @@ exports.handler = async (event) => {
             if (!body) {
                 return {
                     statusCode: 400,
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    headers: corsHeaders,
                     body: JSON.stringify({
                         error: 'Request body is required'
                     })
@@ -99,7 +115,7 @@ exports.handler = async (event) => {
             if (!payload || !nonce) {
                 return {
                     statusCode: 400,
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    headers: corsHeaders,
                     body: JSON.stringify({
                         error: 'Missing payload or nonce'
                     })
@@ -112,7 +128,7 @@ exports.handler = async (event) => {
             if (!validation.valid) {
                 return {
                     statusCode: 401,
-                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    headers: corsHeaders,
                     body: JSON.stringify({
                         error: validation.error || 'Signature validation failed'
                     })
@@ -124,7 +140,7 @@ exports.handler = async (event) => {
             
             return {
                 statusCode: 200,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: corsHeaders,
                 body: JSON.stringify({
                     token,
                     walletAddress: validation.walletAddress,
@@ -136,7 +152,7 @@ exports.handler = async (event) => {
         // Route not found
         return {
             statusCode: 404,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: corsHeaders,
             body: JSON.stringify({
                 error: 'Route not found',
                 availableRoutes: [
@@ -151,10 +167,11 @@ exports.handler = async (event) => {
         
         return {
             statusCode: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: corsHeaders,
             body: JSON.stringify({
                 error: 'Internal server error',
-                message: error.message
+                message: error.message,
+                timestamp: new Date().toISOString()
             })
         };
     }
