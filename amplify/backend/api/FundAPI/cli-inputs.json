@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "paths": {
+    "/auth": {
+      "name": "/auth",
+      "lambdaFunction": "fundApiLambda",
+      "permissions": {
+        "setting": "open"
+      }
+    },
+    "/profile": {
+      "name": "/profile",
+      "lambdaFunction": "fundApiLambda",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "read"
+        ]
+      }
+    }
+  }
+}
