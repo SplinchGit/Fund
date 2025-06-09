@@ -62,6 +62,14 @@
         }
       ]
     },
+    "AMPLIFY_function_fundApiLambda_jwtSecret": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "fundApiLambda"
+        }
+      ]
+    },
     "AMPLIFY_function_fundApiLambda_s3Key": {
       "usedBy": [
         {
