@@ -1,9 +1,0 @@
-{
-  "lambdaLayers": [],
-  "environmentVariableList": [
-    {
-      "cloudFormationParameterName": "jwtSecret",
-      "environmentVariableName": "JWT_SECRET"
-    }
-  ]
-}
