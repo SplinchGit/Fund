@@ -49,6 +49,7 @@
     "autoprefixer": "^10.4.21",
     "aws-cdk-lib": "^2.189.1",
     "constructs": "^10.4.2",
+    "esbuild": "^0.25.5",
     "eslint": "^9.25.1",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.4",
@@ -58,7 +59,6 @@
     "vite": ">=6.3.4"
   },
   "overrides": {
-    "esbuild": ">=0.19.8",
     "undici": ">=5.28.5",
     "react-shadow": {
       "peerDependenciesMeta": {
