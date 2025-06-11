@@ -113,6 +113,40 @@ const LandingPage: React.FC = () => {
 // # ############################################################################ #
   useEffect(() => {
     const fetchCampaignsData = async () => {
+      // ADD DEBUG CODE - START
+      console.log('[CAMPAIGN DEBUG] Testing API connectivity...');
+      
+      // Test 1: Simple campaign API call
+      try {
+        const testResponse = await fetch('https://whkpvhuw7j.execute-api.eu-west-2.amazonaws.com/prod/campaigns', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        console.log('[CAMPAIGN DEBUG] Campaigns API test:', {
+          status: testResponse.status,
+          ok: testResponse.ok,
+          statusText: testResponse.statusText
+        });
+      } catch (error) {
+        console.error('[CAMPAIGN DEBUG] Campaigns API test FAILED:', error);
+      }
+
+      // Test 2: Simple nonce API call
+      try {
+        const nonceResponse = await fetch('https://whkpvhuw7j.execute-api.eu-west-2.amazonaws.com/prod/auth/nonce', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        console.log('[CAMPAIGN DEBUG] Nonce API test:', {
+          status: nonceResponse.status,
+          ok: nonceResponse.ok,
+          statusText: nonceResponse.statusText
+        });
+      } catch (error) {
+        console.error('[CAMPAIGN DEBUG] Nonce API test FAILED:', error);
+      }
+      // ADD DEBUG CODE - END
+
       console.log(`[LandingPage] Attempting to fetch campaigns for category: ${selectedFilterCategory}`);
       setLoadingCampaigns(true);
       setPageError(null);
@@ -157,8 +191,7 @@ const LandingPage: React.FC = () => {
     };
 
     fetchCampaignsData();
-  }, [selectedFilterCategory]); // <<<< MODIFIED: Re-fetch when selectedFilterCategory changes
-
+  }, [selectedFilterCategory]);
 // # ############################################################################ #
 // # #                 SECTION 9 - CALLBACK: CONNECT WALLET                 #
 // # ############################################################################ #

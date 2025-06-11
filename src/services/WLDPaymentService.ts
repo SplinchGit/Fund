@@ -121,37 +121,32 @@ class WLDPaymentService {
   // # #                   SECTION 4 - SERVICE CLASS: WLDPAYMENTSERVICE - CONSTRUCTOR                   #
   // # ############################################################################ #
   private constructor() {
-    // --- START OF APPLIED FIX ---
-    // This logic ensures the app fails immediately if the API URL is not configured,
-    // preventing silent errors and relative path fallbacks.
-    const envApi =
-      import.meta.env.VITE_AMPLIFY_API ||
-      import.meta.env.VITE_APP_BACKEND_API_URL;
+    // Get the API base URL from environment variables
+    const envApi = import.meta.env.VITE_AMPLIFY_API;
 
     if (!envApi) {
-      console.error(
-        '[WLDPaymentService] CRITICAL: Backend API URL not configured. Please set VITE_AMPLIFY_API environment variable.'
-      );
-      throw new Error(
-        'Backend API URL not configured. Please check your hosting environment variables.'
-      );
+      console.error('[WLDPaymentService] CRITICAL: VITE_AMPLIFY_API environment variable not set.');
+      throw new Error('VITE_AMPLIFY_API environment variable is required but not configured.');
     }
 
     // Validate and normalize the URL
     try {
       const testUrl = new URL(envApi);
       if (!testUrl.protocol.startsWith('http')) {
-        throw new Error('API URL must use HTTP or HTTPS protocol');
+        throw new Error('VITE_AMPLIFY_API must use HTTP or HTTPS protocol');
       }
       this.API_BASE = envApi.endsWith('/') ? envApi.slice(0, -1) : envApi;
-      console.log('[WLDPaymentService] API Base URL configured successfully:', this.API_BASE);
+      console.log('[WLDPaymentService] API Base URL configured:', this.API_BASE);
     } catch (error) {
-      console.error('[WLDPaymentService] Invalid API URL format in environment variable:', envApi, error);
-      throw new Error(
-        `Invalid API URL format: ${envApi}. Please check your hosting environment variables.`
-      );
+      console.error('[WLDPaymentService] Invalid VITE_AMPLIFY_API URL format:', envApi, error);
+      throw new Error(`Invalid VITE_AMPLIFY_API URL format: ${envApi}`);
     }
-    // --- END OF APPLIED FIX ---
+
+    // Environment Variables for WLD functionality
+    this.WLD_DONATION_ACTION_ID = import.meta.env.VITE_WLD_DONATION_ACTION_ID as string;
+    this.WLD_CONTRACT_WORLDCHAIN = import.meta.env.VITE_WLD_CONTRACT_WORLDCHAIN as string;
+    this.WLD_DECIMALS = parseInt(import.meta.env.VITE_WLD_DECIMALS || '18');
+    this.WORLDCHAIN_CHAIN_ID = parseInt(import.meta.env.VITE_WORLDCHAIN_CHAIN_ID || '0');
 
     if (!this.WLD_DONATION_ACTION_ID)
       console.error('VITE_WLD_DONATION_ACTION_ID is not configured!');
@@ -160,9 +155,7 @@ class WLDPaymentService {
     if (this.WORLDCHAIN_CHAIN_ID === 0)
       console.error('VITE_WORLDCHAIN_CHAIN_ID is not configured or invalid!');
     if (this.WLD_DECIMALS !== 18) {
-      console.warn(
-        `WARNING: VITE_WLD_DECIMALS is configured as ${this.WLD_DECIMALS}. For accurate on-chain WLD token transactions, this should be 18.`
-      );
+      console.warn(`WARNING: VITE_WLD_DECIMALS is configured as ${this.WLD_DECIMALS}. For accurate on-chain WLD token transactions, this should be 18.`);
     }
   }
 

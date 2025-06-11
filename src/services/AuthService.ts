@@ -78,54 +78,32 @@ class AuthService {
   // # ############################################################################ #
   // # #             SECTION 8 - SERVICE CLASS: CONSTRUCTOR (INITIALIZATION LOGIC)              #
   // # ############################################################################ #
+  
   private constructor() {
     // Detect if running in World App webview
     this.isWorldApp = this.detectWorldApp();
 
-    // --- CRITICAL FIX ---
-    // Get the environment variable but throw a hard error if it's missing or invalid.
-    // This prevents silent fallbacks to relative paths, which caused the original bug.
-    const envUrl =
-      import.meta.env.VITE_AMPLIFY_API ||
-      import.meta.env.VITE_APP_BACKEND_API_URL;
+    // Get the API base URL from environment variables
+    const envUrl = import.meta.env.VITE_AMPLIFY_API;
 
     if (!envUrl) {
-      console.error(
-        '[AuthService] CRITICAL: Backend API URL not configured. Please set VITE_AMPLIFY_API environment variable.'
-      );
-      throw new Error(
-        'Backend API URL not configured. Please check your hosting environment variables.'
-      );
+      console.error('[AuthService] CRITICAL: VITE_AMPLIFY_API environment variable not set.');
+      throw new Error('VITE_AMPLIFY_API environment variable is required but not configured.');
     }
 
     // Validate that it's a proper URL
     try {
       const testUrl = new URL(envUrl);
       if (!testUrl.protocol.startsWith('http')) {
-        throw new Error('API URL must use HTTP or HTTPS protocol');
+        throw new Error('VITE_AMPLIFY_API must use HTTP or HTTPS protocol');
       }
       // Normalize the URL - ensure it doesn't end with a slash
       this.API_BASE = envUrl.endsWith('/') ? envUrl.slice(0, -1) : envUrl;
-      console.log(
-        '[AuthService] API Base URL configured successfully:',
-        this.API_BASE
-      );
+      console.log('[AuthService] API Base URL configured:', this.API_BASE);
     } catch (error) {
-      console.error(
-        '[AuthService] Invalid API URL format in environment variable:',
-        envUrl,
-        error
-      );
-      throw new Error(
-        `Invalid API URL format: ${envUrl}. Please check your hosting environment variables.`
-      );
+      console.error('[AuthService] Invalid VITE_AMPLIFY_API URL format:', envUrl, error);
+      throw new Error(`Invalid VITE_AMPLIFY_API URL format: ${envUrl}`);
     }
-    // --- END OF CRITICAL FIX ---
-
-    // Pick up optional API key
-    this.API_KEY =
-      import.meta.env.VITE_WORLD_APP_API ||
-      import.meta.env.VITE_APP_BACKEND_API_KEY;
 
     // Initialize request tracking
     this.activeRequests = new Map();
@@ -135,7 +113,7 @@ class AuthService {
       ? { ...DEFAULT_RETRY_CONFIG, maxRetries: 3, timeoutMs: 25000 }
       : DEFAULT_RETRY_CONFIG;
 
-    console.log('[AuthService] Initialized successfully.');
+    console.log('[AuthService] Initialized successfully for', this.isWorldApp ? 'World App' : 'web browser');
   }
 
   // # ############################################################################ #
