@@ -775,7 +775,7 @@ class AuthService {
   // # ############################################################################ #
   // # #                       SECTION 18 - PUBLIC METHOD: VERIFY WALLET SIGNATURE                      #
   // # ############################################################################ #
-  /** Verifies a wallet signature with the backend */
+  /** Verifies a wallet signature with the backend using simple fetch for World App compatibility */
   public async verifyWalletSignature(
     payload: MiniAppWalletAuthSuccessPayload,
     nonce: string
@@ -785,7 +785,7 @@ class AuthService {
     walletAddress?: string;
     error?: string;
   }> {
-    console.log('[AuthService] Verifying wallet signature...');
+    console.log('[AuthService] Verifying wallet signature with World App compatible simple fetch...');
 
     if (!this.validateWalletPayload(payload, nonce)) {
       return {
@@ -794,79 +794,78 @@ class AuthService {
       };
     }
 
-    const requestId = this.generateRequestId();
-    const endpoint = '/auth/verify-signature';
-
     try {
       const requestBody = {
         payload,
         nonce,
       };
 
-      const url = this.buildUrl(endpoint);
-      console.log(`[AuthService] ${requestId} - Posting to: ${url}`);
+      console.log('[AuthService] Posting signature verification to:', `${this.API_BASE}/auth/verify-signature`);
 
-      const data = await this.fetchWithRetry<any>(
-        url,
-        {
-          method: 'POST',
-          headers: {
-            ...this.getHeaders(false),
-            'X-Request-ID': requestId,
-          },
-          body: JSON.stringify(requestBody),
-          mode: 'cors',
-          credentials: 'same-origin',
+      // Use simple fetch that we know works in World App
+      const response = await fetch(`${this.API_BASE}/auth/verify-signature`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
-        requestId,
-        endpoint
-      );
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('[AuthService] Signature verification response:', {
+        status: response.status,
+        ok: response.ok,
+        statusText: response.statusText
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        let errorMessage: string;
+        
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorJson.error || `HTTP ${response.status}: ${response.statusText}`;
+        } catch (e) {
+          errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
+        }
+
+        console.error('[AuthService] Signature verification failed:', errorMessage);
+        return { success: false, error: errorMessage };
+      }
+
+      const data = await response.json();
+      console.log('[AuthService] Signature verification data received:', data);
 
       if (!data || !data.token || !data.walletAddress) {
-        console.error(
-          `[AuthService] ${requestId} - Missing token or walletAddress in:`,
-          data
-        );
+        console.error('[AuthService] Missing token or walletAddress in response:', data);
         return {
           success: false,
           error: 'Token or wallet address missing from response',
         };
       }
 
+      // Store session data
       this.safeLocalStorage.setItem(SESSION_TOKEN_KEY, data.token);
       this.safeLocalStorage.setItem(WALLET_ADDRESS_KEY, data.walletAddress);
 
-      console.log(`[AuthService] ${requestId} - Signature verified successfully`);
+      console.log('[AuthService] Signature verified successfully, session stored');
       return {
         success: true,
         token: data.token,
         walletAddress: data.walletAddress,
       };
+
     } catch (error: any) {
-      const errorMessage =
-        error.message || 'Network error during verification';
-      const errorType = this.parseErrorType(error);
+      const errorMessage = error.message || 'Network error during verification';
+      console.error('[AuthService] Signature verification error:', error);
 
+      // Provide user-friendly error messages
       let friendlyError = errorMessage;
-
-      if (errorType === ErrorType.TIMEOUT) {
-        friendlyError = `API request timed out. Please check your network connection and try again.`;
-      } else if (errorType === ErrorType.CORS) {
-        friendlyError = `Cross-origin (CORS) error. This may indicate a configuration issue with your API.`;
-      } else if (errorType === ErrorType.NETWORK) {
-        friendlyError = `Network error. Please check your internet connection.`;
-      } else if (errorType === ErrorType.SERVER) {
-        friendlyError = `Server error. The authentication service is currently experiencing issues.`;
-      } else if (errorType === ErrorType.VALIDATION) {
-        friendlyError = `Validation error: ${errorMessage}`;
-      } else if (errorType === ErrorType.WORLD_APP) {
-        friendlyError = `World App connection issue. Please try again.`;
+      if (errorMessage.includes('Failed to fetch')) {
+        friendlyError = 'Network connection failed. Please check your internet connection and try again.';
+      } else if (errorMessage.includes('TypeError')) {
+        friendlyError = 'Network request error. Please try again.';
       }
-
-      console.error(
-        `[AuthService] ${requestId} - Error verifying signature:`,
-        error
-      );
 
       return {
         success: false,
