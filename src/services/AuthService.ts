@@ -710,65 +710,60 @@ class AuthService {
   // # ############################################################################ #
   // # #                                 SECTION 17 - PUBLIC METHOD: GET NONCE                                  #
   // # ############################################################################ #
-  /** Fetches a unique nonce from the backend. */
+  /** Fetches a unique nonce from the backend using simple fetch for World App compatibility. */
   public async getNonce(): Promise<{
     success: boolean;
     nonce?: string;
     error?: string;
   }> {
-    console.log('[AuthService] Fetching nonce...');
-    const requestId = this.generateRequestId();
-    const endpoint = '/auth/nonce';
-
+    console.log('[AuthService] Fetching nonce with World App compatible simple fetch...');
+    
     try {
-      const url = this.buildUrl(endpoint);
-      console.log(`[AuthService] ${requestId} - Fetching from: ${url}`);
+      // Use simple fetch that we know works in World App (proven by debug tests)
+      const response = await fetch(`${this.API_BASE}/auth/nonce`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
 
-      const data = await this.fetchWithRetry<any>(
-        url,
-        {
-          method: 'GET',
-          headers: {
-            ...this.getHeaders(false),
-            'X-Request-ID': requestId,
-          },
-          mode: 'cors',
-          credentials: 'same-origin',
-          cache: 'no-store',
-        },
-        requestId,
-        endpoint
-      );
+      console.log('[AuthService] Nonce fetch response:', {
+        status: response.status,
+        ok: response.ok,
+        statusText: response.statusText,
+        url: `${this.API_BASE}/auth/nonce`
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        const errorMessage = `HTTP ${response.status}: ${response.statusText}${errorText ? ` - ${errorText}` : ''}`;
+        console.error('[AuthService] Nonce fetch failed:', errorMessage);
+        return { success: false, error: errorMessage };
+      }
+
+      const data = await response.json();
+      console.log('[AuthService] Nonce fetch data received:', data);
 
       if (!data || !data.nonce) {
-        console.error(`[AuthService] ${requestId} - Nonce missing in response`, data);
+        console.error('[AuthService] Nonce missing in response:', data);
         return { success: false, error: 'Nonce not found in response' };
       }
 
-      console.log(
-        `[AuthService] ${requestId} - Nonce received successfully: ${data.nonce}`
-      );
+      console.log('[AuthService] Nonce received successfully:', data.nonce);
       return { success: true, nonce: data.nonce };
+
     } catch (error: any) {
       const errorMessage = error.message || 'Network error while fetching nonce';
-      const errorType = this.parseErrorType(error);
-
+      console.error('[AuthService] Nonce fetch error:', error);
+      
+      // Provide user-friendly error messages
       let friendlyError = errorMessage;
-
-      if (errorType === ErrorType.TIMEOUT) {
-        friendlyError = `API request timed out. Please check your network connection and API availability.`;
-      } else if (errorType === ErrorType.CORS) {
-        friendlyError = `Cross-origin (CORS) error. This may indicate a configuration issue with your API.`;
-      } else if (errorType === ErrorType.NETWORK) {
-        friendlyError = `Network error. Please check your internet connection.`;
-      } else if (errorType === ErrorType.SERVER) {
-        friendlyError = `Server error. The authentication service is currently experiencing issues.`;
-      } else if (errorType === ErrorType.WORLD_APP) {
-        friendlyError = `World App connection issue. Please check your internet connection and try again.`;
+      if (errorMessage.includes('Failed to fetch')) {
+        friendlyError = 'Network connection failed. Please check your internet connection and try again.';
+      } else if (errorMessage.includes('TypeError')) {
+        friendlyError = 'Network request error. Please try again.';
       }
-
-      console.error(`[AuthService] ${requestId} - Error fetching nonce:`, error);
-      console.error(`[AuthService] ${requestId} - API Base URL:`, this.API_BASE);
 
       return {
         success: false,
