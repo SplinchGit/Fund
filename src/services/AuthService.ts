@@ -1188,5 +1188,6 @@ public async verifyToken(token: string): Promise<{
 // # #                                 SECTION 23 - SINGLETON EXPORT                                  #
 // # ############################################################################ #
 // Export singleton instance
+}
+
 export const authService = AuthService.getInstance();
-export default AuthService;
