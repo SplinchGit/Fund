@@ -1,15 +1,14 @@
 // src/pages/Dashboard.tsx
-// (Full fix: Addresses 'logout' error by ensuring correct destructuring,
-// includes button consolidation/resizing, whitespace adjustment, stats fetching,
-// and preserves Logout button style)
+// (FIXED: Removes /dashboard-stats dependency, calculates stats from user campaigns)
 
 // # ############################################################################ #
 // # #                           SECTION 1 - IMPORTS                           #
 // # ############################################################################ #
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../components/AuthContext'; // Ensure this path is correct
-import { CampaignTracker } from './CampaignTracker'; // Assuming this path is correct
+import { useAuth } from '../components/AuthContext';
+import { CampaignTracker } from './CampaignTracker';
+import { campaignService } from '../services/CampaignService';
 
 // # ############################################################################ #
 // # # SECTION 2 - STYLES OBJECT DEFINITION (styles BEFORE responsiveStyles)   #
@@ -33,7 +32,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   container: {
     margin: '0 auto',
     width: '100%',
-    padding: '1rem 0.5rem 2rem 0.5rem', // Reduced bottom padding
+    padding: '1rem 0.5rem 2rem 0.5rem',
     boxSizing: 'border-box' as const,
     maxWidth: '1200px',
     flexGrow: 1,
@@ -80,7 +79,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: 'white',
     borderColor: '#1a73e8',
   },
-  // --- Logout Button Style - UNCHANGED ---
   buttonDanger: {
     padding: '0.5rem 0.75rem',
     borderRadius: '0.25rem',
@@ -100,7 +98,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: 'white',
     borderColor: '#dc3545',
   },
-  // --- End of Unchanged Logout Button Style ---
   dashboardHeader: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', marginBottom: '1.5rem', padding: '1rem 0.5rem 0.5rem 0.5rem', boxSizing: 'border-box' as const, textAlign: 'center' as const, },
   dashboardTitle: { fontSize: '1.75rem', fontWeight: 700, color: '#202124', margin: 0, padding: 0, },
   dashboardSubtitle: { fontSize: '0.9rem', color: '#5f6368', marginTop: '0.5rem', maxWidth: '600px', lineHeight: 1.5, },
@@ -112,7 +109,6 @@ const styles: { [key: string]: React.CSSProperties } = {
   statValue: { fontSize: '1.75rem', fontWeight: 700, color: '#1a73e8', margin: '0 0 0.25rem 0', padding: 0, },
   statLabel: { fontSize: '0.8rem', color: '#5f6368', marginTop: '0.25rem', padding: 0, },
   createButtonContainer: { textAlign: 'center' as const, margin: '1.5rem 0 2rem 0', },
-  // MODIFIED createButton style
   createButton: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -120,7 +116,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: '0.6rem 1.2rem',
     backgroundColor: '#1a73e8',
     color: 'white',
-    borderRadius: '0.25rem', // Standard button shape
+    borderRadius: '0.25rem',
     fontWeight: 500,
     textDecoration: 'none',
     boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
@@ -130,7 +126,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: 'pointer',
     lineHeight: 1.2,
   },
-  // MODIFIED createButtonIcon style
   createButtonIcon: {
     marginRight: '0.5rem',
     width: '1rem',
@@ -175,6 +170,17 @@ const styles: { [key: string]: React.CSSProperties } = {
     lineHeight: '1.6',
     textAlign: 'left' as const,
   },
+  errorMessage: {
+    backgroundColor: 'rgba(234, 67, 53, 0.1)',
+    border: '1px solid rgba(234, 67, 53, 0.2)',
+    borderRadius: '8px',
+    padding: '1rem',
+    marginBottom: '1.5rem',
+    color: '#c53929',
+    fontSize: '0.875rem',
+    textAlign: 'left' as const,
+    boxSizing: 'border-box' as const,
+  },
 };
 
 const responsiveStyles = `
@@ -204,9 +210,10 @@ const responsiveStyles = `
 // # #                 SECTION 3 - COMPONENT: PAGE DEFINITION & HOOKS                #
 // # ############################################################################ #
 const Dashboard: React.FC = () => {
-  // Ensure 'logout' and 'sessionToken' (if used for stats) are correctly provided by your AuthContext
-  const { walletAddress, isAuthenticated, logout, sessionToken } = useAuth(); 
+  const { walletAddress, isAuthenticated, logout } = useAuth(); 
   const navigate = useNavigate();
+  
+  // FIXED: Calculate stats from user campaigns instead of separate API call
   const [stats, setStats] = useState({
     totalCampaigns: 0, 
     totalRaised: 0
@@ -215,7 +222,7 @@ const Dashboard: React.FC = () => {
   const [statsError, setStatsError] = useState<string | null>(null);
 
 // # ############################################################################ #
-// # # SECTION 4 - EFFECT: AUTHENTICATION CHECK & FETCH DASHBOARD STATS        #
+// # # SECTION 4 - EFFECT: AUTHENTICATION CHECK & CALCULATE STATS FROM CAMPAIGNS #
 // # ############################################################################ #
   useEffect(() => {
     if (!isAuthenticated) {
@@ -224,73 +231,62 @@ const Dashboard: React.FC = () => {
       return; 
     }
 
-    const fetchDashboardData = async () => {
+    // FIXED: Fetch user campaigns and calculate stats from them
+    const fetchUserCampaignsAndCalculateStats = async () => {
+      if (!walletAddress) {
+        setIsLoadingStats(false);
+        return;
+      }
+
       setIsLoadingStats(true);
       setStatsError(null);
-      console.log('[Dashboard] Fetching dashboard stats...');
-      const statsApiUrl = `${import.meta.env.VITE_AMPLIFY_API}/dashboard-stats`;
+      console.log('[Dashboard] Fetching user campaigns to calculate stats...');
       
       try {
-        // IMPORTANT: Ensure 'sessionToken' is valid and provided by useAuth()
-        // or retrieve it via your AuthService if that's your pattern.
-        if (!sessionToken) {
-          console.error('[Dashboard] No session token available for fetching stats.');
-          setStatsError("Authentication token not found. Cannot fetch stats.");
-          setIsLoadingStats(false);
-          return;
+        const result = await campaignService.fetchUserCampaigns(walletAddress);
+        
+        if (result.success && result.campaigns) {
+          const totalCampaigns = result.campaigns.length;
+          const totalRaised = result.campaigns.reduce((sum, campaign) => sum + (campaign.raised || 0), 0);
+          
+          setStats({
+            totalCampaigns,
+            totalRaised
+          });
+          
+          console.log('[Dashboard] Stats calculated from user campaigns:', { totalCampaigns, totalRaised });
+        } else {
+          // If campaigns fail to load, we'll still show 0 stats rather than error
+          console.warn('[Dashboard] Failed to fetch user campaigns for stats:', result.error);
+          setStats({ totalCampaigns: 0, totalRaised: 0 });
         }
-
-        const response = await fetch(statsApiUrl, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${sessionToken}`, 
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`[Dashboard] Error fetching stats - Status: ${response.status}`, errorText);
-          throw new Error(`Failed to fetch dashboard stats: ${response.status} ${errorText || response.statusText}`);
-        }
-
-        const data = await response.json();
-        console.log('[Dashboard] Stats received:', data);
-        setStats({
-          totalCampaigns: data.totalCampaigns || 0,
-          totalRaised: data.totalRaised || 0,
-        });
       } catch (error) {
-        console.error("[Dashboard] Failed to fetch dashboard stats:", error);
-        setStatsError(error instanceof Error ? error.message : "An unknown error occurred while fetching stats.");
+        console.error("[Dashboard] Error fetching campaigns for stats:", error);
+        // Don't show error for stats calculation - just show 0
+        setStats({ totalCampaigns: 0, totalRaised: 0 });
       } finally {
         setIsLoadingStats(false);
       }
     };
 
-    fetchDashboardData();
+    fetchUserCampaignsAndCalculateStats();
 
-  }, [isAuthenticated, navigate, sessionToken]);
+  }, [isAuthenticated, navigate, walletAddress]);
 
 // # ############################################################################ #
 // # #                   SECTION 5 - EVENT HANDLER: LOGOUT                     #
 // # ############################################################################ #
   const handleLogout = async () => {
-    // This assumes 'logout' is a function provided by useAuth() that handles the logout logic.
-    // If 'Cannot find name logout' error persists, the issue is in how 'logout' is provided
-    // by your AuthContext (../components/AuthContext.tsx)
-    if (logout) { // Check if logout exists before calling
+    if (logout) {
       try {
         await logout();
         navigate('/landing');
       } catch (error) {
         console.error("Error during logout:", error);
-        // Optionally navigate to landing anyway or show error
         navigate('/landing');
       }
     } else {
       console.error("Logout function is not available from AuthContext.");
-      // Fallback or error display if logout function is missing
       navigate('/landing'); 
     }
   };
@@ -298,7 +294,7 @@ const Dashboard: React.FC = () => {
 // # ############################################################################ #
 // # #           SECTION 6 - CONDITIONAL RENDERING: UNAUTHENTICATED FALLBACK         #
 // # ############################################################################ #
-  if (!isAuthenticated && isLoadingStats) { // Show loading if not authenticated AND initial stats load hasn't determined auth state fully
+  if (!isAuthenticated) {
     return (
       <div style={styles.loadingContainer}>
         <style>{responsiveStyles}</style>
@@ -346,8 +342,6 @@ const Dashboard: React.FC = () => {
           <div style={styles.statCard}>
             {isLoadingStats ? (
               <div style={styles.loadingSpinner}></div>
-            ) : statsError ? (
-              <p style={{color: 'red', fontSize: '0.8rem'}}>{statsError.length > 100 ? `${statsError.substring(0,100)}...` : statsError}</p>
             ) : (
               <h3 style={styles.statValue}>{stats.totalCampaigns}</h3>
             )}
@@ -356,8 +350,6 @@ const Dashboard: React.FC = () => {
           <div style={styles.statCard}>
              {isLoadingStats ? (
               <div style={styles.loadingSpinner}></div>
-            ) : statsError ? (
-              <p style={{color: 'red', fontSize: '0.8rem'}}>{/* Can also show statsError here */}</p>
             ) : (
               <h3 style={styles.statValue}>{stats.totalRaised.toLocaleString()}</h3>
             )}
@@ -365,7 +357,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
         
-        {stats.totalCampaigns === 0 && !isLoadingStats && !statsError && (
+        {stats.totalCampaigns === 0 && !isLoadingStats && (
           <div style={styles.createButtonContainer}>
             <Link to="/new-campaign" style={styles.createButton}>
               <svg style={styles.createButtonIcon} viewBox="0 0 24 24" fill="currentColor">
@@ -375,20 +367,6 @@ const Dashboard: React.FC = () => {
             </Link>
           </div>
         )}
-        {/* If you want a "Create New Campaign" button to ALWAYS be visible if stats.totalCampaigns > 0, 
-            even if one "Create Your First Campaign" was shown initially, uncomment and adapt this:
-        */}
-        {/* {stats.totalCampaigns > 0 && !isLoadingStats && !statsError && (
-          <div style={styles.createButtonContainer}>
-            <Link to="/new-campaign" style={styles.createButton}>
-              <svg style={styles.createButtonIcon} viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path>
-              </svg>
-              Create New Campaign
-            </Link>
-          </div>
-        )}
-        */}
 
         <div style={styles.contentSection}>
           <h2 style={styles.sectionTitle}>Your Campaigns</h2>
@@ -398,8 +376,8 @@ const Dashboard: React.FC = () => {
         <div style={styles.quickAccessSection}>
           <h2 style={styles.sectionTitle}>Quick Access</h2>
           <div style={styles.quickLinks}>
-            <Link to="/campaigns" style={styles.quickLink} className="quickLinkHoverable">
-              <svg style={styles.quickIcon} viewBox="0 0 24 24" fill="currentColor">
+            <Link to="/landing" style={styles.quickLink} className="quickLinkHoverable">
+              <svg style={styles.quickLinkIcon} viewBox="0 0 24 24" fill="currentColor">
                 <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"></path>
               </svg>
               Browse All Campaigns
@@ -413,7 +391,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {stats.totalCampaigns === 0 && !isLoadingStats && !statsError && (
+        {stats.totalCampaigns === 0 && !isLoadingStats && (
           <div style={styles.infoSection}>
             <h2 style={styles.sectionTitle}>Getting Started</h2>
             <p style={styles.infoText}>
