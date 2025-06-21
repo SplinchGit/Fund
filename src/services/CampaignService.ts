@@ -1,12 +1,12 @@
 // src/services/CampaignService.ts
 
 // # ############################################################################ #
-// # #                               SECTION 1 - IMPORTS                                #
+// # #                     SECTION 1 - IMPORTS                                  #
 // # ############################################################################ #
 import { authService } from './AuthService';
 
 // # ############################################################################ #
-// # #                            SECTION 2 - INTERFACE DEFINITIONS                             #
+// # #                 SECTION 2 - INTERFACE DEFINITIONS                        #
 // # ############################################################################ #
 export interface Donation {
   id: string;
@@ -57,7 +57,7 @@ export interface UpdateCampaignPayload {
 }
 
 // # ############################################################################ #
-// # #                     SECTION 3 - SERVICE CLASS: CAMPAIGNSERVICE - DEFINITION                      #
+// # #           SECTION 3 - SERVICE CLASS: CAMPAIGNSERVICE - DEFINITION        #
 // # ############################################################################ #
 class CampaignService {
   private static instance: CampaignService;
@@ -66,7 +66,7 @@ class CampaignService {
   private requestIdCounter: number;
 
   // # ############################################################################ #
-  // # #                     SECTION 4 - SERVICE CLASS: CAMPAIGNSERVICE - CONSTRUCTOR                     #
+  // # #           SECTION 4 - SERVICE CLASS: CAMPAIGNSERVICE - CONSTRUCTOR       #
   // # ############################################################################ #
   private constructor() {
     // Initialize request counter
@@ -99,7 +99,7 @@ class CampaignService {
   }
 
   // # ############################################################################ #
-  // # #                      SECTION 5 - SERVICE CLASS: CAMPAIGNSERVICE - GET INSTANCE                       #
+  // # #         SECTION 5 - SERVICE CLASS: CAMPAIGNSERVICE - GET INSTANCE        #
   // # ############################################################################ #
   public static getInstance(): CampaignService {
     if (!CampaignService.instance) {
@@ -109,11 +109,11 @@ class CampaignService {
   }
 
   // # ############################################################################ #
-  // # #                         SECTION 6 - PRIVATE HELPER: WORLD APP DETECTION                          #
+  // # #             SECTION 6 - PRIVATE HELPER: WORLD APP DETECTION              #
   // # ############################################################################ #
   private detectWorldApp(): boolean {
     if (typeof window === 'undefined') return false;
-    
+
     // Check for MiniKit
     if (typeof (window as any).MiniKit !== 'undefined') {
       try {
@@ -128,20 +128,20 @@ class CampaignService {
 
     // Check user agent patterns for World App
     const userAgent = navigator.userAgent || '';
-    const isWorldAppUA = userAgent.includes('WorldApp') || 
-                        userAgent.includes('Worldcoin') || 
-                        userAgent.includes('MiniKit');
+    const isWorldAppUA = userAgent.includes('WorldApp') ||
+      userAgent.includes('Worldcoin') ||
+      userAgent.includes('MiniKit');
 
     // Check for webview indicators
-    const isWebView = userAgent.includes('wv') || 
-                     userAgent.includes('WebView') ||
-                     window.location.protocol === 'worldapp:';
+    const isWebView = userAgent.includes('wv') ||
+      userAgent.includes('WebView') ||
+      window.location.protocol === 'worldapp:';
 
     return isWorldAppUA || isWebView;
   }
 
   // # ############################################################################ #
-  // # #                         SECTION 7 - PRIVATE HELPER: GENERATE REQUEST ID                          #
+  // # #             SECTION 7 - PRIVATE HELPER: GENERATE REQUEST ID              #
   // # ############################################################################ #
   private generateRequestId(): string {
     const timestamp = Date.now();
@@ -151,7 +151,7 @@ class CampaignService {
   }
 
   // # ############################################################################ #
-  // # #                               SECTION 8 - PRIVATE HELPER: GET HEADERS                                #
+  // # #               SECTION 8 - PRIVATE HELPER: GET HEADERS                    #
   // # ############################################################################ #
   private async getHeaders(includeAuth: boolean = false): Promise<HeadersInit> {
     const headers: HeadersInit = {
@@ -184,139 +184,139 @@ class CampaignService {
   }
 
   // # ############################################################################ #
-// # #                      SECTION 9 - PRIVATE HELPER: ENHANCED FETCH WITH RETRY                       #
-// # ############################################################################ #
-private async makeRequest<T>(
-  url: string, 
-  options: RequestInit = {},
-  requireAuth: boolean = false,
-  maxRetries: number = 2
-): Promise<{ success: boolean; data?: T; error?: string }> {
-  const requestId = this.generateRequestId();
-  let lastError: any;
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`[CampaignService] ${requestId} - Attempt ${attempt + 1}/${maxRetries + 1} for ${url}`);
-      
-      const headers = await this.getHeaders(requireAuth);
-      
-      const requestOptions: RequestInit = {
-        ...options,
-        headers: {
-          ...headers,
-          ...options.headers,
-        },
-        mode: 'cors',
-        credentials: this.isWorldApp ? 'omit' : 'same-origin',
-      };
-      // Add World App specific options
-      if (this.isWorldApp) {
-        requestOptions.cache = 'no-store';
-      }
-      // Add timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-      requestOptions.signal = controller.signal;
+  // # #          SECTION 9 - PRIVATE HELPER: ENHANCED FETCH WITH RETRY           #
+  // # ############################################################################ #
+  private async makeRequest<T>(
+    url: string,
+    options: RequestInit = {},
+    requireAuth: boolean = false,
+    maxRetries: number = 2
+  ): Promise<{ success: boolean; data?: T; error?: string }> {
+    const requestId = this.generateRequestId();
+    let lastError: any;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[CampaignService] ${requestId} - Attempt ${attempt + 1}/${maxRetries + 1} for ${url}`);
 
-      // ========== DEBUG STEP 2: CHECK REQUEST DETAILS ==========
-      console.log('🔍 [DEBUG STEP 2] About to make fetch request');
-      console.log('🔍 [DEBUG STEP 2] URL:', url);
-      console.log('🔍 [DEBUG STEP 2] requireAuth:', requireAuth);
-      console.log('🔍 [DEBUG STEP 2] Request options:', JSON.stringify(requestOptions, null, 2));
-      console.log('🔍 [DEBUG STEP 2] Headers constructed:', requestOptions.headers);
+        const headers = await this.getHeaders(requireAuth);
 
-      // Specifically log auth header if it exists
-      if (requestOptions.headers && (requestOptions.headers as any)['Authorization']) {
-        console.log('🔍 [DEBUG STEP 2] Authorization header present:', (requestOptions.headers as any)['Authorization'].substring(0, 20) + '...');
-      } else {
-        console.log('🔍 [DEBUG STEP 2] ❌ NO Authorization header found!');
-      }
-      // =========================================================
-
-      const response = await fetch(url, requestOptions);
-      clearTimeout(timeoutId);
-      console.log(`[CampaignService] ${requestId} - Response: ${response.status} ${response.statusText}`);
-      
-      // Rest of the method stays the same...
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage: string;
-        
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorMessage = errorJson.message || errorJson.error || `HTTP ${response.status}: ${response.statusText}`;
-        } catch (e) {
-          errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
+        const requestOptions: RequestInit = {
+          ...options,
+          headers: {
+            ...headers,
+            ...options.headers,
+          },
+          mode: 'cors',
+          credentials: this.isWorldApp ? 'omit' : 'same-origin',
+        };
+        // Add World App specific options
+        if (this.isWorldApp) {
+          requestOptions.cache = 'no-store';
         }
+        // Add timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        requestOptions.signal = controller.signal;
+
+        // ========== DEBUG STEP 2: CHECK REQUEST DETAILS ==========
+        console.log('🔍 [DEBUG STEP 2] About to make fetch request');
+        console.log('🔍 [DEBUG STEP 2] URL:', url);
+        console.log('🔍 [DEBUG STEP 2] requireAuth:', requireAuth);
+        console.log('🔍 [DEBUG STEP 2] Request options:', JSON.stringify(requestOptions, null, 2));
+        console.log('🔍 [DEBUG STEP 2] Headers constructed:', requestOptions.headers);
+
+        // Specifically log auth header if it exists
+        if (requestOptions.headers && (requestOptions.headers as any)['Authorization']) {
+          console.log('🔍 [DEBUG STEP 2] Authorization header present:', (requestOptions.headers as any)['Authorization'].substring(0, 20) + '...');
+        } else {
+          console.log('🔍 [DEBUG STEP 2] ❌ NO Authorization header found!');
+        }
+        // =========================================================
+
+        const response = await fetch(url, requestOptions);
+        clearTimeout(timeoutId);
+        console.log(`[CampaignService] ${requestId} - Response: ${response.status} ${response.statusText}`);
+
+        // Rest of the method stays the same...
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorMessage: string;
+
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.message || errorJson.error || `HTTP ${response.status}: ${response.statusText}`;
+          } catch (e) {
+            errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
+          }
+          // Check if this is a retryable error
+          const isRetryable = response.status >= 500 || response.status === 429;
+          if (isRetryable && attempt < maxRetries) {
+            console.warn(`[CampaignService] ${requestId} - Retryable error (${response.status}), retrying...`);
+            lastError = new Error(errorMessage);
+            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+            continue;
+          }
+          console.error(`[CampaignService] ${requestId} - Error:`, errorMessage);
+          return { success: false, error: errorMessage };
+        }
+        // Parse response
+        let data: T;
+        const contentType = response.headers.get('content-type');
+
+        if (response.status === 204 || !contentType) {
+          data = {} as T;
+        } else if (contentType && contentType.includes('application/json')) {
+          try {
+            data = await response.json();
+          } catch (jsonError) {
+            console.error(`[CampaignService] ${requestId} - JSON parse error:`, jsonError);
+            return { success: false, error: 'Invalid JSON response from server' };
+          }
+        } else {
+          const text = await response.text();
+          try {
+            data = JSON.parse(text) as T;
+          } catch (e) {
+            data = text as unknown as T;
+          }
+        }
+        console.log(`[CampaignService] ${requestId} - Success`);
+        return { success: true, data };
+      } catch (error: any) {
+        lastError = error;
+        console.error(`[CampaignService] ${requestId} - Attempt ${attempt + 1} failed:`, error);
+
         // Check if this is a retryable error
-        const isRetryable = response.status >= 500 || response.status === 429;
+        const isRetryable = error.name === 'AbortError' ||
+          error.message?.includes('Failed to fetch') ||
+          error.message?.includes('network');
         if (isRetryable && attempt < maxRetries) {
-          console.warn(`[CampaignService] ${requestId} - Retryable error (${response.status}), retrying...`);
-          lastError = new Error(errorMessage);
+          console.warn(`[CampaignService] ${requestId} - Retryable error, retrying...`);
           await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
           continue;
         }
-        console.error(`[CampaignService] ${requestId} - Error:`, errorMessage);
-        return { success: false, error: errorMessage };
+        break;
       }
-      // Parse response
-      let data: T;
-      const contentType = response.headers.get('content-type');
-      
-      if (response.status === 204 || !contentType) {
-        data = {} as T;
-      } else if (contentType && contentType.includes('application/json')) {
-        try {
-          data = await response.json();
-        } catch (jsonError) {
-          console.error(`[CampaignService] ${requestId} - JSON parse error:`, jsonError);
-          return { success: false, error: 'Invalid JSON response from server' };
-        }
+    }
+    // Handle final error
+    let errorMessage = 'Network error occurred';
+    if (lastError) {
+      if (lastError.name === 'AbortError') {
+        errorMessage = 'Request timeout - please check your connection';
+      } else if (lastError.message?.includes('Failed to fetch')) {
+        errorMessage = 'Network connection failed - please check your internet connection';
+      } else if (lastError.message?.includes('CORS')) {
+        errorMessage = 'Cross-origin request blocked - please check API configuration';
       } else {
-        const text = await response.text();
-        try {
-          data = JSON.parse(text) as T;
-        } catch (e) {
-          data = text as unknown as T;
-        }
+        errorMessage = lastError.message || 'Unknown network error';
       }
-      console.log(`[CampaignService] ${requestId} - Success`);
-      return { success: true, data };
-    } catch (error: any) {
-      lastError = error;
-      console.error(`[CampaignService] ${requestId} - Attempt ${attempt + 1} failed:`, error);
-      
-      // Check if this is a retryable error
-      const isRetryable = error.name === 'AbortError' || 
-                         error.message?.includes('Failed to fetch') ||
-                         error.message?.includes('network');
-      if (isRetryable && attempt < maxRetries) {
-        console.warn(`[CampaignService] ${requestId} - Retryable error, retrying...`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
-        continue;
-      }
-      break;
     }
+    console.error(`[CampaignService] ${requestId} - Final error:`, errorMessage);
+    return { success: false, error: errorMessage };
   }
-  // Handle final error
-  let errorMessage = 'Network error occurred';
-  if (lastError) {
-    if (lastError.name === 'AbortError') {
-      errorMessage = 'Request timeout - please check your connection';
-    } else if (lastError.message?.includes('Failed to fetch')) {
-      errorMessage = 'Network connection failed - please check your internet connection';
-    } else if (lastError.message?.includes('CORS')) {
-      errorMessage = 'Cross-origin request blocked - please check API configuration';
-    } else {
-      errorMessage = lastError.message || 'Unknown network error';
-    }
-  }
-  console.error(`[CampaignService] ${requestId} - Final error:`, errorMessage);
-  return { success: false, error: errorMessage };
-}
 
   // # ############################################################################ #
-  // # #                            SECTION 10 - PUBLIC METHOD: CREATE CAMPAIGN                            #
+  // # #              SECTION 10 - PUBLIC METHOD: CREATE CAMPAIGN                 #
   // # ############################################################################ #
   public async createCampaign(
     payload: CampaignPayload
@@ -332,16 +332,16 @@ private async makeRequest<T>(
       );
 
       if (result.success && result.data) {
-        return { 
-          success: true, 
-          campaign: result.data, 
-          id: result.data.id 
+        return {
+          success: true,
+          campaign: result.data,
+          id: result.data.id
         };
       }
 
-      return { 
-        success: false, 
-        error: result.error || 'Failed to create campaign' 
+      return {
+        success: false,
+        error: result.error || 'Failed to create campaign'
       };
     } catch (error: any) {
       console.error('[CampaignService] createCampaign error:', error);
@@ -353,7 +353,7 @@ private async makeRequest<T>(
   }
 
   // # ############################################################################ #
-  // # #                         SECTION 11 - PUBLIC METHOD: FETCH ALL CAMPAIGNS                         #
+  // # #           SECTION 11 - PUBLIC METHOD: FETCH ALL CAMPAIGNS                #
   // # ############################################################################ #
   public async fetchAllCampaigns(
     category?: string
@@ -373,7 +373,7 @@ private async makeRequest<T>(
 
       if (result.success && result.data) {
         let campaignsArray: Campaign[] = [];
-        
+
         if (Array.isArray(result.data)) {
           campaignsArray = result.data;
         } else if (result.data && 'campaigns' in result.data && Array.isArray(result.data.campaigns)) {
@@ -383,9 +383,9 @@ private async makeRequest<T>(
         return { success: true, campaigns: campaignsArray };
       }
 
-      return { 
-        success: false, 
-        error: result.error || 'Failed to fetch campaigns' 
+      return {
+        success: false,
+        error: result.error || 'Failed to fetch campaigns'
       };
     } catch (error: any) {
       console.error('[CampaignService] fetchAllCampaigns error:', error);
@@ -397,7 +397,7 @@ private async makeRequest<T>(
   }
 
   // # ############################################################################ #
-  // # #                       SECTION 12 - PUBLIC METHOD: FETCH CAMPAIGN (BY ID)                        #
+  // # #            SECTION 12 - PUBLIC METHOD: FETCH CAMPAIGN (BY ID)            #
   // # ############################################################################ #
   public async fetchCampaign(
     id: string
@@ -416,9 +416,9 @@ private async makeRequest<T>(
         return { success: true, campaign: result.data };
       }
 
-      return { 
-        success: false, 
-        error: result.error || 'Failed to fetch campaign' 
+      return {
+        success: false,
+        error: result.error || 'Failed to fetch campaign'
       };
     } catch (error: any) {
       console.error(`[CampaignService] fetchCampaign (id: ${id}) error:`, error);
@@ -430,7 +430,7 @@ private async makeRequest<T>(
   }
 
   // # ############################################################################ #
-  // # #                            SECTION 13 - PUBLIC METHOD: UPDATE CAMPAIGN                             #
+  // # #              SECTION 13 - PUBLIC METHOD: UPDATE CAMPAIGN                 #
   // # ############################################################################ #
   public async updateCampaign(
     id: string,
@@ -457,9 +457,9 @@ private async makeRequest<T>(
         return { success: true, campaign: result.data };
       }
 
-      return { 
-        success: false, 
-        error: result.error || 'Failed to update campaign' 
+      return {
+        success: false,
+        error: result.error || 'Failed to update campaign'
       };
     } catch (error: any) {
       console.error(`[CampaignService] updateCampaign (id: ${id}) error:`, error);
@@ -471,7 +471,7 @@ private async makeRequest<T>(
   }
 
   // # ############################################################################ #
-  // # #                            SECTION 14 - PUBLIC METHOD: DELETE CAMPAIGN                             #
+  // # #              SECTION 14 - PUBLIC METHOD: DELETE CAMPAIGN                 #
   // # ############################################################################ #
   public async deleteCampaign(
     id: string
@@ -487,8 +487,8 @@ private async makeRequest<T>(
         true // Require auth
       );
 
-      return { 
-        success: result.success, 
+      return {
+        success: result.success,
         error: result.error || (result.success ? undefined : 'Failed to delete campaign')
       };
     } catch (error: any) {
@@ -501,7 +501,7 @@ private async makeRequest<T>(
   }
 
   // # ############################################################################ #
-  // # #                            SECTION 15 - PUBLIC METHOD: RECORD DONATION                             #
+  // # #              SECTION 15 - PUBLIC METHOD: RECORD DONATION                 #
   // # ############################################################################ #
   public async recordDonation(
     campaignId: string,
@@ -536,9 +536,9 @@ private async makeRequest<T>(
         };
       }
 
-      return { 
-        success: false, 
-        error: result.error || 'Failed to record donation' 
+      return {
+        success: false,
+        error: result.error || 'Failed to record donation'
       };
     } catch (error: any) {
       console.error(`[CampaignService] recordDonation (campaignId: ${campaignId}) error:`, error);
@@ -549,108 +549,152 @@ private async makeRequest<T>(
     }
   }
 
-// # ############################################################################ #
-// # #                         SECTION 16 - PUBLIC METHOD: FETCH USER CAMPAIGNS (SECURE & FINAL)                         #
-// # ############################################################################ #
-public async fetchUserCampaigns(
-  walletAddress: string // Keep parameter for backwards compatibility, but won't use it in URL
-): Promise<{ success: boolean; campaigns?: Campaign[]; error?: string }> {
-  if (!walletAddress || walletAddress.trim() === '') {
-    return {
-      success: false,
-      error: 'Wallet address is required to fetch user campaigns.',
-    };
-  }
+  // # ############################################################################ #
+  // # #     SECTION 16 - PUBLIC METHOD: FETCH USER CAMPAIGNS (ENHANCED DEBUG VERSION) #
+  // # ############################################################################ #
+  public async fetchUserCampaigns(
+    walletAddress: string
+  ): Promise<{ success: boolean; campaigns?: Campaign[]; error?: string }> {
+    if (!walletAddress || walletAddress.trim() === '') {
+      return {
+        success: false,
+        error: 'Wallet address is required to fetch user campaigns.',
+      };
+    }
 
-  try {
-    // SECURE: Use the same /campaigns endpoint but with special header
-    const url = `${this.API_BASE}/campaigns`;
-    
-    // Get auth headers - MUST include auth for user-specific campaigns
-    const headers = await this.getHeaders(true); // true = include auth
-    
-    // Add the special header to indicate we want user-specific campaigns
-    const secureHeaders = {
-      ...headers,
-      'X-User-Campaigns-Only': 'true'
-    };
+    try {
+      const url = `${this.API_BASE}/campaigns`;
 
-    console.log('[CampaignService] Making SECURE request for user campaigns to:', url);
-    console.log('[CampaignService] Using X-User-Campaigns-Only header approach');
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: secureHeaders,
-      mode: 'cors',
-      credentials: this.isWorldApp ? 'omit' : 'same-origin',
-      // Add World App optimizations
-      ...(this.isWorldApp ? { cache: 'no-store' } : {})
-    });
+      // ENHANCED DEBUG: Log everything step by step
+      console.log('🔍 [ENHANCED DEBUG] fetchUserCampaigns - Step 1: Starting request');
+      console.log('🔍 [ENHANCED DEBUG] URL:', url);
+      console.log('🔍 [ENHANCED DEBUG] API_BASE:', this.API_BASE);
+      console.log('🔍 [ENHANCED DEBUG] Wallet Address:', walletAddress);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage: string;
-      
+      // Get auth headers with enhanced debugging
+      console.log('🔍 [ENHANCED DEBUG] Step 2: Getting headers...');
+      const headers = await this.getHeaders(true);
+      console.log('🔍 [ENHANCED DEBUG] Headers received:', headers);
+
+      // Check if Authorization header exists
+      const authHeader = (headers as any)['Authorization'];
+      if (authHeader) {
+        console.log('🔍 [ENHANCED DEBUG] Authorization header found:', authHeader.substring(0, 30) + '...');
+      } else {
+        console.log('🔍 [ENHANCED DEBUG] ❌ NO Authorization header!');
+      }
+
+      const secureHeaders = {
+        ...headers,
+        'X-User-Campaigns-Only': 'true'
+      };
+
+      console.log('🔍 [ENHANCED DEBUG] Step 3: Final headers prepared:', secureHeaders);
+
+      // Enhanced fetch options
+      const fetchOptions: RequestInit = {
+        method: 'GET',
+        headers: secureHeaders,
+        mode: 'cors',
+        credentials: this.isWorldApp ? 'omit' : 'same-origin',
+        ...(this.isWorldApp ? { cache: 'no-store' } : {})
+      };
+
+      console.log('🔍 [ENHANCED DEBUG] Step 4: Fetch options:', fetchOptions);
+      console.log('🔍 [ENHANCED DEBUG] isWorldApp:', this.isWorldApp);
+
+      // Test basic connectivity first
+      console.log('🔍 [ENHANCED DEBUG] Step 5: Testing basic connectivity...');
       try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.message || errorJson.error || `HTTP ${response.status}: ${response.statusText}`;
-      } catch (e) {
-        errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
+        const testResponse = await fetch(url.replace('/campaigns', '/health'), {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          mode: 'cors'
+        });
+        console.log('🔍 [ENHANCED DEBUG] Health check response:', testResponse.status, testResponse.statusText);
+      } catch (healthError) {
+        console.log('🔍 [ENHANCED DEBUG] Health check failed:', healthError);
       }
-      
-      console.error('[CampaignService] Secure user campaigns fetch failed:', errorMessage);
-      
-      // Handle specific error cases for better UX
-      if (errorMessage.includes('sign in again') || errorMessage.includes('session token needs to be updated')) {
-        return { success: false, error: 'Please sign in again to access your campaigns.' };
-      }
-      
-      if (response.status === 401) {
-        return { success: false, error: 'Authentication required. Please sign in to view your campaigns.' };
-      }
-      
-      if (response.status === 403) {
-        return { success: false, error: 'Access denied. Please check your authentication.' };
-      }
-      
-      return { success: false, error: errorMessage };
-    }
 
-    const data = await response.json();
-    let campaignsArray: Campaign[] = [];
-    
-    if (Array.isArray(data)) {
-      campaignsArray = data;
-    } else if (data && 'campaigns' in data && Array.isArray(data.campaigns)) {
-      campaignsArray = data.campaigns;
-    }
+      console.log('🔍 [ENHANCED DEBUG] Step 6: Making actual request...');
+      const response = await fetch(url, fetchOptions);
 
-    console.log('[CampaignService] Secure user campaigns fetched successfully:', campaignsArray.length);
-    return { success: true, campaigns: campaignsArray };
-    
-  } catch (error: any) {
-    console.error(`[CampaignService] fetchUserCampaigns error:`, error);
-    
-    // Provide user-friendly error messages
-    let friendlyError = 'Failed to fetch user campaigns.';
-    if (error.message?.includes('Failed to fetch')) {
-      friendlyError = 'Network connection failed. Please check your internet connection and try again.';
-    } else if (error.message?.includes('timeout')) {
-      friendlyError = 'Request timed out. Please try again.';
-    } else if (error.message) {
-      friendlyError = error.message;
+      console.log('🔍 [ENHANCED DEBUG] Step 7: Response received!');
+      console.log('🔍 [ENHANCED DEBUG] Response status:', response.status);
+      console.log('🔍 [ENHANCED DEBUG] Response ok:', response.ok);
+      console.log('🔍 [ENHANCED DEBUG] Response statusText:', response.statusText);
+      console.log('🔍 [ENHANCED DEBUG] Response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('🔍 [ENHANCED DEBUG] Error response text:', errorText);
+
+        let errorMessage: string;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorJson.error || `HTTP ${response.status}: ${response.statusText}`;
+        } catch (e) {
+          errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
+        }
+
+        console.error('[CampaignService] Secure user campaigns fetch failed:', errorMessage);
+        return { success: false, error: errorMessage };
+      }
+
+      const data = await response.json();
+      console.log('🔍 [ENHANCED DEBUG] Step 8: Data parsed successfully:', data);
+
+      let campaignsArray: Campaign[] = [];
+
+      if (Array.isArray(data)) {
+        campaignsArray = data;
+      } else if (data && 'campaigns' in data && Array.isArray(data.campaigns)) {
+        campaignsArray = data.campaigns;
+      }
+
+      console.log('🔍 [ENHANCED DEBUG] Step 9: Final campaigns array:', campaignsArray.length, 'campaigns');
+      return { success: true, campaigns: campaignsArray };
+
+    } catch (error: any) {
+      console.error('🔍 [ENHANCED DEBUG] CATCH BLOCK - Full error details:');
+      console.error('🔍 [ENHANCED DEBUG] Error name:', error.name);
+      console.error('🔍 [ENHANCED DEBUG] Error message:', error.message);
+      console.error('🔍 [ENHANCED DEBUG] Error stack:', error.stack);
+      console.error('🔍 [ENHANCED DEBUG] Full error object:', error);
+      console.error('🔍 [ENHANCED DEBUG] Error constructor:', error.constructor.name);
+
+      // Check for specific error types
+      if (error.name === 'TypeError') {
+        console.error('🔍 [ENHANCED DEBUG] This is a TypeError - likely network/fetch issue');
+        if (error.message.includes('Failed to fetch')) {
+          console.error('🔍 [ENHANCED DEBUG] "Failed to fetch" - CORS or network connectivity issue');
+        } else if (error.message.includes('NetworkError')) {
+          console.error('🔍 [ENHANCED DEBUG] "NetworkError" - Network connectivity issue');
+        } else {
+          console.error('🔍 [ENHANCED DEBUG] Other TypeError:', error.message);
+        }
+      }
+
+      let friendlyError = 'Failed to fetch user campaigns.';
+      if (error.message?.includes('Failed to fetch')) {
+        friendlyError = 'Network connection failed. Please check your internet connection and try again.';
+      } else if (error.message?.includes('timeout')) {
+        friendlyError = 'Request timed out. Please try again.';
+      } else if (error.message) {
+        friendlyError = error.message;
+      }
+
+      return {
+        success: false,
+        error: friendlyError,
+      };
     }
-    
-    return {
-      success: false,
-      error: friendlyError,
-    };
   }
-}
 
-// # ############################################################################ #
-// # #                          SECTION 17 - SINGLETON INSTANCE EXPORT                            #
-// # ############################################################################ #
+
+  // # ############################################################################ #
+  // # #             SECTION 17 - SINGLETON INSTANCE EXPORT                       #
+  // # ############################################################################ #
 }
 
 export const campaignService = CampaignService.getInstance();
