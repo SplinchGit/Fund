@@ -550,7 +550,7 @@ class CampaignService {
   }
 
   // # ############################################################################ #
-  // # #     SECTION 16 - PUBLIC METHOD: FETCH USER CAMPAIGNS (ENHANCED DEBUG VERSION) #
+  // # #          SECTION 16 - PUBLIC METHOD: FETCH USER CAMPAIGNS (CORS FIX)     #
   // # ############################################################################ #
   public async fetchUserCampaigns(
     walletAddress: string
@@ -563,73 +563,31 @@ class CampaignService {
     }
 
     try {
-      const url = `${this.API_BASE}/campaigns`;
+      // FIXED: Use query parameter instead of custom header to avoid CORS preflight
+      const url = `${this.API_BASE}/campaigns?userOnly=true`;
 
-      // ENHANCED DEBUG: Log everything step by step
-      console.log('🔍 [ENHANCED DEBUG] fetchUserCampaigns - Step 1: Starting request');
-      console.log('🔍 [ENHANCED DEBUG] URL:', url);
-      console.log('🔍 [ENHANCED DEBUG] API_BASE:', this.API_BASE);
-      console.log('🔍 [ENHANCED DEBUG] Wallet Address:', walletAddress);
+      console.log('[CampaignService] Making SECURE request for user campaigns to:', url);
+      console.log('[CampaignService] Using query parameter approach (CORS-friendly)');
 
-      // Get auth headers with enhanced debugging
-      console.log('🔍 [ENHANCED DEBUG] Step 2: Getting headers...');
+      // Get auth headers (no custom headers = no preflight)
       const headers = await this.getHeaders(true);
-      console.log('🔍 [ENHANCED DEBUG] Headers received:', headers);
 
-      // Check if Authorization header exists
-      const authHeader = (headers as any)['Authorization'];
-      if (authHeader) {
-        console.log('🔍 [ENHANCED DEBUG] Authorization header found:', authHeader.substring(0, 30) + '...');
-      } else {
-        console.log('🔍 [ENHANCED DEBUG] ❌ NO Authorization header!');
-      }
+      console.log('[CampaignService] Headers prepared (no custom headers)');
 
-      const secureHeaders = {
-        ...headers,
-        'X-User-Campaigns-Only': 'true'
-      };
-
-      console.log('🔍 [ENHANCED DEBUG] Step 3: Final headers prepared:', secureHeaders);
-
-      // Enhanced fetch options
-      const fetchOptions: RequestInit = {
+      const response = await fetch(url, {
         method: 'GET',
-        headers: secureHeaders,
+        headers: headers,
         mode: 'cors',
         credentials: this.isWorldApp ? 'omit' : 'same-origin',
         ...(this.isWorldApp ? { cache: 'no-store' } : {})
-      };
+      });
 
-      console.log('🔍 [ENHANCED DEBUG] Step 4: Fetch options:', fetchOptions);
-      console.log('🔍 [ENHANCED DEBUG] isWorldApp:', this.isWorldApp);
-
-      // Test basic connectivity first
-      console.log('🔍 [ENHANCED DEBUG] Step 5: Testing basic connectivity...');
-      try {
-        const testResponse = await fetch(url.replace('/campaigns', '/health'), {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-          mode: 'cors'
-        });
-        console.log('🔍 [ENHANCED DEBUG] Health check response:', testResponse.status, testResponse.statusText);
-      } catch (healthError) {
-        console.log('🔍 [ENHANCED DEBUG] Health check failed:', healthError);
-      }
-
-      console.log('🔍 [ENHANCED DEBUG] Step 6: Making actual request...');
-      const response = await fetch(url, fetchOptions);
-
-      console.log('🔍 [ENHANCED DEBUG] Step 7: Response received!');
-      console.log('🔍 [ENHANCED DEBUG] Response status:', response.status);
-      console.log('🔍 [ENHANCED DEBUG] Response ok:', response.ok);
-      console.log('🔍 [ENHANCED DEBUG] Response statusText:', response.statusText);
-      console.log('🔍 [ENHANCED DEBUG] Response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('[CampaignService] Response received:', response.status, response.statusText);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.log('🔍 [ENHANCED DEBUG] Error response text:', errorText);
-
         let errorMessage: string;
+
         try {
           const errorJson = JSON.parse(errorText);
           errorMessage = errorJson.message || errorJson.error || `HTTP ${response.status}: ${response.statusText}`;
@@ -638,12 +596,19 @@ class CampaignService {
         }
 
         console.error('[CampaignService] Secure user campaigns fetch failed:', errorMessage);
+
+        if (response.status === 401) {
+          return { success: false, error: 'Authentication required. Please sign in to view your campaigns.' };
+        }
+
+        if (response.status === 403) {
+          return { success: false, error: 'Access denied. Please check your authentication.' };
+        }
+
         return { success: false, error: errorMessage };
       }
 
       const data = await response.json();
-      console.log('🔍 [ENHANCED DEBUG] Step 8: Data parsed successfully:', data);
-
       let campaignsArray: Campaign[] = [];
 
       if (Array.isArray(data)) {
@@ -652,28 +617,11 @@ class CampaignService {
         campaignsArray = data.campaigns;
       }
 
-      console.log('🔍 [ENHANCED DEBUG] Step 9: Final campaigns array:', campaignsArray.length, 'campaigns');
+      console.log('[CampaignService] Secure user campaigns fetched successfully:', campaignsArray.length);
       return { success: true, campaigns: campaignsArray };
 
     } catch (error: any) {
-      console.error('🔍 [ENHANCED DEBUG] CATCH BLOCK - Full error details:');
-      console.error('🔍 [ENHANCED DEBUG] Error name:', error.name);
-      console.error('🔍 [ENHANCED DEBUG] Error message:', error.message);
-      console.error('🔍 [ENHANCED DEBUG] Error stack:', error.stack);
-      console.error('🔍 [ENHANCED DEBUG] Full error object:', error);
-      console.error('🔍 [ENHANCED DEBUG] Error constructor:', error.constructor.name);
-
-      // Check for specific error types
-      if (error.name === 'TypeError') {
-        console.error('🔍 [ENHANCED DEBUG] This is a TypeError - likely network/fetch issue');
-        if (error.message.includes('Failed to fetch')) {
-          console.error('🔍 [ENHANCED DEBUG] "Failed to fetch" - CORS or network connectivity issue');
-        } else if (error.message.includes('NetworkError')) {
-          console.error('🔍 [ENHANCED DEBUG] "NetworkError" - Network connectivity issue');
-        } else {
-          console.error('🔍 [ENHANCED DEBUG] Other TypeError:', error.message);
-        }
-      }
+      console.error(`[CampaignService] fetchUserCampaigns error:`, error);
 
       let friendlyError = 'Failed to fetch user campaigns.';
       if (error.message?.includes('Failed to fetch')) {
@@ -690,7 +638,6 @@ class CampaignService {
       };
     }
   }
-
 
   // # ############################################################################ #
   // # #             SECTION 17 - SINGLETON INSTANCE EXPORT                       #
