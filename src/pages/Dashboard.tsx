@@ -225,6 +225,15 @@ const Dashboard: React.FC = () => {
 // # # SECTION 4 - EFFECT: AUTHENTICATION CHECK & CALCULATE STATS FROM CAMPAIGNS #
 // # ############################################################################ #
   useEffect(() => {
+    // ========== DEBUG STEP 1: CHECK WALLET ADDRESS VALIDITY ==========
+    console.log('🔍 [DEBUG STEP 1] Dashboard useEffect triggered');
+    console.log('🔍 [DEBUG STEP 1] walletAddress:', walletAddress);
+    console.log('🔍 [DEBUG STEP 1] isAuthenticated:', isAuthenticated);
+    console.log('🔍 [DEBUG STEP 1] typeof walletAddress:', typeof walletAddress);
+    console.log('🔍 [DEBUG STEP 1] walletAddress length:', walletAddress?.length);
+    console.log('🔍 [DEBUG STEP 1] walletAddress truthy check:', !!walletAddress);
+    // ================================================================
+
     if (!isAuthenticated) {
       console.log('[Dashboard] User not authenticated, redirecting to landing page');
       navigate('/landing');
@@ -234,10 +243,13 @@ const Dashboard: React.FC = () => {
     // FIXED: Fetch user campaigns and calculate stats from them
     const fetchUserCampaignsAndCalculateStats = async () => {
       if (!walletAddress) {
+        console.log('🔍 [DEBUG STEP 1] walletAddress is falsy, stopping fetch');
         setIsLoadingStats(false);
         return;
       }
 
+      console.log('🔍 [DEBUG STEP 1] About to call fetchUserCampaigns with walletAddress:', walletAddress);
+      
       setIsLoadingStats(true);
       setStatsError(null);
       console.log('[Dashboard] Fetching user campaigns to calculate stats...');
@@ -270,7 +282,6 @@ const Dashboard: React.FC = () => {
     };
 
     fetchUserCampaignsAndCalculateStats();
-
   }, [isAuthenticated, navigate, walletAddress]);
 
 // # ############################################################################ #
