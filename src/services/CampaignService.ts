@@ -549,53 +549,55 @@ private async makeRequest<T>(
     }
   }
 
-  // # ############################################################################ #
-  // # #                         SECTION 16 - PUBLIC METHOD: FETCH USER CAMPAIGNS                         #
-  // # ############################################################################ #
-  public async fetchUserCampaigns(
-    walletAddress: string
-  ): Promise<{ success: boolean; campaigns?: Campaign[]; error?: string }> {
-    if (!walletAddress || walletAddress.trim() === '') {
-      return {
-        success: false,
-        error: 'Wallet address is required to fetch user campaigns.',
-      };
-    }
+// # ############################################################################ #
+// # #                         SECTION 16 - PUBLIC METHOD: FETCH USER CAMPAIGNS                         #
+// # ############################################################################ #
+public async fetchUserCampaigns(
+  walletAddress: string
+): Promise<{ success: boolean; campaigns?: Campaign[]; error?: string }> {
+  if (!walletAddress || walletAddress.trim() === '') {
+    return {
+      success: false,
+      error: 'Wallet address is required to fetch user campaigns.',
+    };
+  }
 
-    try {
-      const result = await this.makeRequest<{ campaigns?: Campaign[] } | Campaign[]>(
-        `${this.API_BASE}/users/${walletAddress}/campaigns`,
-        { method: 'GET' },
-        true // Require auth
-      );
+  try {
+    // FIX: Use query parameter instead of URL path to avoid auth header stripping
+    const result = await this.makeRequest<{ campaigns?: Campaign[] } | Campaign[]>(
+      `${this.API_BASE}/campaigns?ownerId=${encodeURIComponent(walletAddress)}`,
+      { method: 'GET' },
+      true // Require auth
+    );
 
-      if (result.success && result.data) {
-        let campaignsArray: Campaign[] = [];
-        
-        if (Array.isArray(result.data)) {
-          campaignsArray = result.data;
-        } else if (result.data && 'campaigns' in result.data && Array.isArray(result.data.campaigns)) {
-          campaignsArray = result.data.campaigns;
-        }
-
-        return { success: true, campaigns: campaignsArray };
+    if (result.success && result.data) {
+      let campaignsArray: Campaign[] = [];
+      
+      if (Array.isArray(result.data)) {
+        campaignsArray = result.data;
+      } else if (result.data && 'campaigns' in result.data && Array.isArray(result.data.campaigns)) {
+        campaignsArray = result.data.campaigns;
       }
 
-      return { 
-        success: false, 
-        error: result.error || 'Failed to fetch user campaigns' 
-      };
-    } catch (error: any) {
-      console.error(`[CampaignService] fetchUserCampaigns (wallet: ${walletAddress}) error:`, error);
-      return {
-        success: false,
-        error: error.message || 'Failed to fetch user campaigns.',
-      };
+      return { success: true, campaigns: campaignsArray };
     }
+
+    return { 
+      success: false, 
+      error: result.error || 'Failed to fetch user campaigns' 
+    };
+  } catch (error: any) {
+    console.error(`[CampaignService] fetchUserCampaigns (wallet: ${walletAddress}) error:`, error);
+    return {
+      success: false,
+      error: error.message || 'Failed to fetch user campaigns.',
+    };
   }
 }
 
 // # ############################################################################ #
 // # #                          SECTION 17 - SINGLETON INSTANCE EXPORT                            #
 // # ############################################################################ #
+}
+
 export const campaignService = CampaignService.getInstance();
