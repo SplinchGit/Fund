@@ -550,10 +550,10 @@ private async makeRequest<T>(
   }
 
 // # ############################################################################ #
-// # #                         SECTION 16 - PUBLIC METHOD: FETCH USER CAMPAIGNS                         #
+// # #                         SECTION 16 - PUBLIC METHOD: FETCH USER CAMPAIGNS (SECURE & FINAL)                         #
 // # ############################################################################ #
 public async fetchUserCampaigns(
-  walletAddress: string
+  walletAddress: string // Keep parameter for backwards compatibility, but won't use it in URL
 ): Promise<{ success: boolean; campaigns?: Campaign[]; error?: string }> {
   if (!walletAddress || walletAddress.trim() === '') {
     return {
@@ -563,27 +563,57 @@ public async fetchUserCampaigns(
   }
 
   try {
-    // FIX: Use simple fetch without our complex retry logic to avoid World App issues
-    const url = `${this.API_BASE}/users/${encodeURIComponent(walletAddress)}/campaigns`;
-    const authData = await authService.checkAuthStatus();
+    // SECURE: Use the same /campaigns endpoint but with special header
+    const url = `${this.API_BASE}/campaigns`;
     
-    if (!authData.token) {
-      throw new Error('No authentication token available');
-    }
+    // Get auth headers - MUST include auth for user-specific campaigns
+    const headers = await this.getHeaders(true); // true = include auth
+    
+    // Add the special header to indicate we want user-specific campaigns
+    const secureHeaders = {
+      ...headers,
+      'X-User-Campaigns-Only': 'true'
+    };
 
-    console.log('[CampaignService] Making simple fetch request to:', url);
+    console.log('[CampaignService] Making SECURE request for user campaigns to:', url);
+    console.log('[CampaignService] Using X-User-Campaigns-Only header approach');
     
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authData.token}`
-      }
+      headers: secureHeaders,
+      mode: 'cors',
+      credentials: this.isWorldApp ? 'omit' : 'same-origin',
+      // Add World App optimizations
+      ...(this.isWorldApp ? { cache: 'no-store' } : {})
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+      let errorMessage: string;
+      
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.message || errorJson.error || `HTTP ${response.status}: ${response.statusText}`;
+      } catch (e) {
+        errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
+      }
+      
+      console.error('[CampaignService] Secure user campaigns fetch failed:', errorMessage);
+      
+      // Handle specific error cases for better UX
+      if (errorMessage.includes('sign in again') || errorMessage.includes('session token needs to be updated')) {
+        return { success: false, error: 'Please sign in again to access your campaigns.' };
+      }
+      
+      if (response.status === 401) {
+        return { success: false, error: 'Authentication required. Please sign in to view your campaigns.' };
+      }
+      
+      if (response.status === 403) {
+        return { success: false, error: 'Access denied. Please check your authentication.' };
+      }
+      
+      return { success: false, error: errorMessage };
     }
 
     const data = await response.json();
@@ -595,12 +625,25 @@ public async fetchUserCampaigns(
       campaignsArray = data.campaigns;
     }
 
+    console.log('[CampaignService] Secure user campaigns fetched successfully:', campaignsArray.length);
     return { success: true, campaigns: campaignsArray };
+    
   } catch (error: any) {
     console.error(`[CampaignService] fetchUserCampaigns error:`, error);
+    
+    // Provide user-friendly error messages
+    let friendlyError = 'Failed to fetch user campaigns.';
+    if (error.message?.includes('Failed to fetch')) {
+      friendlyError = 'Network connection failed. Please check your internet connection and try again.';
+    } else if (error.message?.includes('timeout')) {
+      friendlyError = 'Request timed out. Please try again.';
+    } else if (error.message) {
+      friendlyError = error.message;
+    }
+    
     return {
       success: false,
-      error: error.message || 'Failed to fetch user campaigns.',
+      error: friendlyError,
     };
   }
 }
