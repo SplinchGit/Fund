@@ -184,133 +184,136 @@ class CampaignService {
   }
 
   // # ############################################################################ #
-  // # #                      SECTION 9 - PRIVATE HELPER: ENHANCED FETCH WITH RETRY                       #
-  // # ############################################################################ #
-  private async makeRequest<T>(
-    url: string, 
-    options: RequestInit = {},
-    requireAuth: boolean = false,
-    maxRetries: number = 2
-  ): Promise<{ success: boolean; data?: T; error?: string }> {
-    const requestId = this.generateRequestId();
-    let lastError: any;
+// # #                      SECTION 9 - PRIVATE HELPER: ENHANCED FETCH WITH RETRY                       #
+// # ############################################################################ #
+private async makeRequest<T>(
+  url: string, 
+  options: RequestInit = {},
+  requireAuth: boolean = false,
+  maxRetries: number = 2
+): Promise<{ success: boolean; data?: T; error?: string }> {
+  const requestId = this.generateRequestId();
+  let lastError: any;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[CampaignService] ${requestId} - Attempt ${attempt + 1}/${maxRetries + 1} for ${url}`);
+      
+      const headers = await this.getHeaders(requireAuth);
+      
+      const requestOptions: RequestInit = {
+        ...options,
+        headers: {
+          ...headers,
+          ...options.headers,
+        },
+        mode: 'cors',
+        credentials: this.isWorldApp ? 'omit' : 'same-origin',
+      };
+      // Add World App specific options
+      if (this.isWorldApp) {
+        requestOptions.cache = 'no-store';
+      }
+      // Add timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      requestOptions.signal = controller.signal;
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`[CampaignService] ${requestId} - Attempt ${attempt + 1}/${maxRetries + 1} for ${url}`);
-        
-        const headers = await this.getHeaders(requireAuth);
-        
-        const requestOptions: RequestInit = {
-          ...options,
-          headers: {
-            ...headers,
-            ...options.headers,
-          },
-          mode: 'cors',
-          credentials: this.isWorldApp ? 'omit' : 'same-origin',
-        };
+      // ========== DEBUG STEP 2: CHECK REQUEST DETAILS ==========
+      console.log('🔍 [DEBUG STEP 2] About to make fetch request');
+      console.log('🔍 [DEBUG STEP 2] URL:', url);
+      console.log('🔍 [DEBUG STEP 2] requireAuth:', requireAuth);
+      console.log('🔍 [DEBUG STEP 2] Request options:', JSON.stringify(requestOptions, null, 2));
+      console.log('🔍 [DEBUG STEP 2] Headers constructed:', requestOptions.headers);
 
-        // Add World App specific options
-        if (this.isWorldApp) {
-          requestOptions.cache = 'no-store';
+      // Specifically log auth header if it exists
+      if (requestOptions.headers && (requestOptions.headers as any)['Authorization']) {
+        console.log('🔍 [DEBUG STEP 2] Authorization header present:', (requestOptions.headers as any)['Authorization'].substring(0, 20) + '...');
+      } else {
+        console.log('🔍 [DEBUG STEP 2] ❌ NO Authorization header found!');
+      }
+      // =========================================================
+
+      const response = await fetch(url, requestOptions);
+      clearTimeout(timeoutId);
+      console.log(`[CampaignService] ${requestId} - Response: ${response.status} ${response.statusText}`);
+      
+      // Rest of the method stays the same...
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage: string;
+        
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorJson.error || `HTTP ${response.status}: ${response.statusText}`;
+        } catch (e) {
+          errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
         }
-
-        // Add timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
-        requestOptions.signal = controller.signal;
-
-        const response = await fetch(url, requestOptions);
-        clearTimeout(timeoutId);
-
-        console.log(`[CampaignService] ${requestId} - Response: ${response.status} ${response.statusText}`);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          let errorMessage: string;
-          
-          try {
-            const errorJson = JSON.parse(errorText);
-            errorMessage = errorJson.message || errorJson.error || `HTTP ${response.status}: ${response.statusText}`;
-          } catch (e) {
-            errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
-          }
-
-          // Check if this is a retryable error
-          const isRetryable = response.status >= 500 || response.status === 429;
-          if (isRetryable && attempt < maxRetries) {
-            console.warn(`[CampaignService] ${requestId} - Retryable error (${response.status}), retrying...`);
-            lastError = new Error(errorMessage);
-            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
-            continue;
-          }
-
-          console.error(`[CampaignService] ${requestId} - Error:`, errorMessage);
-          return { success: false, error: errorMessage };
-        }
-
-        // Parse response
-        let data: T;
-        const contentType = response.headers.get('content-type');
-        
-        if (response.status === 204 || !contentType) {
-          data = {} as T;
-        } else if (contentType && contentType.includes('application/json')) {
-          try {
-            data = await response.json();
-          } catch (jsonError) {
-            console.error(`[CampaignService] ${requestId} - JSON parse error:`, jsonError);
-            return { success: false, error: 'Invalid JSON response from server' };
-          }
-        } else {
-          const text = await response.text();
-          try {
-            data = JSON.parse(text) as T;
-          } catch (e) {
-            data = text as unknown as T;
-          }
-        }
-
-        console.log(`[CampaignService] ${requestId} - Success`);
-        return { success: true, data };
-
-      } catch (error: any) {
-        lastError = error;
-        console.error(`[CampaignService] ${requestId} - Attempt ${attempt + 1} failed:`, error);
-        
         // Check if this is a retryable error
-        const isRetryable = error.name === 'AbortError' || 
-                           error.message?.includes('Failed to fetch') ||
-                           error.message?.includes('network');
-
+        const isRetryable = response.status >= 500 || response.status === 429;
         if (isRetryable && attempt < maxRetries) {
-          console.warn(`[CampaignService] ${requestId} - Retryable error, retrying...`);
+          console.warn(`[CampaignService] ${requestId} - Retryable error (${response.status}), retrying...`);
+          lastError = new Error(errorMessage);
           await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
           continue;
         }
-
-        break;
+        console.error(`[CampaignService] ${requestId} - Error:`, errorMessage);
+        return { success: false, error: errorMessage };
       }
-    }
-
-    // Handle final error
-    let errorMessage = 'Network error occurred';
-    if (lastError) {
-      if (lastError.name === 'AbortError') {
-        errorMessage = 'Request timeout - please check your connection';
-      } else if (lastError.message?.includes('Failed to fetch')) {
-        errorMessage = 'Network connection failed - please check your internet connection';
-      } else if (lastError.message?.includes('CORS')) {
-        errorMessage = 'Cross-origin request blocked - please check API configuration';
+      // Parse response
+      let data: T;
+      const contentType = response.headers.get('content-type');
+      
+      if (response.status === 204 || !contentType) {
+        data = {} as T;
+      } else if (contentType && contentType.includes('application/json')) {
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          console.error(`[CampaignService] ${requestId} - JSON parse error:`, jsonError);
+          return { success: false, error: 'Invalid JSON response from server' };
+        }
       } else {
-        errorMessage = lastError.message || 'Unknown network error';
+        const text = await response.text();
+        try {
+          data = JSON.parse(text) as T;
+        } catch (e) {
+          data = text as unknown as T;
+        }
       }
+      console.log(`[CampaignService] ${requestId} - Success`);
+      return { success: true, data };
+    } catch (error: any) {
+      lastError = error;
+      console.error(`[CampaignService] ${requestId} - Attempt ${attempt + 1} failed:`, error);
+      
+      // Check if this is a retryable error
+      const isRetryable = error.name === 'AbortError' || 
+                         error.message?.includes('Failed to fetch') ||
+                         error.message?.includes('network');
+      if (isRetryable && attempt < maxRetries) {
+        console.warn(`[CampaignService] ${requestId} - Retryable error, retrying...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+        continue;
+      }
+      break;
     }
-
-    console.error(`[CampaignService] ${requestId} - Final error:`, errorMessage);
-    return { success: false, error: errorMessage };
   }
+  // Handle final error
+  let errorMessage = 'Network error occurred';
+  if (lastError) {
+    if (lastError.name === 'AbortError') {
+      errorMessage = 'Request timeout - please check your connection';
+    } else if (lastError.message?.includes('Failed to fetch')) {
+      errorMessage = 'Network connection failed - please check your internet connection';
+    } else if (lastError.message?.includes('CORS')) {
+      errorMessage = 'Cross-origin request blocked - please check API configuration';
+    } else {
+      errorMessage = lastError.message || 'Unknown network error';
+    }
+  }
+  console.error(`[CampaignService] ${requestId} - Final error:`, errorMessage);
+  return { success: false, error: errorMessage };
+}
 
   // # ############################################################################ #
   // # #                            SECTION 10 - PUBLIC METHOD: CREATE CAMPAIGN                            #
