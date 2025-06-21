@@ -563,31 +563,41 @@ public async fetchUserCampaigns(
   }
 
   try {
-    // FIX: Use query parameter instead of URL path to avoid auth header stripping
-    const result = await this.makeRequest<{ campaigns?: Campaign[] } | Campaign[]>(
-      `${this.API_BASE}/campaigns?ownerId=${encodeURIComponent(walletAddress)}`,
-      { method: 'GET' },
-      true // Require auth
-    );
-
-    if (result.success && result.data) {
-      let campaignsArray: Campaign[] = [];
-      
-      if (Array.isArray(result.data)) {
-        campaignsArray = result.data;
-      } else if (result.data && 'campaigns' in result.data && Array.isArray(result.data.campaigns)) {
-        campaignsArray = result.data.campaigns;
-      }
-
-      return { success: true, campaigns: campaignsArray };
+    // FIX: Use simple fetch without our complex retry logic to avoid World App issues
+    const url = `${this.API_BASE}/users/${encodeURIComponent(walletAddress)}/campaigns`;
+    const authData = await authService.checkAuthStatus();
+    
+    if (!authData.token) {
+      throw new Error('No authentication token available');
     }
 
-    return { 
-      success: false, 
-      error: result.error || 'Failed to fetch user campaigns' 
-    };
+    console.log('[CampaignService] Making simple fetch request to:', url);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authData.token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    let campaignsArray: Campaign[] = [];
+    
+    if (Array.isArray(data)) {
+      campaignsArray = data;
+    } else if (data && 'campaigns' in data && Array.isArray(data.campaigns)) {
+      campaignsArray = data.campaigns;
+    }
+
+    return { success: true, campaigns: campaignsArray };
   } catch (error: any) {
-    console.error(`[CampaignService] fetchUserCampaigns (wallet: ${walletAddress}) error:`, error);
+    console.error(`[CampaignService] fetchUserCampaigns error:`, error);
     return {
       success: false,
       error: error.message || 'Failed to fetch user campaigns.',
