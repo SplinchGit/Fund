@@ -4,14 +4,15 @@
 // # #                               SECTION 1 - IMPORTS                                #
 // # ############################################################################ #
 import { authService } from './AuthService';
-// NEW IMPORTS FOR WORLDCOIN & MINIKIT & ETHERS
+// UPDATED IMPORTS FOR WORLDCOIN & MINIKIT - Using Pay Command instead of SendTransaction
 import {
   MiniKit,
   VerificationLevel,
   type VerifyCommandInput,
-  type SendTransactionInput,
+  type PayCommandInput,
+  tokenToDecimals,
+  Tokens,
 } from '@worldcoin/minikit-js';
-import { ethers } from 'ethers';
 
 // # ############################################################################ #
 // # #                           SECTION 2 - ENUMS & INTERFACES                           #
@@ -46,14 +47,6 @@ export interface WLDTransaction {
   worldIdVerificationLevel?: VerificationLevel;
 }
 
-interface MiniKitInternalTransactionObject {
-  address: string;
-  abi: ReadonlyArray<any>;
-  functionName: string;
-  args: ReadonlyArray<any>;
-  value?: string;
-}
-
 interface VerifiedSuccessFinalPayload {
   status: 'success';
   merkle_root: string;
@@ -62,21 +55,23 @@ interface VerifiedSuccessFinalPayload {
   verification_level: VerificationLevel;
   version: number;
 }
+
 interface CommandErrorFinalPayload {
   status: 'error';
   error_code: string;
   message?: string;
 }
+
 type VerifyFinalPayload = VerifiedSuccessFinalPayload | CommandErrorFinalPayload | null;
 
-interface SendTransactionSuccessFinalPayload {
+interface PaySuccessFinalPayload {
   status: 'success';
-  transaction_id: string;
+  transaction_id?: string;
+  reference?: string;
+  [key: string]: any; // Allow other properties that might be in the Pay response
 }
-type SendTransactionFinalPayload =
-  | SendTransactionSuccessFinalPayload
-  | CommandErrorFinalPayload
-  | null;
+
+type PayFinalPayload = PaySuccessFinalPayload | CommandErrorFinalPayload | null;
 
 export interface WorldIDProofData {
   merkle_root: string;
@@ -90,8 +85,9 @@ export interface WorldIDProofData {
 interface MiniKitVerifyCommandReturnObject {
   finalPayload: VerifyFinalPayload;
 }
-interface MiniKitSendTransactionCommandReturnObject {
-  finalPayload: SendTransactionFinalPayload;
+
+interface MiniKitPayCommandReturnObject {
+  finalPayload: PayFinalPayload;
 }
 
 export interface MiniKitTransactionStatusResponse {
@@ -110,11 +106,8 @@ class WLDPaymentService {
   // Environment Variables
   private WLD_DONATION_ACTION_ID = import.meta.env
     .VITE_WLD_DONATION_ACTION_ID as string;
-  private WLD_CONTRACT_WORLDCHAIN = import.meta.env
-    .VITE_WLD_CONTRACT_WORLDCHAIN as string;
-  private WLD_DECIMALS = parseInt(import.meta.env.VITE_WLD_DECIMALS || '18');
   private WORLDCHAIN_CHAIN_ID = parseInt(
-    import.meta.env.VITE_WORLDCHAIN_CHAIN_ID || '0'
+    import.meta.env.VITE_WORLDCHAIN_CHAIN_ID || '480'
   );
 
   // # ############################################################################ #
@@ -143,20 +136,19 @@ class WLDPaymentService {
     }
 
     // Environment Variables for WLD functionality
-    this.WLD_DONATION_ACTION_ID = import.meta.env.VITE_WLD_DONATION_ACTION_ID as string;
-    this.WLD_CONTRACT_WORLDCHAIN = import.meta.env.VITE_WLD_CONTRACT_WORLDCHAIN as string;
-    this.WLD_DECIMALS = parseInt(import.meta.env.VITE_WLD_DECIMALS || '18');
-    this.WORLDCHAIN_CHAIN_ID = parseInt(import.meta.env.VITE_WORLDCHAIN_CHAIN_ID || '0');
+    this.WLD_DONATION_ACTION_ID = import.meta.env.VITE_WLD_DONATION_ACTION_ID as string || 'wld_donation_verify';
+    this.WORLDCHAIN_CHAIN_ID = parseInt(import.meta.env.VITE_WORLDCHAIN_CHAIN_ID || '480');
 
-    if (!this.WLD_DONATION_ACTION_ID)
-      console.error('VITE_WLD_DONATION_ACTION_ID is not configured!');
-    if (!this.WLD_CONTRACT_WORLDCHAIN)
-      console.error('VITE_WLD_CONTRACT_WORLDCHAIN is not configured!');
-    if (this.WORLDCHAIN_CHAIN_ID === 0)
-      console.error('VITE_WORLDCHAIN_CHAIN_ID is not configured or invalid!');
-    if (this.WLD_DECIMALS !== 18) {
-      console.warn(`WARNING: VITE_WLD_DECIMALS is configured as ${this.WLD_DECIMALS}. For accurate on-chain WLD token transactions, this should be 18.`);
+    if (!this.WLD_DONATION_ACTION_ID) {
+      console.warn('[WLDPaymentService] VITE_WLD_DONATION_ACTION_ID not configured, using default: wld_donation_verify');
+      this.WLD_DONATION_ACTION_ID = 'wld_donation_verify';
     }
+
+    console.log('[WLDPaymentService] Initialized with:', {
+      API_BASE: this.API_BASE,
+      WLD_DONATION_ACTION_ID: this.WLD_DONATION_ACTION_ID,
+      WORLDCHAIN_CHAIN_ID: this.WORLDCHAIN_CHAIN_ID
+    });
   }
 
   // # ############################################################################ #
@@ -173,27 +165,36 @@ class WLDPaymentService {
   // # #                               SECTION 6 - PRIVATE HELPER: GET HEADERS                                #
   // # ############################################################################ #
   private async getHeaders(): Promise<HeadersInit> {
-    const headers: HeadersInit = { 'Content-Type': 'application/json' };
-    const auth = await authService.checkAuthStatus();
-    if (auth && auth.token) {
-      headers['Authorization'] = `Bearer ${auth.token}`;
+    const headers: HeadersInit = { 
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    };
+    
+    try {
+      const auth = await authService.checkAuthStatus();
+      if (auth && auth.token) {
+        headers['Authorization'] = `Bearer ${auth.token}`;
+      }
+    } catch (error) {
+      console.warn('[WLDPaymentService] Could not get auth token:', error);
     }
+    
     return headers;
   }
 
-  // NOTE: getApiBase method is now removed, as API_BASE is set robustly in the constructor.
-
   // # ############################################################################ #
-  // # #               NEW SECTION 7.1 - PUBLIC METHOD: VERIFY IDENTITY FOR DONATION                #
+  // # #               SECTION 7.1 - PUBLIC METHOD: VERIFY IDENTITY FOR DONATION                #
   // # ############################################################################ #
   public async verifyIdentityForDonation(
     campaignId: string,
     userId: string | null,
-    requestedLevel: VerificationLevel = VerificationLevel.Orb
+    requestedLevel: VerificationLevel = VerificationLevel.Device
   ): Promise<WorldIDProofData> {
+    console.log('[WLDPaymentService] Starting World ID verification for donation...');
+
     if (!MiniKit.isInstalled()) {
       throw new Error(
-        'Please use Fund inside the World App to verify your identity.'
+        'Please use WorldFund inside the World App to verify your identity.'
       );
     }
     if (!this.WLD_DONATION_ACTION_ID) {
@@ -206,7 +207,7 @@ class WLDPaymentService {
       campaignId,
       timestamp: Date.now(),
       userId: userId || undefined,
-      domain: 'fund_donation_verification',
+      domain: 'worldfund_donation_verification',
     };
     const signalString = JSON.stringify(signalObject);
 
@@ -216,109 +217,108 @@ class WLDPaymentService {
       verification_level: requestedLevel,
     };
 
-    console.log('Requesting World ID verification with payload:', verifyPayload);
-    const rawResult: MiniKitVerifyCommandReturnObject =
-      await MiniKit.commandsAsync.verify(verifyPayload);
+    console.log('[WLDPaymentService] Requesting World ID verification with payload:', verifyPayload);
 
-    const finalPayload = rawResult.finalPayload;
+    try {
+      const rawResult: MiniKitVerifyCommandReturnObject =
+        await MiniKit.commandsAsync.verify(verifyPayload);
 
-    if (finalPayload && finalPayload.status === 'success') {
-      console.log('World ID Verification Proof Received:', finalPayload);
-      return {
-        merkle_root: finalPayload.merkle_root,
-        nullifier_hash: finalPayload.nullifier_hash,
-        proof: finalPayload.proof,
-        verification_level: finalPayload.verification_level,
-        version: finalPayload.version,
-        signalUsed: signalString,
-      };
-    } else if (finalPayload) {
-      console.error('World ID Verification failed by user or error.', finalPayload);
-      throw new Error(
-        finalPayload.message ||
-          finalPayload.error_code ||
-          'World ID verification was not completed.'
-      );
-    } else {
-      throw new Error(
-        'World ID verification returned an unexpected empty or null finalPayload.'
-      );
+      const finalPayload = rawResult.finalPayload;
+
+      if (finalPayload && finalPayload.status === 'success') {
+        console.log('[WLDPaymentService] World ID Verification successful');
+        return {
+          merkle_root: finalPayload.merkle_root,
+          nullifier_hash: finalPayload.nullifier_hash,
+          proof: finalPayload.proof,
+          verification_level: finalPayload.verification_level,
+          version: finalPayload.version,
+          signalUsed: signalString,
+        };
+      } else if (finalPayload && finalPayload.status === 'error') {
+        throw new Error(
+          finalPayload.message ||
+            finalPayload.error_code ||
+            'World ID verification failed'
+        );
+      } else {
+        throw new Error(
+          'World ID verification was cancelled or returned unexpected result'
+        );
+      }
+    } catch (error: any) {
+      console.error('[WLDPaymentService] World ID verification error:', error);
+      throw new Error(error.message || 'World ID verification failed');
     }
   }
 
   // # ############################################################################ #
-  // # #            NEW SECTION 7.2 - PUBLIC METHOD: INITIATE WLD DONATION WITH MINIKIT             #
+  // # #            SECTION 7.2 - PUBLIC METHOD: INITIATE WLD DONATION WITH MINIKIT (PAY COMMAND)             #
   // # ############################################################################ #
   public async initiateWLDDonationWithMiniKit(
     recipientAddress: string,
     amountString: string
   ): Promise<{ worldcoinTransactionId: string }> {
+    console.log('[WLDPaymentService] Initiating WLD donation via MiniKit Pay Command...');
+
     if (!MiniKit.isInstalled()) {
       throw new Error(
-        'MiniKit not installed. Please use Fund inside the World App to donate.'
-      );
-    }
-    if (!this.WLD_CONTRACT_WORLDCHAIN) {
-      throw new Error('Worldchain WLD Contract address is not configured.');
-    }
-    if (this.WLD_DECIMALS !== 18) {
-      console.error(
-        `WLD_DECIMALS is ${this.WLD_DECIMALS}, but 18 is required for on-chain parseUnits.`
-      );
-      throw new Error(
-        'Client-side WLD decimal configuration error for transaction.'
+        'MiniKit not installed. Please use WorldFund inside the World App to donate.'
       );
     }
 
-    const amountInSmallestUnit = ethers.parseUnits(
-      amountString,
-      this.WLD_DECIMALS
-    );
-    const WLD_TRANSFER_ABI_FRAGMENT = [
-      {
-        name: 'transfer',
-        type: 'function',
-        stateMutability: 'nonpayable',
-        inputs: [
-          { name: 'to', type: 'address' },
-          { name: 'amount', type: 'uint256' },
+    try {
+      // Convert amount to WLD token decimals using MiniKit's utility
+      const amountInTokenUnits = tokenToDecimals(parseFloat(amountString), Tokens.WLD);
+
+      // Generate a unique reference for this payment
+      const paymentReference = `donation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      const payPayload: PayCommandInput = {
+        reference: paymentReference,
+        to: recipientAddress,
+        tokens: [
+          {
+            symbol: Tokens.WLD,
+            token_amount: amountInTokenUnits.toString(),
+          }
         ],
-        outputs: [{ name: '', type: 'bool' }],
-      },
-    ];
+        description: `WorldFund campaign donation`,
+      };
 
-    const transactionDetails: MiniKitInternalTransactionObject = {
-      address: this.WLD_CONTRACT_WORLDCHAIN,
-      abi: WLD_TRANSFER_ABI_FRAGMENT,
-      functionName: 'transfer',
-      args: [recipientAddress, amountInSmallestUnit.toString()],
-    };
+      console.log('[WLDPaymentService] Sending payment with payload:', payPayload);
 
-    const txInput: SendTransactionInput = { transaction: [transactionDetails] };
+      const rawResult: MiniKitPayCommandReturnObject =
+        await MiniKit.commandsAsync.pay(payPayload);
 
-    console.log('Sending transaction via MiniKit:', txInput);
-    const rawResult: MiniKitSendTransactionCommandReturnObject =
-      await MiniKit.commandsAsync.sendTransaction(txInput);
+      const finalPayload = rawResult.finalPayload;
 
-    const finalPayload = rawResult.finalPayload;
-
-    if (finalPayload && finalPayload.status === 'success') {
-      return { worldcoinTransactionId: finalPayload.transaction_id };
-    } else if (finalPayload) {
-      throw new Error(
-        (finalPayload as CommandErrorFinalPayload).message ||
-          (finalPayload as CommandErrorFinalPayload).error_code ||
-          'Transaction submission via MiniKit failed.'
-      );
-    } else {
-      throw new Error(
-        'Transaction submission via MiniKit returned an unexpected empty or null finalPayload.'
-      );
+      if (finalPayload && finalPayload.status === 'success') {
+        console.log('[WLDPaymentService] Payment initiated successfully');
+        // For Pay command, the transaction ID might be in different fields
+        const transactionId = finalPayload.transaction_id || 
+                             finalPayload.reference || 
+                             paymentReference;
+        return { worldcoinTransactionId: transactionId };
+      } else if (finalPayload && finalPayload.status === 'error') {
+        throw new Error(
+          finalPayload.message ||
+            finalPayload.error_code ||
+            'Payment failed'
+        );
+      } else {
+        throw new Error(
+          'Payment was cancelled or returned unexpected result'
+        );
+      }
+    } catch (error: any) {
+      console.error('[WLDPaymentService] Payment initiation error:', error);
+      throw new Error(error.message || 'Failed to initiate payment');
     }
   }
 
   // # ############################################################################ #
-  // # #         NEW SECTION 7.3 - GET MINIKIT TRANSACTION STATUS (Calls new backend endpoint)          #
+  // # #         SECTION 7.3 - GET MINIKIT TRANSACTION STATUS (Calls backend endpoint)          #
   // # ############################################################################ #
   public async getMiniKitTransactionStatus(
     worldcoinTxId: string
@@ -334,16 +334,18 @@ class WLDPaymentService {
         {
           method: 'GET',
           headers,
+          mode: 'cors'
         }
       );
 
-      const data: MiniKitTransactionStatusResponse = await response.json();
       if (!response.ok) {
+        const errorText = await response.text();
         throw new Error(
-          data.error_message ||
-            `Failed to fetch MiniKit transaction status (HTTP ${response.status})`
+          `Failed to fetch MiniKit transaction status (HTTP ${response.status}): ${errorText}`
         );
       }
+
+      const data: MiniKitTransactionStatusResponse = await response.json();
       console.log(
         `[WLDPaymentService] Received MiniKit tx status from backend:`,
         data
@@ -372,6 +374,8 @@ class WLDPaymentService {
     verificationStatus?: TransactionStatus;
     message?: string;
   }> {
+    console.log(`[WLDPaymentService] Notifying backend of confirmed donation for campaign ${campaignId}`);
+
     try {
       const headers = await this.getHeaders();
 
@@ -380,8 +384,9 @@ class WLDPaymentService {
         {
           method: 'POST',
           headers,
+          mode: 'cors',
           body: JSON.stringify({
-            donatedAmount: amountString,
+            donatedAmount: parseFloat(amountString),
             transactionHash: txHash,
             chainId: this.WORLDCHAIN_CHAIN_ID,
             worldIdNullifier,
@@ -390,22 +395,25 @@ class WLDPaymentService {
         }
       );
 
-      const responseData = await response.json();
       if (!response.ok) {
+        const errorText = await response.text();
         throw new Error(
-          responseData.message || 'Failed to notify backend or verify donation.'
+          `Backend verification failed (HTTP ${response.status}): ${errorText}`
         );
       }
 
+      const responseData = await response.json();
+      console.log('[WLDPaymentService] Backend notification response:', responseData);
+
       return {
-        success: responseData.verified === true,
-        verificationStatus: responseData.verified
+        success: responseData.verified === true || responseData.success === true,
+        verificationStatus: responseData.verified || responseData.success
           ? TransactionStatus.CONFIRMED
           : TransactionStatus.FAILED,
-        message: responseData.message,
+        message: responseData.message || 'Donation processed',
       };
     } catch (error: any) {
-      console.error('Failed to notify backend of confirmed donation:', error);
+      console.error('[WLDPaymentService] Backend notification error:', error);
       return {
         success: false,
         verificationStatus: TransactionStatus.FAILED,
@@ -420,26 +428,36 @@ class WLDPaymentService {
   public async getCampaignRecipientAddress(
     campaignId: string
   ): Promise<{ campaignAddress: string }> {
+    console.log(`[WLDPaymentService] Fetching recipient address for campaign ${campaignId}`);
+
     try {
       const headers = await this.getHeaders();
       const response = await fetch(
         `${this.API_BASE}/campaigns/${campaignId}/recipient`,
-        { method: 'GET', headers }
+        { 
+          method: 'GET', 
+          headers,
+          mode: 'cors'
+        }
       );
 
-      const data = await response.json();
       if (!response.ok) {
+        const errorText = await response.text();
         throw new Error(
-          data.message ||
-            `Failed to fetch campaign recipient (HTTP ${response.status})`
+          `Failed to fetch campaign recipient (HTTP ${response.status}): ${errorText}`
         );
       }
+
+      const data = await response.json();
+      
       if (!data.campaignAddress) {
-        throw new Error('Campaign recipient address not found in API response.');
+        throw new Error('Campaign recipient address not found in API response');
       }
+
+      console.log(`[WLDPaymentService] Retrieved recipient address: ${data.campaignAddress}`);
       return { campaignAddress: data.campaignAddress };
     } catch (error: any) {
-      console.error('Failed to get campaign recipient address:', error);
+      console.error('[WLDPaymentService] Error fetching campaign recipient address:', error);
       throw error;
     }
   }
@@ -471,9 +489,10 @@ class WLDPaymentService {
   // # ############################################################################ #
   public getMiniKitDonationInstructions(): string[] {
     return [
-      'You will be prompted to verify your World ID within the World App.',
-      'Next, you will confirm the WLD donation amount and details in the World App.',
-      'Please ensure you have sufficient WLD on the Worldchain network in your World App.',
+      'Verify your World ID to ensure secure, sybil-resistant donations',
+      'Confirm the WLD donation amount and recipient in the World App',
+      'Your donation will be processed securely on the World Chain network',
+      'You will receive confirmation once the transaction is verified'
     ];
   }
 

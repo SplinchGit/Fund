@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; // Removed useParams as 'id' is a prop
 import { useAuth } from '../components/AuthContext';
 import { campaignService, Campaign } from '../services/CampaignService';
+import { WLDDonationForm } from '../components/WLDDonationForm';
 
 // # ############################################################################ #
 // # #                               SECTION 2 - STYLES                                #
@@ -222,39 +223,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#202124',
     marginBottom: '1rem',
   },
-  donationSuccess: {
-    padding: '1rem',
-    backgroundColor: 'rgba(52, 168, 83, 0.1)',
-    border: '1px solid rgba(52, 168, 83, 0.2)',
-    borderRadius: '8px',
-    marginBottom: '1rem',
-    color: '#202124', // Changed from #34a853 to ensure readability with green bg
-    fontSize: '0.875rem',
-    boxSizing: 'border-box' as const, // ADDED
-  },
-  formGroup: {
-    marginBottom: '1rem',
-  },
-  label: {
-    display: 'block',
-    fontSize: '0.875rem',
-    fontWeight: 500,
-    color: '#202124',
-    marginBottom: '0.5rem',
-  },
-  input: {
-    width: '100%',
-    padding: '0.75rem',
-    fontSize: '1rem',
-    border: '1px solid #dadce0',
-    borderRadius: '4px',
-    boxSizing: 'border-box' as const,
-  },
-  inputHelper: {
-    fontSize: '0.75rem',
-    color: '#5f6368',
-    marginTop: '0.25rem',
-  },
   donationsListSection: {
     marginTop: '1.5rem',
     textAlign: 'left' as const,
@@ -347,10 +315,6 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [donationAmount, setDonationAmount] = useState<number>(0);
-  const [donationTxHash, setDonationTxHash] = useState<string>('');
-  const [donating, setDonating] = useState(false);
-  const [donationSuccess, setDonationSuccess] = useState(false);
 
 // # ############################################################################ #
 // # #                 SECTION 4 - EFFECT: FETCH CAMPAIGN DATA                 #
@@ -383,56 +347,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   }, [id]);
 
 // # ############################################################################ #
-// # #                 SECTION 5 - EVENT HANDLER: DONATE SUBMIT                 #
-// # ############################################################################ #
-  const handleDonate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!campaign) return; // Should not happen if campaign is loaded
-
-    if (!isAuthenticated) {
-      navigate('/landing', { state: { redirectTo: `/campaigns/${id}` }}); // Or your login page
-      return;
-    }
-    if (!donationAmount || donationAmount <= 0) {
-      alert('Please enter a valid donation amount.');
-      return;
-    }
-    if (!donationTxHash.trim()) { // Check for empty or whitespace-only hash
-      alert('Transaction hash is required.');
-      return;
-    }
-
-    setDonating(true);
-    setDonationSuccess(false); // Reset success message
-
-    try {
-      const result = await campaignService.recordDonation(
-        id,
-        donationAmount,
-        donationTxHash
-      );
-      if (result.success) {
-        setDonationSuccess(true);
-        // Refresh campaign data to show updated raised amount and new donation
-        const refreshResult = await campaignService.fetchCampaign(id);
-        if (refreshResult.success && refreshResult.campaign) {
-          setCampaign(refreshResult.campaign);
-        }
-        setDonationAmount(0);
-        setDonationTxHash('');
-      } else {
-        alert(result.error || 'Failed to process donation. Please check the details and try again.');
-      }
-    } catch (err: any) {
-      console.error('Error processing donation:', err);
-      alert(err.message || 'An unexpected error occurred while processing your donation.');
-    } finally {
-      setDonating(false);
-    }
-  };
-
-// # ############################################################################ #
-// # #                 SECTION 6 - CONDITIONAL RENDERING: LOADING STATE                 #
+// # #                 SECTION 5 - CONDITIONAL RENDERING: LOADING STATE                 #
 // # ############################################################################ #
   if (loading) {
     return (
@@ -456,7 +371,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   }
 
 // # ############################################################################ #
-// # #                 SECTION 7 - CONDITIONAL RENDERING: ERROR STATE                 #
+// # #                 SECTION 6 - CONDITIONAL RENDERING: ERROR STATE                 #
 // # ############################################################################ #
   if (error) {
     return (
@@ -486,7 +401,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   }
 
 // # ############################################################################ #
-// # #         SECTION 8 - CONDITIONAL RENDERING: CAMPAIGN NOT FOUND         #
+// # #         SECTION 7 - CONDITIONAL RENDERING: CAMPAIGN NOT FOUND         #
 // # ############################################################################ #
   if (!campaign) {
     return (
@@ -517,7 +432,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   }
 
 // # ############################################################################ #
-// # #                         SECTION 9 - CALCULATED VALUES                         #
+// # #                         SECTION 8 - CALCULATED VALUES                         #
 // # ############################################################################ #
   const progressPercentage = campaign.goal > 0 ? Math.min(
     Math.round((campaign.raised / campaign.goal) * 100),
@@ -525,7 +440,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   ) : 0; // Handle goal = 0
 
 // # ############################################################################ #
-// # #         SECTION 10 - MAIN JSX RETURN: CAMPAIGN DETAILS & DONATION         #
+// # #         SECTION 9 - MAIN JSX RETURN: CAMPAIGN DETAILS & DONATION         #
 // # ############################################################################ #
   return (
     <div style={styles.page}>
@@ -609,82 +524,17 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
                 <div style={styles.divider}></div>
                 <div style={styles.donationSection}>
                   <h2 style={styles.donationTitle}>Make a Donation</h2>
-                  {donationSuccess && (
-                    <div style={styles.donationSuccess}>
-                      Thank you for your donation! Your contribution has been successfully recorded.
-                    </div>
-                  )}
-                  {isAuthenticated ? (
-                    <form onSubmit={handleDonate}>
-                      <div style={styles.formGroup}>
-                        <label htmlFor="amount" style={styles.label}>
-                          Amount (WLD)
-                        </label>
-                        <input
-                          type="number"
-                          id="amount"
-                          value={donationAmount || ''}
-                          onChange={(e) => setDonationAmount(parseFloat(e.target.value))}
-                          style={styles.input}
-                          placeholder="e.g., 10"
-                          min="0.01"
-                          step="any" // Allow decimals
-                          disabled={donating}
-                          required
-                        />
-                      </div>
-                      <div style={styles.formGroup}>
-                        <label htmlFor="txHash" style={styles.label}>
-                          Transaction Hash
-                        </label>
-                        <input
-                          type="text"
-                          id="txHash"
-                          value={donationTxHash}
-                          onChange={(e) => setDonationTxHash(e.target.value)}
-                          style={styles.input}
-                          placeholder="0x..."
-                          disabled={donating}
-                          required
-                        />
-                        <p style={styles.inputHelper}>
-                          After sending WLD, paste the transaction hash here to confirm your donation.
-                        </p>
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={donating}
-                        style={{
-                          ...styles.button,
-                          ...styles.buttonPrimary,
-                          width: '100%',
-                          ...(donating ? { opacity: 0.7, cursor: 'not-allowed' as const } : {})
-                        }}
-                      >
-                        {donating ? 'Processing Donation...' : `Donate ${donationAmount || 0} WLD`}
-                      </button>
-                    </form>
-                  ) : (
-                    <div style={{ // Yellow "Please sign in" box
-                      padding: '1rem',
-                      backgroundColor: 'rgba(251, 188, 5, 0.1)', // Yellowish
-                      border: '1px solid rgba(251, 188, 5, 0.2)',
-                      borderRadius: '8px',
-                      marginBottom: '1rem',
-                      boxSizing: 'border-box' as const,
-                    }}>
-                      <p style={{ margin: '0 0 0.75rem 0', color: '#5f6368' }}> {/* Added margin and color */}
-                        Please sign in to make a donation to this campaign.
-                      </p>
-                      <Link
-                        to="/landing" // Or your login page
-                        state={{ redirectTo: `/campaigns/${id}` }} // Pass redirect state
-                        style={{...styles.button, ...styles.buttonPrimary}}
-                      >
-                        Sign In to Donate
-                      </Link>
-                    </div>
-                  )}
+                  <WLDDonationForm 
+                    campaignId={id}
+                    onDonationSuccess={() => {
+                      // Refresh campaign data to show updated raised amount
+                      campaignService.fetchCampaign(id).then(result => {
+                        if (result.success && result.campaign) {
+                          setCampaign(result.campaign);
+                        }
+                      });
+                    }}
+                  />
                 </div>
               </>
             )}
