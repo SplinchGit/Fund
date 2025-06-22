@@ -475,8 +475,10 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
     setDonationSuccess(false);
 
     try {
-      // Generate unique reference for this payment
-      const paymentReference = `donation_${id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Generate unique reference for this payment (max 36 characters)
+      const timestamp = Date.now().toString(36); // Base36 timestamp is shorter
+      const random = Math.random().toString(36).substr(2, 8); // 8 chars
+      const paymentReference = `don_${timestamp}_${random}`; // Format: don_xxxxx_xxxxxxxx
 
       // Prepare the payment payload
       const paymentPayload: PayCommandInput = {
