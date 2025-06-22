@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; // Removed useParams as 'id' is a prop
 import { useAuth } from '../components/AuthContext';
 import { campaignService, Campaign } from '../services/CampaignService';
-import { WLDDonationForm } from '../components/WLDDonationForm';
+import { MiniKit, tokenToDecimals, Tokens, PayCommandInput } from '@worldcoin/minikit-js';
 
 // # ############################################################################ #
 // # #                               SECTION 2 - STYLES                                #
@@ -223,6 +223,55 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#202124',
     marginBottom: '1rem',
   },
+  donationForm: {
+    backgroundColor: '#f8f9fa',
+    padding: '1.5rem',
+    borderRadius: '8px',
+    border: '1px solid #e9ecef',
+  },
+  formGroup: {
+    marginBottom: '1rem',
+  },
+  label: {
+    display: 'block',
+    fontSize: '0.875rem',
+    fontWeight: 500,
+    color: '#3c4043',
+    marginBottom: '0.5rem',
+  },
+  input: {
+    width: '100%',
+    padding: '0.75rem 1rem',
+    fontSize: '1rem',
+    border: '1px solid #dadce0',
+    borderRadius: '6px',
+    boxSizing: 'border-box' as const,
+    transition: 'border-color 0.2s, box-shadow 0.2s',
+  },
+  donateButton: {
+    width: '100%',
+    padding: '0.875rem 1.5rem',
+    fontSize: '1rem',
+    fontWeight: 500,
+    color: 'white',
+    backgroundColor: '#34a853',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s, opacity 0.2s',
+    textAlign: 'center' as const,
+    minHeight: 'auto',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    lineHeight: 'normal',
+  },
+  donateButtonDisabled: {
+    backgroundColor: '#adb5bd',
+    color: '#e9ecef',
+    cursor: 'not-allowed' as const,
+    opacity: 0.7,
+  },
   donationsListSection: {
     marginTop: '1.5rem',
     textAlign: 'left' as const,
@@ -287,6 +336,34 @@ const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: 'center' as const, // ADDED
     alignItems: 'center' as const, // ADDED
     boxSizing: 'border-box' as const, // ADDED
+  },
+  successMessage: {
+    backgroundColor: 'rgba(52, 168, 83, 0.1)',
+    border: '1px solid rgba(52, 168, 83, 0.2)',
+    borderRadius: '8px',
+    padding: '1rem',
+    marginBottom: '1rem',
+    color: '#34a853',
+    fontSize: '0.875rem',
+  },
+  errorMessage: {
+    backgroundColor: 'rgba(234, 67, 53, 0.1)',
+    border: '1px solid rgba(234, 67, 53, 0.2)',
+    borderRadius: '8px',
+    padding: '1rem',
+    marginBottom: '1rem',
+    color: '#ea4335',
+    fontSize: '0.875rem',
+  },
+  worldAppNotice: {
+    backgroundColor: 'rgba(26, 115, 232, 0.1)',
+    border: '1px solid rgba(26, 115, 232, 0.2)',
+    borderRadius: '8px',
+    padding: '1rem',
+    marginBottom: '1rem',
+    color: '#1a73e8',
+    fontSize: '0.875rem',
+    textAlign: 'center' as const,
   }
 };
 
@@ -304,6 +381,11 @@ const responsiveStyles = `
   *, *::before, *::after {
     box-sizing: inherit;
   }
+  input:focus {
+    border-color: #1a73e8;
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2);
+    outline: none;
+  }
 `;
 
 // # ############################################################################ #
@@ -315,6 +397,13 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Donation form state
+  const [donationAmount, setDonationAmount] = useState<string>('');
+  const [donating, setDonating] = useState(false);
+  const [donationSuccess, setDonationSuccess] = useState(false);
+  const [donationError, setDonationError] = useState<string | null>(null);
+  const [isInWorldApp, setIsInWorldApp] = useState(false);
 
 // # ############################################################################ #
 // # #                 SECTION 4 - EFFECT: FETCH CAMPAIGN DATA                 #
@@ -347,12 +436,113 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   }, [id]);
 
 // # ############################################################################ #
-// # #                 SECTION 5 - CONDITIONAL RENDERING: LOADING STATE                 #
+// # #                 SECTION 5 - EFFECT: CHECK WORLD APP                 #
+// # ############################################################################ #
+  useEffect(() => {
+    // Check if running in World App
+    setIsInWorldApp(MiniKit.isInstalled());
+  }, []);
+
+// # ############################################################################ #
+// # #                 SECTION 6 - EVENT HANDLER: DONATION SUBMIT                 #
+// # ############################################################################ #
+  const handleDonationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!isAuthenticated) {
+      setDonationError('Please sign in to make a donation.');
+      return;
+    }
+
+    if (!isInWorldApp) {
+      setDonationError('Donations can only be made from within the World App.');
+      return;
+    }
+
+    const numericAmount = parseFloat(donationAmount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      setDonationError('Please enter a valid donation amount.');
+      return;
+    }
+
+    if (!campaign?.ownerId) {
+      setDonationError('Campaign owner address not found.');
+      return;
+    }
+
+    setDonating(true);
+    setDonationError(null);
+    setDonationSuccess(false);
+
+    try {
+      // Generate unique reference for this payment
+      const paymentReference = `donation_${id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // Prepare the payment payload
+      const paymentPayload: PayCommandInput = {
+        reference: paymentReference,
+        to: campaign.ownerId, // Send to campaign owner
+        tokens: [
+          {
+            symbol: Tokens.WLD,
+            token_amount: tokenToDecimals(numericAmount, Tokens.WLD).toString(),
+          }
+        ],
+        description: `Donation to ${campaign.title}`,
+      };
+
+      console.log('[CampaignDetail] Initiating MiniKit payment:', paymentPayload);
+
+      // Execute the payment through MiniKit
+      const result = await MiniKit.commandsAsync.pay(paymentPayload);
+
+      if (result.finalPayload?.status === 'success') {
+        // Payment successful, now record it in the backend
+        const transactionId = result.finalPayload.transaction_id || result.finalPayload.reference;
+        
+        if (transactionId) {
+          // Record the donation in the backend with the transaction ID
+          const recordResult = await campaignService.recordDonation(
+            id,
+            numericAmount,
+            transactionId // Use MiniKit transaction ID
+          );
+
+          if (recordResult.success) {
+            setDonationSuccess(true);
+            setDonationAmount('');
+            
+            // Refresh campaign data to show updated amounts
+            const refreshResult = await campaignService.fetchCampaign(id);
+            if (refreshResult.success && refreshResult.campaign) {
+              setCampaign(refreshResult.campaign);
+            }
+          } else {
+            setDonationError(recordResult.error || 'Payment successful but failed to record donation.');
+          }
+        } else {
+          setDonationError('Payment successful but no transaction ID received.');
+        }
+      } else if (result.finalPayload?.status === 'error') {
+        setDonationError(`Payment failed: ${result.finalPayload.error_code || 'Unknown error'}`);
+      } else {
+        setDonationError('Payment was cancelled or failed.');
+      }
+    } catch (err: any) {
+      console.error('Error processing donation:', err);
+      setDonationError(err.message || 'An error occurred while processing the donation.');
+    } finally {
+      setDonating(false);
+    }
+  };
+
+// # ############################################################################ #
+// # #                 SECTION 7 - CONDITIONAL RENDERING: LOADING STATE                 #
 // # ############################################################################ #
   if (loading) {
     return (
       <div style={styles.page}>
-        <style>{responsiveStyles}</style> {/* ADDED responsive styles */}
+        <style>{responsiveStyles}</style>
         <header style={styles.header}>
           <div style={styles.headerContent}>
             <Link to="/" style={styles.logo}>World<span style={styles.logoSpan}>Fund</span></Link>
@@ -361,9 +551,9 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
             </Link>
           </div>
         </header>
-        <div style={styles.container}> {/* This container will also grow */}
+        <div style={styles.container}>
           <div style={styles.loadingContainer}>
-            <div>Loading campaign details...</div> {/* Add spinner if available */}
+            <div>Loading campaign details...</div>
           </div>
         </div>
       </div>
@@ -371,12 +561,12 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   }
 
 // # ############################################################################ #
-// # #                 SECTION 6 - CONDITIONAL RENDERING: ERROR STATE                 #
+// # #                 SECTION 8 - CONDITIONAL RENDERING: ERROR STATE                 #
 // # ############################################################################ #
   if (error) {
     return (
       <div style={styles.page}>
-        <style>{responsiveStyles}</style> {/* ADDED responsive styles */}
+        <style>{responsiveStyles}</style>
         <header style={styles.header}>
           <div style={styles.headerContent}>
             <Link to="/" style={styles.logo}>World<span style={styles.logoSpan}>Fund</span></Link>
@@ -385,9 +575,9 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
             </Link>
           </div>
         </header>
-        <div style={styles.container}> {/* This container will also grow */}
+        <div style={styles.container}>
           <div style={styles.errorContainer}>
-            <p>{error}</p> {/* Changed div to p for semantic error message */}
+            <p>{error}</p>
             <Link
               to="/campaigns"
               style={{...styles.button, ...styles.buttonSecondary, marginTop: '1rem'}}
@@ -401,12 +591,12 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   }
 
 // # ############################################################################ #
-// # #         SECTION 7 - CONDITIONAL RENDERING: CAMPAIGN NOT FOUND         #
+// # #         SECTION 9 - CONDITIONAL RENDERING: CAMPAIGN NOT FOUND         #
 // # ############################################################################ #
   if (!campaign) {
     return (
       <div style={styles.page}>
-        <style>{responsiveStyles}</style> {/* ADDED responsive styles */}
+        <style>{responsiveStyles}</style>
         <header style={styles.header}>
           <div style={styles.headerContent}>
             <Link to="/" style={styles.logo}>World<span style={styles.logoSpan}>Fund</span></Link>
@@ -415,13 +605,13 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
             </Link>
           </div>
         </header>
-        <div style={styles.container}> {/* This container will also grow */}
+        <div style={styles.container}>
           <div style={styles.notFoundContainer}>
-            <h2>Campaign Not Found</h2> {/* Changed div to h2 */}
-            <p>The campaign you are looking for does not exist or could not be loaded.</p> {/* Added more context */}
+            <h2>Campaign Not Found</h2>
+            <p>The campaign you are looking for does not exist or could not be loaded.</p>
             <Link
               to="/campaigns"
-              style={{...styles.button, ...styles.buttonPrimary, marginTop: '1rem'}} // Changed to primary button
+              style={{...styles.button, ...styles.buttonPrimary, marginTop: '1rem'}}
             >
               View All Campaigns
             </Link>
@@ -432,19 +622,19 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   }
 
 // # ############################################################################ #
-// # #                         SECTION 8 - CALCULATED VALUES                         #
+// # #                         SECTION 10 - CALCULATED VALUES                         #
 // # ############################################################################ #
   const progressPercentage = campaign.goal > 0 ? Math.min(
     Math.round((campaign.raised / campaign.goal) * 100),
     100
-  ) : 0; // Handle goal = 0
+  ) : 0;
 
 // # ############################################################################ #
-// # #         SECTION 9 - MAIN JSX RETURN: CAMPAIGN DETAILS & DONATION         #
+// # #         SECTION 11 - MAIN JSX RETURN: CAMPAIGN DETAILS & DONATION         #
 // # ############################################################################ #
   return (
     <div style={styles.page}>
-      <style>{responsiveStyles}</style> {/* ADDED responsive styles */}
+      <style>{responsiveStyles}</style>
       <header style={styles.header}>
         <div style={styles.headerContent}>
           <Link to="/" style={styles.logo}>World<span style={styles.logoSpan}>Fund</span></Link>
@@ -461,7 +651,6 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
         </div>
       </header>
 
-      {/* styles.container has flexGrow:1 and centers content */}
       <div style={styles.container}>
         <div style={styles.detailCard}>
           {campaign.image ? (
@@ -470,8 +659,6 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
               alt={campaign.title}
               style={styles.cardImage}
               onError={(e) => {
-                // A more React-friendly way to handle image error might involve state
-                // For simplicity, direct DOM manipulation or CSS can be fallback
                 (e.target as HTMLImageElement).src = 'https://placehold.co/800x300/e5e7eb/9aa0a6?text=Image+Not+Found';
               }}
             />
@@ -495,7 +682,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
                   campaign.status === 'completed' ? styles.statusCompleted :
                   styles.statusCancelled)
               }}>
-                {campaign.status} {/* Removed charAt(0).toUpperCase + slice(1) as statusBadge has textTransform */}
+                {campaign.status}
               </span>
             </div>
 
@@ -524,17 +711,69 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
                 <div style={styles.divider}></div>
                 <div style={styles.donationSection}>
                   <h2 style={styles.donationTitle}>Make a Donation</h2>
-                  <WLDDonationForm 
-                    campaignId={id}
-                    onDonationSuccess={() => {
-                      // Refresh campaign data to show updated raised amount
-                      campaignService.fetchCampaign(id).then(result => {
-                        if (result.success && result.campaign) {
-                          setCampaign(result.campaign);
-                        }
-                      });
-                    }}
-                  />
+                  
+                  {!isInWorldApp && (
+                    <div style={styles.worldAppNotice}>
+                      Please open this campaign in the World App to make a donation.
+                    </div>
+                  )}
+                  
+                  {donationSuccess && (
+                    <div style={styles.successMessage}>
+                      Thank you for your donation! Your contribution has been recorded.
+                    </div>
+                  )}
+                  
+                  {donationError && (
+                    <div style={styles.errorMessage}>
+                      {donationError}
+                    </div>
+                  )}
+                  
+                  <div style={styles.donationForm}>
+                    <form onSubmit={handleDonationSubmit}>
+                      <div style={styles.formGroup}>
+                        <label htmlFor="amount" style={styles.label}>
+                          Amount (WLD)
+                        </label>
+                        <input
+                          type="number"
+                          id="amount"
+                          value={donationAmount}
+                          onChange={(e) => setDonationAmount(e.target.value)}
+                          style={styles.input}
+                          placeholder="Enter amount"
+                          min="0.01"
+                          step="0.01"
+                          required
+                          disabled={donating || !isInWorldApp}
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={donating || !isAuthenticated || !isInWorldApp}
+                        style={{
+                          ...styles.donateButton,
+                          ...(donating || !isAuthenticated || !isInWorldApp ? styles.donateButtonDisabled : {})
+                        }}
+                      >
+                        {donating ? 'Processing Payment...' : 'Donate with World App'}
+                      </button>
+                      
+                      {!isAuthenticated && (
+                        <p style={{ fontSize: '0.75rem', color: '#5f6368', marginTop: '0.5rem', textAlign: 'center' }}>
+                          Please sign in to make a donation.
+                        </p>
+                      )}
+                      
+                      {!isInWorldApp && isAuthenticated && (
+                        <p style={{ fontSize: '0.75rem', color: '#5f6368', marginTop: '0.5rem', textAlign: 'center' }}>
+                          Donations are processed securely through the World App using WLD tokens.
+                        </p>
+                      )}
+                    </form>
+                  </div>
                 </div>
               </>
             )}
@@ -545,7 +784,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
                 <div style={styles.donationsListSection}>
                   <h2 style={styles.donationsListTitle}>Recent Donations ({campaign.donations.length})</h2>
                   <div>
-                    {campaign.donations.slice(0, 10).map((donation) => ( // Show recent, e.g., top 10
+                    {campaign.donations.slice(0, 10).map((donation) => (
                       <div key={donation.id} style={styles.donationItem}>
                         <div style={styles.donorInfo}>
                           <span style={styles.donorAddress}>
