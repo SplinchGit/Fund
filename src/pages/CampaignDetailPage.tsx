@@ -980,5 +980,3 @@ const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
     </div>
   );
 };
-
-export default CampaignDetail;
