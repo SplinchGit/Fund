@@ -6,7 +6,7 @@
 import { authService } from './AuthService';
 
 // # ############################################################################ #
-// # #                 SECTION 2 - INTERFACE DEFINITIONS                        #
+// # #                     SECTION 2 - INTERFACE DEFINITIONS                    #
 // # ############################################################################ #
 export interface Donation {
   id: string;
@@ -20,6 +20,7 @@ export interface Donation {
   verifiedAt?: string;
   chainId?: number;
   blockNumber?: string;
+  message?: string; // Add this line
 }
 
 export interface Campaign {
@@ -109,7 +110,7 @@ class CampaignService {
   }
 
   // # ############################################################################ #
-  // # #             SECTION 6 - PRIVATE HELPER: WORLD APP DETECTION              #
+  // # #           SECTION 6 - PRIVATE HELPER: WORLD APP DETECTION                #
   // # ############################################################################ #
   private detectWorldApp(): boolean {
     if (typeof window === 'undefined') return false;
@@ -141,7 +142,7 @@ class CampaignService {
   }
 
   // # ############################################################################ #
-  // # #             SECTION 7 - PRIVATE HELPER: GENERATE REQUEST ID              #
+  // # #           SECTION 7 - PRIVATE HELPER: GENERATE REQUEST ID                #
   // # ############################################################################ #
   private generateRequestId(): string {
     const timestamp = Date.now();
@@ -151,188 +152,188 @@ class CampaignService {
   }
 
   // # ############################################################################ #
-// # #                               SECTION 8 - PRIVATE HELPER: SIMPLIFIED GET HEADERS                                #
-// # ############################################################################ #
-private async getHeaders(includeAuth: boolean = false): Promise<HeadersInit> {
-  // CORS FIX: Minimal headers only
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
+  // # #                   SECTION 8 - PRIVATE HELPER: SIMPLIFIED GET HEADERS     #
+  // # ############################################################################ #
+  private async getHeaders(includeAuth: boolean = false): Promise<HeadersInit> {
+    // CORS FIX: Minimal headers only
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
 
-  if (includeAuth) {
-    try {
-      const authData = await authService.checkAuthStatus();
-      if (authData.token) {
-        headers['Authorization'] = `Bearer ${authData.token}`;
+    if (includeAuth) {
+      try {
+        const authData = await authService.checkAuthStatus();
+        if (authData.token) {
+          headers['Authorization'] = `Bearer ${authData.token}`;
+        }
+      } catch (error) {
+        console.warn('[CampaignService] Could not get auth token:', error);
       }
-    } catch (error) {
-      console.warn('[CampaignService] Could not get auth token:', error);
     }
+
+    return headers;
   }
 
-  return headers;
-}
+  // # ############################################################################ #
+  // # #            SECTION 9 - PRIVATE HELPER: ENHANCED FETCH WITH RETRY (CORS FIXED) #
+  // # ############################################################################ #
+  private async makeRequest<T>(
+    url: string,
+    options: RequestInit = {},
+    requireAuth: boolean = false,
+    maxRetries: number = 2
+  ): Promise<{ success: boolean; data?: T; error?: string }> {
+    const requestId = this.generateRequestId();
+    let lastError: any;
 
-// # ############################################################################ #
-// # #                      SECTION 9 - PRIVATE HELPER: ENHANCED FETCH WITH RETRY (CORS FIXED)                       #
-// # ############################################################################ #
-private async makeRequest<T>(
-  url: string, 
-  options: RequestInit = {},
-  requireAuth: boolean = false,
-  maxRetries: number = 2
-): Promise<{ success: boolean; data?: T; error?: string }> {
-  const requestId = this.generateRequestId();
-  let lastError: any;
-  
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`[CampaignService] ${requestId} - Attempt ${attempt + 1}/${maxRetries + 1} for ${url}`);
-      
-      // CORS FIX: Use minimal headers to avoid preflight
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[CampaignService] ${requestId} - Attempt ${attempt + 1}/${maxRetries + 1} for ${url}`);
 
-      // Add auth header if needed
-      if (requireAuth) {
-        try {
-          const authData = await authService.checkAuthStatus();
-          if (authData.token) {
-            headers['Authorization'] = `Bearer ${authData.token}`;
+        // CORS FIX: Use minimal headers to avoid preflight
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        };
+
+        // Add auth header if needed
+        if (requireAuth) {
+          try {
+            const authData = await authService.checkAuthStatus();
+            if (authData.token) {
+              headers['Authorization'] = `Bearer ${authData.token}`;
+            }
+          } catch (error) {
+            console.warn('[CampaignService] Could not get auth token:', error);
           }
-        } catch (error) {
-          console.warn('[CampaignService] Could not get auth token:', error);
         }
-      }
 
-      // CORS FIX: Minimal request options for World App compatibility
-      const requestOptions: RequestInit = {
-        ...options,
-        headers: {
-          ...headers,
-          ...options.headers,
-        },
-        mode: 'cors',
-        credentials: this.isWorldApp ? 'omit' : 'same-origin',
-      };
+        // CORS FIX: Minimal request options for World App compatibility
+        const requestOptions: RequestInit = {
+          ...options,
+          headers: {
+            ...headers,
+            ...options.headers,
+          },
+          mode: 'cors',
+          credentials: this.isWorldApp ? 'omit' : 'same-origin',
+        };
 
-      // Add World App specific options
-      if (this.isWorldApp) {
-        requestOptions.cache = 'no-store';
-      }
-
-      // Add timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-      requestOptions.signal = controller.signal;
-
-      console.log('🔍 [DEBUG] Making request to:', url);
-      console.log('🔍 [DEBUG] Request options:', {
-        method: requestOptions.method,
-        hasAuth: !!headers['Authorization'],
-        isWorldApp: this.isWorldApp
-      });
-
-      const response = await fetch(url, requestOptions);
-      clearTimeout(timeoutId);
-      
-      console.log(`[CampaignService] ${requestId} - Response: ${response.status} ${response.statusText}`);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage: string;
-        
-        try {
-          const errorJson = JSON.parse(errorText);
-          errorMessage = errorJson.message || errorJson.error || `HTTP ${response.status}: ${response.statusText}`;
-        } catch (e) {
-          errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
+        // Add World App specific options
+        if (this.isWorldApp) {
+          requestOptions.cache = 'no-store';
         }
-        
+
+        // Add timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        requestOptions.signal = controller.signal;
+
+        console.log('🔍 [DEBUG] Making request to:', url);
+        console.log('🔍 [DEBUG] Request options:', {
+          method: requestOptions.method,
+          hasAuth: !!headers['Authorization'],
+          isWorldApp: this.isWorldApp
+        });
+
+        const response = await fetch(url, requestOptions);
+        clearTimeout(timeoutId);
+
+        console.log(`[CampaignService] ${requestId} - Response: ${response.status} ${response.statusText}`);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorMessage: string;
+
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.message || errorJson.error || `HTTP ${response.status}: ${response.statusText}`;
+          } catch (e) {
+            errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
+          }
+
+          // Check if this is a retryable error
+          const isRetryable = response.status >= 500 || response.status === 429;
+          if (isRetryable && attempt < maxRetries) {
+            console.warn(`[CampaignService] ${requestId} - Retryable error (${response.status}), retrying...`);
+            lastError = new Error(errorMessage);
+            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+            continue;
+          }
+
+          console.error(`[CampaignService] ${requestId} - Error:`, errorMessage);
+          return { success: false, error: errorMessage };
+        }
+
+        // Parse response
+        let data: T;
+        const contentType = response.headers.get('content-type');
+
+        if (response.status === 204 || !contentType) {
+          data = {} as T;
+        } else if (contentType && contentType.includes('application/json')) {
+          try {
+            data = await response.json();
+          } catch (jsonError) {
+            console.error(`[CampaignService] ${requestId} - JSON parse error:`, jsonError);
+            return { success: false, error: 'Invalid JSON response from server' };
+          }
+        } else {
+          const text = await response.text();
+          try {
+            data = JSON.parse(text) as T;
+          } catch (e) {
+            data = text as unknown as T;
+          }
+        }
+
+        console.log(`[CampaignService] ${requestId} - Success`);
+        return { success: true, data };
+
+      } catch (error: any) {
+        lastError = error;
+        console.error(`[CampaignService] ${requestId} - Attempt ${attempt + 1} failed:`, error);
+
+        // Enhanced error logging for debugging
+        if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+          console.error('🔍 [DEBUG] CORS/Network error detected for URL:', url);
+          console.error('🔍 [DEBUG] This is likely a CORS preflight issue or network connectivity problem');
+        }
+
         // Check if this is a retryable error
-        const isRetryable = response.status >= 500 || response.status === 429;
+        const isRetryable = error.name === 'AbortError' ||
+          error.message?.includes('Failed to fetch') ||
+          error.message?.includes('network');
         if (isRetryable && attempt < maxRetries) {
-          console.warn(`[CampaignService] ${requestId} - Retryable error (${response.status}), retrying...`);
-          lastError = new Error(errorMessage);
+          console.warn(`[CampaignService] ${requestId} - Retryable error, retrying...`);
           await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
           continue;
         }
-        
-        console.error(`[CampaignService] ${requestId} - Error:`, errorMessage);
-        return { success: false, error: errorMessage };
+        break;
       }
-      
-      // Parse response
-      let data: T;
-      const contentType = response.headers.get('content-type');
-      
-      if (response.status === 204 || !contentType) {
-        data = {} as T;
-      } else if (contentType && contentType.includes('application/json')) {
-        try {
-          data = await response.json();
-        } catch (jsonError) {
-          console.error(`[CampaignService] ${requestId} - JSON parse error:`, jsonError);
-          return { success: false, error: 'Invalid JSON response from server' };
-        }
+    }
+
+    // Handle final error
+    let errorMessage = 'Network error occurred';
+    if (lastError) {
+      if (lastError.name === 'AbortError') {
+        errorMessage = 'Request timeout - please check your connection';
+      } else if (lastError.message?.includes('Failed to fetch')) {
+        errorMessage = 'Network connection failed - please check your internet connection';
+      } else if (lastError.message?.includes('CORS')) {
+        errorMessage = 'Cross-origin request blocked - please check API configuration';
       } else {
-        const text = await response.text();
-        try {
-          data = JSON.parse(text) as T;
-        } catch (e) {
-          data = text as unknown as T;
-        }
+        errorMessage = lastError.message || 'Unknown network error';
       }
-      
-      console.log(`[CampaignService] ${requestId} - Success`);
-      return { success: true, data };
-      
-    } catch (error: any) {
-      lastError = error;
-      console.error(`[CampaignService] ${requestId} - Attempt ${attempt + 1} failed:`, error);
-      
-      // Enhanced error logging for debugging
-      if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-        console.error('🔍 [DEBUG] CORS/Network error detected for URL:', url);
-        console.error('🔍 [DEBUG] This is likely a CORS preflight issue or network connectivity problem');
-      }
-      
-      // Check if this is a retryable error
-      const isRetryable = error.name === 'AbortError' || 
-                         error.message?.includes('Failed to fetch') ||
-                         error.message?.includes('network');
-      if (isRetryable && attempt < maxRetries) {
-        console.warn(`[CampaignService] ${requestId} - Retryable error, retrying...`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
-        continue;
-      }
-      break;
     }
+
+    console.error(`[CampaignService] ${requestId} - Final error:`, errorMessage);
+    return { success: false, error: errorMessage };
   }
-  
-  // Handle final error
-  let errorMessage = 'Network error occurred';
-  if (lastError) {
-    if (lastError.name === 'AbortError') {
-      errorMessage = 'Request timeout - please check your connection';
-    } else if (lastError.message?.includes('Failed to fetch')) {
-      errorMessage = 'Network connection failed - please check your internet connection';
-    } else if (lastError.message?.includes('CORS')) {
-      errorMessage = 'Cross-origin request blocked - please check API configuration';
-    } else {
-      errorMessage = lastError.message || 'Unknown network error';
-    }
-  }
-  
-  console.error(`[CampaignService] ${requestId} - Final error:`, errorMessage);
-  return { success: false, error: errorMessage };
-}
 
   // # ############################################################################ #
-  // # #              SECTION 10 - PUBLIC METHOD: CREATE CAMPAIGN                 #
+  // # #            SECTION 10 - PUBLIC METHOD: CREATE CAMPAIGN                   #
   // # ############################################################################ #
   public async createCampaign(
     payload: CampaignPayload
@@ -369,7 +370,7 @@ private async makeRequest<T>(
   }
 
   // # ############################################################################ #
-  // # #           SECTION 11 - PUBLIC METHOD: FETCH ALL CAMPAIGNS                #
+  // # #            SECTION 11 - PUBLIC METHOD: FETCH ALL CAMPAIGNS               #
   // # ############################################################################ #
   public async fetchAllCampaigns(
     category?: string
@@ -446,7 +447,7 @@ private async makeRequest<T>(
   }
 
   // # ############################################################################ #
-  // # #              SECTION 13 - PUBLIC METHOD: UPDATE CAMPAIGN                 #
+  // # #            SECTION 13 - PUBLIC METHOD: UPDATE CAMPAIGN                   #
   // # ############################################################################ #
   public async updateCampaign(
     id: string,
@@ -487,7 +488,7 @@ private async makeRequest<T>(
   }
 
   // # ############################################################################ #
-  // # #              SECTION 14 - PUBLIC METHOD: DELETE CAMPAIGN                 #
+  // # #            SECTION 14 - PUBLIC METHOD: DELETE CAMPAIGN                   #
   // # ############################################################################ #
   public async deleteCampaign(
     id: string
@@ -517,13 +518,14 @@ private async makeRequest<T>(
   }
 
   // # ############################################################################ #
-  // # #              SECTION 15 - PUBLIC METHOD: RECORD DONATION                 #
+  // # #            SECTION 15 - PUBLIC METHOD: RECORD DONATION (UPDATED)         #
   // # ############################################################################ #
   public async recordDonation(
     campaignId: string,
     donatedAmount: number,
     transactionHash: string,
-    chainId: number = 1
+    chainId: number = 1,
+    message?: string // Add this parameter
   ): Promise<{ success: boolean; donation?: Donation; error?: string }> {
     if (!campaignId || donatedAmount === undefined || !transactionHash) {
       return {
@@ -536,11 +538,23 @@ private async makeRequest<T>(
     }
 
     try {
+      // Prepare request body with optional message
+      const requestBody: any = {
+        donatedAmount,
+        transactionHash,
+        chainId
+      };
+
+      // Add message if provided and not empty
+      if (message && message.trim()) {
+        requestBody.message = message.trim().substring(0, 50); // Ensure 50 char limit
+      }
+
       const result = await this.makeRequest<{ donation?: Donation; donationId?: string }>(
         `${this.API_BASE}/campaigns/${campaignId}/donate`,
         {
           method: 'POST',
-          body: JSON.stringify({ donatedAmount, transactionHash, chainId }),
+          body: JSON.stringify(requestBody), // Use the prepared body
         },
         true // Require auth
       );
@@ -566,7 +580,7 @@ private async makeRequest<T>(
   }
 
   // # ############################################################################ #
-  // # #          SECTION 16 - PUBLIC METHOD: FETCH USER CAMPAIGNS (CORS FIX)     #
+  // # #            SECTION 16 - PUBLIC METHOD: FETCH USER CAMPAIGNS (CORS FIX)   #
   // # ############################################################################ #
   public async fetchUserCampaigns(
     walletAddress: string
@@ -656,7 +670,7 @@ private async makeRequest<T>(
   }
 
   // # ############################################################################ #
-  // # #             SECTION 17 - SINGLETON INSTANCE EXPORT                       #
+  // # #            SECTION 17 - SINGLETON INSTANCE EXPORT                        #
   // # ############################################################################ #
 }
 

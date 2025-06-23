@@ -1,7 +1,7 @@
 // src/pages/CampaignDetailPage.tsx
 
 // # ############################################################################ #
-// # #                               SECTION 1 - IMPORTS                                #
+// # #                     SECTION 1 - IMPORTS                                  #
 // # ############################################################################ #
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; // Removed useParams as 'id' is a prop
@@ -10,7 +10,7 @@ import { campaignService, Campaign } from '../services/CampaignService';
 import { MiniKit, tokenToDecimals, Tokens, PayCommandInput } from '@worldcoin/minikit-js';
 
 // # ############################################################################ #
-// # #                               SECTION 2 - STYLES                                #
+// # #                     SECTION 2 - STYLES                                   #
 // # ############################################################################ #
 const styles: { [key: string]: React.CSSProperties } = {
   page: {
@@ -389,7 +389,7 @@ const responsiveStyles = `
 `;
 
 // # ############################################################################ #
-// # #                 SECTION 3 - COMPONENT: DEFINITION & STATE                 #
+// # #          SECTION 3 - COMPONENT: DEFINITION & STATE                       #
 // # ############################################################################ #
 export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   const { isAuthenticated } = useAuth();
@@ -397,16 +397,17 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Donation form state
   const [donationAmount, setDonationAmount] = useState<string>('');
+  const [donationMessage, setDonationMessage] = useState<string>(''); // ADDED
   const [donating, setDonating] = useState(false);
   const [donationSuccess, setDonationSuccess] = useState(false);
   const [donationError, setDonationError] = useState<string | null>(null);
   const [isInWorldApp, setIsInWorldApp] = useState(false);
 
 // # ############################################################################ #
-// # #                 SECTION 4 - EFFECT: FETCH CAMPAIGN DATA                 #
+// # #          SECTION 4 - EFFECT: FETCH CAMPAIGN DATA                         #
 // # ############################################################################ #
   useEffect(() => {
     const fetchCampaign = async () => {
@@ -430,13 +431,13 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
     if (id) { // Ensure ID is present before fetching
         fetchCampaign();
     } else {
-        setError("Campaign ID is missing.");
-        setLoading(false);
+      setError("Campaign ID is missing.");
+      setLoading(false);
     }
   }, [id]);
 
 // # ############################################################################ #
-// # #                 SECTION 5 - EFFECT: CHECK WORLD APP                 #
+// # #          SECTION 5 - EFFECT: CHECK WORLD APP                             #
 // # ############################################################################ #
   useEffect(() => {
     // Check if running in World App
@@ -444,7 +445,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   }, []);
 
 // # ############################################################################ #
-// # #                 SECTION 6 - EVENT HANDLER: DONATION SUBMIT                 #
+// # #          SECTION 6 - EVENT HANDLER: DONATION SUBMIT                      #
 // # ############################################################################ #
   const handleDonationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -501,28 +502,40 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
       if (result.finalPayload?.status === 'success') {
         // Payment successful, now record it in the backend
         const transactionId = result.finalPayload.transaction_id || result.finalPayload.reference;
-        
-        if (transactionId) {
-          // Record the donation in the backend with the transaction ID
-          const recordResult = await campaignService.recordDonation(
-            id,
-            numericAmount,
-            transactionId // Use MiniKit transaction ID
-          );
 
-          if (recordResult.success) {
-            setDonationSuccess(true);
-            setDonationAmount('');
-            
-            // Refresh campaign data to show updated amounts
-            const refreshResult = await campaignService.fetchCampaign(id);
-            if (refreshResult.success && refreshResult.campaign) {
-              setCampaign(refreshResult.campaign);
+        if (transactionId) {
+          console.log('[CampaignDetail] Payment successful, recording donation...', transactionId);
+
+          // Record the donation in the backend with the MiniKit transaction details
+          try {
+            const recordResult = await campaignService.recordDonation(
+              id,
+              numericAmount,
+              transactionId,
+              1, // chainId
+              donationMessage.trim() || undefined // Add message parameter
+            );
+
+            if (recordResult.success) {
+              setDonationSuccess(true);
+              setDonationAmount('');
+              setDonationMessage(''); // Clear message field too
+              
+              // Refresh campaign data to show updated amounts
+              const refreshResult = await campaignService.fetchCampaign(id);
+              if (refreshResult.success && refreshResult.campaign) {
+                setCampaign(refreshResult.campaign);
+              }
+            } else {
+              console.error('[CampaignDetail] Backend recording failed:', recordResult.error);
+              setDonationError(`Payment completed successfully, but failed to record: ${recordResult.error}`);
             }
-          } else {
-            setDonationError(recordResult.error || 'Payment successful but failed to record donation.');
+          } catch (backendError: any) {
+            console.error('[CampaignDetail] Backend recording error:', backendError);
+            setDonationError(`Payment completed successfully, but failed to record: ${backendError.message}`);
           }
         } else {
+          console.error('[CampaignDetail] No transaction ID received from MiniKit');
           setDonationError('Payment successful but no transaction ID received.');
         }
       } else if (result.finalPayload?.status === 'error') {
@@ -539,7 +552,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   };
 
 // # ############################################################################ #
-// # #                 SECTION 7 - CONDITIONAL RENDERING: LOADING STATE                 #
+// # #          SECTION 7 - CONDITIONAL RENDERING: LOADING STATE                #
 // # ############################################################################ #
   if (loading) {
     return (
@@ -563,7 +576,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   }
 
 // # ############################################################################ #
-// # #                 SECTION 8 - CONDITIONAL RENDERING: ERROR STATE                 #
+// # #          SECTION 8 - CONDITIONAL RENDERING: ERROR STATE                  #
 // # ############################################################################ #
   if (error) {
     return (
@@ -593,7 +606,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   }
 
 // # ############################################################################ #
-// # #         SECTION 9 - CONDITIONAL RENDERING: CAMPAIGN NOT FOUND         #
+// # #          SECTION 9 - CONDITIONAL RENDERING: CAMPAIGN NOT FOUND           #
 // # ############################################################################ #
   if (!campaign) {
     return (
@@ -624,7 +637,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   }
 
 // # ############################################################################ #
-// # #                         SECTION 10 - CALCULATED VALUES                         #
+// # #                   SECTION 10 - CALCULATED VALUES                         #
 // # ############################################################################ #
   const progressPercentage = campaign.goal > 0 ? Math.min(
     Math.round((campaign.raised / campaign.goal) * 100),
@@ -632,7 +645,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   ) : 0;
 
 // # ############################################################################ #
-// # #         SECTION 11 - MAIN JSX RETURN: CAMPAIGN DETAILS & DONATION         #
+// # #          SECTION 11 - MAIN JSX RETURN: CAMPAIGN DETAILS & DONATION       #
 // # ############################################################################ #
   return (
     <div style={styles.page}>
@@ -752,6 +765,26 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
                         />
                       </div>
 
+                      {/* NEW: Add message input field */}
+                      <div style={styles.formGroup}>
+                        <label htmlFor="message" style={styles.label}>
+                          Message (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          id="message"
+                          value={donationMessage}
+                          onChange={(e) => setDonationMessage(e.target.value)}
+                          style={styles.input}
+                          placeholder="Add a message to your donation"
+                          maxLength={50}
+                          disabled={donating || !isInWorldApp}
+                        />
+                        <div style={{ fontSize: '0.75rem', color: '#5f6368', marginTop: '0.25rem', textAlign: 'right' }}>
+                          {donationMessage.length}/50 characters
+                        </div>
+                      </div>
+
                       <button
                         type="submit"
                         disabled={donating || !isAuthenticated || !isInWorldApp}
@@ -795,6 +828,21 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
                           <p style={styles.donationDate}>
                             {new Date(donation.createdAt).toLocaleString()}
                           </p>
+                          {/* NEW: Show message if it exists */}
+                          {donation.message && (
+                            <p style={{
+                              fontSize: '0.75rem',
+                              color: '#4a5568',
+                              marginTop: '0.25rem',
+                              fontStyle: 'italic',
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: '#f7fafc',
+                              borderRadius: '4px',
+                              maxWidth: '300px'
+                            }}>
+                              "{donation.message}"
+                            </p>
+                          )}
                         </div>
                         <span style={styles.donationAmount}>
                           {donation.amount.toLocaleString()} WLD
