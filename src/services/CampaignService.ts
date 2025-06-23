@@ -20,7 +20,7 @@ export interface Donation {
   verifiedAt?: string;
   chainId?: number;
   blockNumber?: string;
-  message?: string; // Add this line
+  message?: string;
 }
 
 export interface Campaign {
@@ -37,6 +37,12 @@ export interface Campaign {
   updatedAt: string;
   donations: Donation[];
   currency: 'WLD';
+}
+
+// Add the missing type that the component is looking for
+export interface CampaignWithPaginatedDonations extends Campaign {
+  // This interface extends Campaign but doesn't add anything new
+  // It's just for type compatibility with existing code
 }
 
 export interface CampaignPayload {
@@ -430,7 +436,13 @@ class CampaignService {
       );
 
       if (result.success && result.data) {
-        return { success: true, campaign: result.data };
+        // Ensure the returned campaign has the proper type
+        const campaign: Campaign = {
+          ...result.data,
+          donations: result.data.donations || []
+        };
+        
+        return { success: true, campaign };
       }
 
       return {
@@ -525,7 +537,7 @@ class CampaignService {
     donatedAmount: number,
     transactionHash: string,
     chainId: number = 1,
-    message?: string // Add this parameter
+    message?: string
   ): Promise<{ success: boolean; donation?: Donation; error?: string }> {
     if (!campaignId || donatedAmount === undefined || !transactionHash) {
       return {
@@ -554,7 +566,7 @@ class CampaignService {
         `${this.API_BASE}/campaigns/${campaignId}/donate`,
         {
           method: 'POST',
-          body: JSON.stringify(requestBody), // Use the prepared body
+          body: JSON.stringify(requestBody),
         },
         true // Require auth
       );
