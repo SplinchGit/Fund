@@ -1,4 +1,4 @@
-// src/pages/CampaignDetailPage.tsx 
+// src/pages/CampaignDetailPage.tsx
 
 // # ############################################################################ #
 // # #                     SECTION 1 - IMPORTS                                  #
@@ -980,3 +980,5 @@ const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
     </div>
   );
 };
+
+export default CampaignDetail;

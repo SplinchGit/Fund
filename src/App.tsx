@@ -14,7 +14,7 @@ import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import TipJar from './pages/TipJar';
 import EditCampaignPage from './pages/EditCampaignPage'; // Your existing component
-import { CampaignDetail } from './pages/CampaignDetailPage';
+import CampaignDetail from './pages/CampaignDetailPage';
 import { CreateCampaignForm } from './components/CreateCampaignForm';
 
 // # ############################################################################ #
