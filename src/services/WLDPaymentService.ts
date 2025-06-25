@@ -194,7 +194,7 @@ class WLDPaymentService {
 
     if (!MiniKit.isInstalled()) {
       throw new Error(
-        'Please use WorldFund inside the World App to verify your identity.'
+        'Please use Fund inside the World App to verify your identity.'
       );
     }
     if (!this.WLD_DONATION_ACTION_ID) {
@@ -283,7 +283,7 @@ class WLDPaymentService {
             token_amount: amountInTokenUnits.toString(),
           }
         ],
-        description: `WorldFund campaign donation`,
+        description: `Fund campaign donation`,
       };
 
       console.log('[WLDPaymentService] Sending payment with payload:', payPayload);

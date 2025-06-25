@@ -478,7 +478,7 @@ export const triggerMiniKitWalletAuth = async (
 
     const result = await MiniKit.commandsAsync.walletAuth({
       nonce: serverNonce,
-      statement: 'Sign in to WorldFund to create and support campaigns.', // Recommended
+      statement: 'Sign in to Fund to create and support campaigns.', // Recommended
       expirationTime: new Date(Date.now() + 1000 * 60 * AUTH_EXPIRY_MINUTES),
     });
 

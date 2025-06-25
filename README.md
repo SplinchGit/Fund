@@ -1,4 +1,4 @@
-# WorldFund
+# Fund
 
 This is a simplified React project built with Vite, TypeScript, Tailwind CSS, and ESLint. Configuration files are organized under `configs/` to keep the root clean.
 

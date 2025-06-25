@@ -552,7 +552,7 @@ const TipJar: React.FC = () => {
       <div style={styles.container}>
         <div style={styles.donationCard}>
           <div style={styles.cardHeader}>
-            <h2 style={styles.cardTitle}>Support WorldFund</h2>
+            <h2 style={styles.cardTitle}>Support Fund</h2>
             <p style={styles.cardSubtitle}>Your generous tip helps us maintain and improve the platform.</p>
           </div>
 
@@ -574,7 +574,7 @@ const TipJar: React.FC = () => {
                   onError={handleVerificationError}
                   // signal={uniqueSignal} // Consider adding a signal if needed
                 >
-                  {({ open }) => (
+                  {({ open }: { open: () => void }) => (
                     <button
                       onClick={() => {
                         setVerificationLoading(true);

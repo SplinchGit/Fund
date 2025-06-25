@@ -489,7 +489,7 @@ const LandingPage: React.FC = () => {
             <header style={styles.header}>
                 <div style={styles.headerContent}>
                     <Link to="/" style={styles.logo}>
-                        Fund<span style={styles.logoSpan}></span> {/* CHANGED: WorldFund to Fund */}
+                        Fund<span style={styles.logoSpan}></span> {/* CHANGED: To Fund */}
                     </Link>
                     <div style={styles.navActionsContainer}>
                         {isAuthenticated ? (
