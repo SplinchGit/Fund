@@ -13,10 +13,10 @@ import { triggerMiniKitWalletAuth } from '../MiniKitProvider';
 
 // Import Swiper React components and styles
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Pagination, A11y } from 'swiper/modules';
+import { Pagination, A11y } from 'swiper/modules'; // REMOVED: Navigation
 
 import 'swiper/css';
-import 'swiper/css/navigation';
+// import 'swiper/css/navigation'; // REMOVED: Navigation CSS import
 import 'swiper/css/pagination';
 
 // # ############################################################################ #
@@ -323,7 +323,7 @@ const LandingPage: React.FC = () => {
             padding: '0.5rem 1rem 1.5rem', // UPDATED: Reduced top padding
             textAlign: 'center' as const, 
             width: '100%', 
-            boxSizing: 'border-box' as const, // FIXED: Typo here from 'border-sizing' to 'border-box'
+            boxSizing: 'border-box' as const, 
             marginBottom: '0.5rem', 
         },
         heroTitle: { fontSize: '2rem', fontWeight: 700, color: '#202124', marginBottom: '0.25rem', padding: 0 },
@@ -393,8 +393,8 @@ const LandingPage: React.FC = () => {
             fontSize: '0.7rem', 
             color: '#5f6368', 
             padding: '1rem', 
-            marginTop: '0.25rem', // UPDATED: Reduced top margin
-            marginBottom: '4rem', // UPDATED: Reduced bottom margin
+            marginTop: '0.25rem', 
+            marginBottom: '1rem', // ADJUSTED: Reduced this significantly to pull it up
             borderTop: '1px solid #eee', 
             width: '100%', 
             boxSizing: 'border-box' as const, 
@@ -410,7 +410,7 @@ const LandingPage: React.FC = () => {
     const responsiveStyles = `
     html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow-x: hidden; font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'}; box-sizing: border-box; }
     *, *::before, *::after { box-sizing: inherit; }
-    input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; height: 1em; width: 1em; margin-left: .25em; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23777'%3e%3cpath d='M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'/%3e%3csvg>"); background-size: 1em 1em; cursor: pointer; }
+    input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; height: 1em; width: 1em; margin-left: .25em; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23777'%3e%3cpath d='M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'/%3e%3c/svg>'); background-size: 1em 1em; cursor: pointer; }
     .swiper-pagination-bullet { background-color: #cccccc !important; opacity: 1 !important; }
     .swiper-pagination-bullet-active { background-color: #1a73e8 !important; }
     .swiper-button-next, .swiper-button-prev { color: #1a73e8 !important; transform: scale(0.7); }
@@ -489,7 +489,7 @@ const LandingPage: React.FC = () => {
             <header style={styles.header}>
                 <div style={styles.headerContent}>
                     <Link to="/" style={styles.logo}>
-                        World<span style={styles.logoSpan}>Fund</span>
+                        Fund<span style={styles.logoSpan}></span> {/* CHANGED: WorldFund to Fund */}
                     </Link>
                     <div style={styles.navActionsContainer}>
                         {isAuthenticated ? (
@@ -605,10 +605,10 @@ const LandingPage: React.FC = () => {
                         </div>
                     ) : ( 
                         <Swiper
-                            modules={[Navigation, Pagination, A11y]}
+                            modules={[Pagination, A11y]} // REMOVED: Navigation
                             spaceBetween={16} 
                             slidesPerView={1}
-                            navigation
+                            // navigation // REMOVED: navigation prop
                             pagination={{ clickable: true, dynamicBullets: true }}
                             loop={false} 
                             style={styles.swiperContainer}
@@ -627,7 +627,7 @@ const LandingPage: React.FC = () => {
             
             {/* Footer */}
             <footer style={styles.legalNotice}>
-                &copy; {new Date().getFullYear()} WorldFund. All rights reserved.
+                &copy; {new Date().getFullYear()} Fund. All rights reserved. {/* CHANGED: WorldFund to Fund */}
             </footer>
 
             {/* Bottom Navigation */}

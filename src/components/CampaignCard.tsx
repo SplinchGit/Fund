@@ -43,7 +43,7 @@ const cardStyles: { [key: string]: React.CSSProperties } = {
   },
   noImagePlaceholder: {
     width: '100%',
-    height: '180px',
+    height: '90px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
