@@ -2,7 +2,7 @@
 // (UPDATED: Removed large icons from empty state for cleaner UI)
 
 // # ############################################################################ #
-// # #                           SECTION 1 - IMPORTS                           #
+// # #                     SECTION 1 - IMPORTS                                  #
 // # ############################################################################ #
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -11,7 +11,7 @@ import { CampaignTracker } from './CampaignTracker';
 import { campaignService } from '../services/CampaignService';
 
 // # ############################################################################ #
-// # # SECTION 2 - STYLES OBJECT DEFINITION (styles BEFORE responsiveStyles)   #
+// # # SECTION 2 - STYLES OBJECT DEFINITION (styles BEFORE responsiveStyles)    #
 // # ############################################################################ #
 
 const styles: { [key: string]: React.CSSProperties } = {
@@ -80,7 +80,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderColor: '#1a73e8',
   },
   buttonDanger: {
-    padding: '0.5rem 0.75rem',
+    padding: '0.375rem 0.75rem',
     borderRadius: '0.25rem',
     fontWeight: 500,
     cursor: 'pointer',
@@ -141,7 +141,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#5f6368',
     padding: '1rem',
     marginTop: 'auto', 
-    marginBottom: '5rem', 
+    marginBottom: '1.5rem', // Change #4: Updated marginBottom from '5rem' to '1.5rem'
     borderTop: '1px solid #eee',
     textAlign: 'center' as const,
     width: '100%',
@@ -207,7 +207,7 @@ const responsiveStyles = `
 `;
 
 // # ############################################################################ #
-// # #                 SECTION 3 - COMPONENT: PAGE DEFINITION & HOOKS                #
+// # #       SECTION 3 - COMPONENT: PAGE DEFINITION & HOOKS                     #
 // # ############################################################################ #
 const Dashboard: React.FC = () => {
   const { walletAddress, isAuthenticated, logout } = useAuth(); 
@@ -285,7 +285,7 @@ const Dashboard: React.FC = () => {
   }, [isAuthenticated, navigate, walletAddress]);
 
 // # ############################################################################ #
-// # #                   SECTION 5 - EVENT HANDLER: LOGOUT                     #
+// # #       SECTION 5 - EVENT HANDLER: LOGOUT                                  #
 // # ############################################################################ #
   const handleLogout = async () => {
     if (logout) {
@@ -294,7 +294,7 @@ const Dashboard: React.FC = () => {
         navigate('/landing');
       } catch (error) {
         console.error("Error during logout:", error);
-        navigate('/landing');
+        navigate('/landing'); 
       }
     } else {
       console.error("Logout function is not available from AuthContext.");
@@ -303,7 +303,7 @@ const Dashboard: React.FC = () => {
   };
 
 // # ############################################################################ #
-// # #           SECTION 6 - CONDITIONAL RENDERING: UNAUTHENTICATED FALLBACK         #
+// # #       SECTION 6 - CONDITIONAL RENDERING: UNAUTHENTICATED FALLBACK        #
 // # ############################################################################ #
   if (!isAuthenticated) {
     return (
@@ -316,7 +316,7 @@ const Dashboard: React.FC = () => {
   }
 
 // # ############################################################################ #
-// # #                 SECTION 7 - JSX RETURN: PAGE LAYOUT & CONTENT                 #
+// # #         SECTION 7 - JSX RETURN: PAGE LAYOUT & CONTENT                    #
 // # ############################################################################ #
   return (
     <div style={styles.page}>
@@ -324,7 +324,7 @@ const Dashboard: React.FC = () => {
 
       <header style={styles.header}>
         <div style={styles.headerContent}>
-          <Link to="/" style={styles.logo}>World<span style={styles.logoSpan}>Fund</span></Link>
+          <Link to="/" style={styles.logo}>Fund<span style={styles.logoSpan}></span></Link>
           <div style={styles.walletInfo}>
             {walletAddress && (
                 <span style={styles.walletAddress}>
@@ -387,6 +387,13 @@ const Dashboard: React.FC = () => {
         <div style={styles.quickAccessSection}>
           <h2 style={styles.sectionTitle}>Quick Access</h2>
           <div style={styles.quickLinks}>
+            {/* Change #6: Added 'Create Campaign' as the FIRST item */}
+            <Link to="/new-campaign" style={styles.quickLink} className="quickLinkHoverable">
+              <svg style={styles.quickLinkIcon} viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path>
+              </svg>
+              Create Campaign
+            </Link>
             <Link to="/landing" style={styles.quickLink} className="quickLinkHoverable">
               <svg style={styles.quickLinkIcon} viewBox="0 0 24 24" fill="currentColor">
                 <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"></path>
@@ -414,7 +421,7 @@ const Dashboard: React.FC = () => {
       </main>
 
       <footer style={styles.legalNotice}>
-        &copy; {new Date().getFullYear()} WorldFund. All rights reserved.
+        &copy; {new Date().getFullYear()} Fund. All rights reserved.
       </footer>
 
       <nav style={styles.tabs}>

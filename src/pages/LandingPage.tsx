@@ -394,7 +394,7 @@ const LandingPage: React.FC = () => {
             color: '#5f6368', 
             padding: '1rem', 
             marginTop: '0.25rem', 
-            marginBottom: '1rem', // ADJUSTED: Reduced this significantly to pull it up
+            marginBottom: '4.5rem', // CORRECTED: Reverted to a value that should clear the bottom navigation
             borderTop: '1px solid #eee', 
             width: '100%', 
             boxSizing: 'border-box' as const, 
