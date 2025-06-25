@@ -1,5 +1,5 @@
 // src/pages/Dashboard.tsx
-// (FIXED: Removes /dashboard-stats dependency, calculates stats from user campaigns)
+// (UPDATED: Removed large icons from empty state for cleaner UI)
 
 // # ############################################################################ #
 // # #                           SECTION 1 - IMPORTS                           #
