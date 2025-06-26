@@ -1,5 +1,3 @@
-// src/services/AdminService.ts
-
 // # ############################################################################ #
 // # #                           SECTION 1 - IMPORTS                            #
 // # ############################################################################ #
@@ -59,6 +57,12 @@ export interface AdminActionsSummary {
   campaignId?: string;
   bannedUser?: string;
   reason?: string;
+}
+
+export interface AdminStatusResponse {
+  isAdmin: boolean;
+  walletAddress?: string;
+  message?: string;
 }
 
 // # ############################################################################ #
@@ -196,26 +200,37 @@ class AdminService {
   }
 
   // # ############################################################################ #
-  // # #                   SECTION 8 - PUBLIC METHOD: CHECK ADMIN STATUS          #
+  // # #                   SECTION 8 - PUBLIC METHOD: CHECK ADMIN STATUS (UPDATED) #
   // # ############################################################################ #
   public async checkAdminStatus(): Promise<boolean> {
     try {
       const authData = await authService.checkAuthStatus();
       if (!authData.isAuthenticated || !authData.walletAddress) {
+        console.log('[AdminService] User not authenticated, cannot check admin status');
         return false;
       }
 
-      // Check if current wallet matches admin wallet
-      // This is a client-side check for UI purposes only
-      // Real security enforcement happens on the backend
-      const adminWallet = '0x28043f711ab042b1780ede66d317929693f59c87';
-      const isAdmin = authData.walletAddress.toLowerCase() === adminWallet.toLowerCase();
+      console.log(`[AdminService] Checking admin status for wallet ${authData.walletAddress.substring(0, 6)}...`);
 
-      console.log(`[AdminService] Admin status check: ${isAdmin} for wallet ${authData.walletAddress.substring(0, 6)}...`);
-      return isAdmin;
+      // Call the server-side admin status endpoint (SECURITY FIX)
+      const result = await this.makeRequest<AdminStatusResponse>(
+        '/auth/admin/status',
+        'GET'
+      );
+
+      if (result.success && result.data) {
+        const isAdmin = result.data.isAdmin;
+        console.log(`[AdminService] Server-side admin status check: ${isAdmin} for wallet ${authData.walletAddress.substring(0, 6)}...`);
+        return isAdmin;
+      } else {
+        console.error('[AdminService] Failed to check admin status:', result.error);
+        // Fail closed - deny admin access if we can't verify
+        return false;
+      }
 
     } catch (error) {
       console.error('[AdminService] Error checking admin status:', error);
+      // Fail closed - deny admin access on error
       return false;
     }
   }
