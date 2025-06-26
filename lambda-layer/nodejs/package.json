@@ -1,0 +1,11 @@
+﻿{
+  "name": "fund-lambda-layer",
+  "version": "1.0.0",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.525.0",
+    "@aws-sdk/lib-dynamodb": "^3.525.0",
+    "@aws-sdk/client-secrets-manager": "^3.525.0",
+    "@worldcoin/minikit-js": "^1.9.4",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
