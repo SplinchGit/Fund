@@ -773,7 +773,7 @@ const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
               id,
               numericAmount,
               transactionId,
-              1,
+              480,
               donationMessage.trim() || undefined
             );
 

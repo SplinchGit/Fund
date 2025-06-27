@@ -536,7 +536,7 @@ class CampaignService {
     campaignId: string,
     donatedAmount: number,
     transactionHash: string,
-    chainId: number = 1,
+    chainId: number = 480,
     message?: string
   ): Promise<{ success: boolean; donation?: Donation; error?: string }> {
     if (!campaignId || donatedAmount === undefined || !transactionHash) {
