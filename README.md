@@ -13,3 +13,5 @@ This is a simplified React project built with Vite, TypeScript, Tailwind CSS, an
 - **configs/** – Contains all configuration files.
 - **public/** – Static assets and the HTML entry point.
 - **src/** – Main application code, including components, pages, services, etc.
+
+All rights reserved.
