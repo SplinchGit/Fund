@@ -7,12 +7,17 @@
   "directories": {
     "lib": "lib"
   },
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "build": "vite build",
     "build:production": "vite build",
     "dev": "vite dev",
     "lint": "eslint . --ext .ts,.tsx",
-    "start": "vite preview"
+    "start": "vite preview",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@aws-amplify/auth": "^6.12.4",
@@ -32,7 +37,7 @@
     "jsonwebtoken": "^9.0.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-router-dom": "^7.5.3",
+    "react-router-dom": "^7.6.3",
     "siwe": "^3.0.0",
     "swiper": "^11.2.6",
     "tailwind-merge": "^3.2.0",
@@ -42,9 +47,11 @@
   "devDependencies": {
     "@aws-amplify/backend": "^1.16.1",
     "@aws-amplify/backend-cli": "^1.7.2",
+    "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.15.3",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
+    "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.21",
     "aws-cdk-lib": "^2.189.1",

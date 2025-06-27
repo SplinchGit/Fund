@@ -1,0 +1,48 @@
+version: 1
+backend:
+  phases:
+    preBuild:
+      commands:
+        - echo "Setting Node.js version to 22"
+        - nvm install 22
+        - nvm use 22
+        - node --version
+        - npm --version
+        - echo "Installing backend dependencies"
+        - npm ci --production=false
+    build:
+      commands:
+        - echo "Building backend with ampx"
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+    postBuild:
+      commands:
+        - echo "Backend build completed"
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - echo "Setting Node.js version to 20 for frontend"
+        - nvm install 20
+        - nvm use 20
+        - node --version
+        - npm --version
+        - echo "Installing frontend dependencies"
+        - npm ci --production=false
+        - echo "Dependencies installed successfully"
+    build:
+      commands:
+        - echo "Building frontend application"
+        - npm run build
+        - echo "Frontend build completed"
+    postBuild:
+      commands:
+        - echo "Listing build artifacts"
+        - ls -la dist/
+  artifacts:
+    baseDirectory: dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - ~/.npm/**/*
