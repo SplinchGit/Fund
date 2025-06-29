@@ -1,7 +1,11 @@
-import { defineAuth } from '@aws-amplify/backend';
+import { defineStorage } from '@aws-amplify/backend';
 
-export const auth = defineAuth({
-  loginWith: {
-    email: true,
-  },
+export const storage = defineStorage({
+  name: 'fund-storage',
+  access: (allow) => ({
+    'campaign-images/*': [
+      allow.authenticated.to(['read', 'write', 'delete']),
+      allow.guest.to(['read'])
+    ]
+  })
 });

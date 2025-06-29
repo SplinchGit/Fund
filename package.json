@@ -21,6 +21,8 @@
   },
   "dependencies": {
     "@aws-amplify/auth": "^6.12.4",
+    "@aws-amplify/backend": "^1.16.1",
+    "@aws-amplify/backend-cli": "^1.7.2",
     "@aws-amplify/cli": "^13.0.1",
     "@aws-amplify/storage": "^6.8.4",
     "@aws-sdk/client-dynamodb": "^3.798.0",
@@ -31,7 +33,9 @@
     "@worldcoin/minikit-js": "^1.9.2",
     "@worldcoin/minikit-react": "^1.9.3",
     "aws-amplify": "^6.15.0",
+    "aws-cdk-lib": "^2.189.1",
     "class-variance-authority": "^0.7.1",
+    "constructs": "^10.4.2",
     "eruda": "^3.4.1",
     "ethers": "^6.13.7",
     "jsonwebtoken": "^9.0.2",
@@ -45,8 +49,6 @@
     "zod": "^3.24.3"
   },
   "devDependencies": {
-    "@aws-amplify/backend": "^1.16.1",
-    "@aws-amplify/backend-cli": "^1.7.2",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.15.3",
     "@types/react": "^19.1.2",
@@ -54,8 +56,6 @@
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.21",
-    "aws-cdk-lib": "^2.189.1",
-    "constructs": "^10.4.2",
     "esbuild": "^0.25.5",
     "eslint": "^9.25.1",
     "postcss": "^8.5.3",
