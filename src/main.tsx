@@ -238,7 +238,7 @@ const initializeApp = async () => {
 };
 
 // # ############################################################################ #
-// # #                           SECTION 10 - APP LAUNCH                            #
+// # #                         SECTION 10 - APP LAUNCH                            #
 // # ############################################################################ #
 // Launch the application
 initializeApp().catch(error => {
