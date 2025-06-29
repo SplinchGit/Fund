@@ -12,10 +12,9 @@ import { campaignService, CampaignPayload } from "../services/CampaignService";
 import { useAuth } from "./AuthContext";
 import { uploadData } from '@aws-amplify/storage';
 
-// Define categories (or import from a shared constants file)
 const PREDEFINED_CATEGORIES = [
     "Technology & Innovation",
-    "Creative Works",
+    "Creative Works", 
     "Community & Social Causes",
     "Small Business & Entrepreneurship",
     "Health & Wellness",
