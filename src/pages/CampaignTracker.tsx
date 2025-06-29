@@ -172,7 +172,7 @@ export const CampaignTracker: React.FC<CampaignTrackerProps> = ({ deleteButtonSt
   }
 
 // # ############################################################################ #
-// # #                 SECTION 7 - JSX RETURN: CAMPAIGNS LIST (CLEANED UP)      #
+// # #                  SECTION 7 - JSX RETURN: CAMPAIGNS LIST (CLEANED UP)      #
 // # ############################################################################ #
   return (
     <div>
