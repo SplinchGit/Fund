@@ -711,7 +711,7 @@ const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   }, [id, donationsPerPage]);
 
   // # ############################################################################ #
-  // # #           SECTION 9 - DONATION SUBMIT HANDLER                            #
+  // # #           SECTION 9 - DONATION SUBMIT HANDLER                              #
   // # ############################################################################ #
   const handleDonationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
