@@ -1,4 +1,4 @@
-// src/aws-config.ts - Fixed with S3 Storage configuration
+// src/aws-config.ts - Fixed with S3 Storage configuration 
 import { Amplify } from 'aws-amplify';
 
 // Default configuration values
