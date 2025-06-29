@@ -16,7 +16,7 @@ const storage = defineStorage({
 });
 
 /**
- * Backend with S3 storage for campaign images
+ * Backend with S3 storage for campaign images 
  */
 export const backend = defineBackend({
   storage
