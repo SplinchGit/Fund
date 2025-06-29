@@ -1,4 +1,4 @@
-// src/aws-config.ts - Simplified approach for Amplify compatibility
+// src/aws-config.ts - Fixed with S3 Storage configuration
 import { Amplify } from 'aws-amplify';
 
 // Default configuration values
@@ -12,7 +12,6 @@ export const configureAmplify = () => {
     console.log('Starting Amplify configuration...');
     
     // Create a base configuration using any to bypass TypeScript errors
-    // This is necessary due to complex typing in AWS Amplify
     const authConfig: any = {
       Cognito: {
         userPoolClientId: import.meta.env.VITE_COGNITO_CLIENT_ID || DEFAULT_CONFIG.userPoolClientId,
@@ -24,9 +23,6 @@ export const configureAmplify = () => {
       }
     };
 
-    // Log configuration for debugging
-    console.log('Amplify Auth configuration:', JSON.stringify(authConfig, null, 2));
-
     // Only add identityPoolId if it's defined
     if (import.meta.env.VITE_COGNITO_IDENTITY_POOL_ID) {
       authConfig.Cognito.identityPoolId = import.meta.env.VITE_COGNITO_IDENTITY_POOL_ID;
@@ -35,12 +31,22 @@ export const configureAmplify = () => {
       console.log('No identity pool ID found in environment variables');
     }
 
-    // Configure Amplify with our auth settings
+    // 🔧 FIX: Add Storage configuration for S3
+    const storageConfig: any = {
+      S3: {
+        bucket: import.meta.env.VITE_S3_BUCKET_NAME || 'fund-image-uploads', // Your chosen bucket name
+        region: import.meta.env.VITE_AWS_REGION || 'eu-west-2',
+      }
+    };
+
+    // Configure Amplify with both auth and storage
     Amplify.configure({
-      Auth: authConfig
+      Auth: authConfig,
+      Storage: storageConfig // 🔧 This was missing!
     });
     
     console.log('Amplify configuration completed successfully');
+    console.log('Storage bucket configured:', storageConfig.S3.bucket);
     return true;
   } catch (error) {
     console.error('Error configuring Amplify:', error);
@@ -57,7 +63,7 @@ export const configureAmplify = () => {
           }
         }
       });
-      console.log('Fallback configuration applied');
+      console.log('Fallback configuration applied (no storage)');
       return true;
     } catch (fallbackError) {
       console.error('Fallback configuration also failed:', fallbackError);

@@ -1,9 +1,23 @@
 import { defineBackend } from '@aws-amplify/backend';
+import { defineStorage } from '@aws-amplify/backend';
+
+// Define storage for campaign image uploads
+const storage = defineStorage({
+  name: 'fund-image-uploads',
+  access: (allow) => ({
+    'campaign-uploads/*': [
+      allow.authenticated.to(['read', 'write', 'delete']),
+      allow.guest.to(['read'])
+    ],
+    'raw-campaign-uploads/*': [
+      allow.authenticated.to(['read', 'write', 'delete'])
+    ]
+  })
+});
 
 /**
- * Minimal backend - just enough for Amplify to deploy frontend
- * Uses existing backend infrastructure
+ * Backend with S3 storage for campaign images
  */
 export const backend = defineBackend({
-  // Empty - we don't want Amplify managing our existing resources
+  storage
 });
