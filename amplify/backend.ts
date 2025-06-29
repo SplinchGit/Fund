@@ -1,11 +1,11 @@
-import { defineBackend } from '@aws-amplify/backend';
-import { auth } from './auth/resource';
-import { storage } from './storage/resource';
+import { defineStorage } from '@aws-amplify/backend';
 
-/**
- * Backend with auth and S3 storage for campaign images 
- */
-export const backend = defineBackend({
-  auth,
-  storage
+export const storage = defineStorage({
+  name: 'fund-storage',
+  access: (allow) => ({
+    'campaign-images/*': [
+      allow.authenticated.to(['read', 'write', 'delete']),
+      allow.guest.to(['read'])
+    ]
+  })
 });
