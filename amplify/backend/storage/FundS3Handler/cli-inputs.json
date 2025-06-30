@@ -1,0 +1,14 @@
+{
+  "resourceName": "FundS3Handler",
+  "policyUUID": "c2adb8ba",
+  "bucketName": "fundbucketimages001",
+  "storageAccess": "auth",
+  "guestAccess": [],
+  "authAccess": [
+    "CREATE_AND_UPDATE",
+    "READ",
+    "DELETE"
+  ],
+  "triggerFunction": "NONE",
+  "groupAccess": {}
+}
