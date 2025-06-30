@@ -28,7 +28,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom'; // Import BrowserRouter here
 import App from './App';
 import './index.css';
-import { configureAmplify } from './aws-config';      // AWS Amplify setup (Keep if used for backend)
+// import { configureAmplify } from './aws-config';      // AWS Amplify setup (Keep if used for backend)
 import ErudaProvider from './debug/ErudaProvider';   // In-app debug console
 import MiniKitProvider from './MiniKitProvider';     // Official World ID MiniKit provider
 // Import the AuthProvider
@@ -111,12 +111,13 @@ const testAPIConnectivity = async (): Promise<void> => {
 // # #                      SECTION 5 - AMPLIFY INITIALIZATION                       #
 // # ############################################################################ #
 // Initialize Amplify (Keep if needed for backend)
-try {
-  configureAmplify();
-  console.log('[main.tsx] Amplify configured successfully');
-} catch (error) {
-  console.error('[main.tsx] Failed to configure Amplify:', error);
-}
+// Amplify configuration skipped: './aws-config' is not a module.
+// try {
+//   configureAmplify();
+//   console.log('[main.tsx] Amplify configured successfully');
+// } catch (error) {
+//   console.error('[main.tsx] Failed to configure Amplify:', error);
+// }
 
 // # ############################################################################ #
 // # #                    SECTION 6 - ENVIRONMENT VARIABLES LOGGING                     #

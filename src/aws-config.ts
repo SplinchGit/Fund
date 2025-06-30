@@ -1,86 +1,41 @@
-// src/aws-config.ts - Fixed with S3 Storage configuration 
-import { Amplify } from 'aws-amplify';
+// src/aws-exports.d.ts
+// This file provides TypeScript declarations for the auto-generated aws-exports.js module.
+// It helps TypeScript understand the shape of the 'awsmobile' configuration object,
+// resolving the "Could not find a declaration file" error.
 
-// Default configuration values
-const DEFAULT_CONFIG = {
-    userPoolClientId: '4scug8v54ekmj6d48ihastfs9i',
-    userPoolId: 'eu-west-2_Voxip1n3G'
-};
+declare module 'aws-exports' {
+  // Declare the shape of the awsmobile object that is exported from aws-exports.js
+  // This interface should reflect the properties that Amplify populates in the file.
+  interface AmplifyConfig {
+    aws_project_region: string;
+    aws_cognito_identity_pool_id?: string;
+    aws_cognito_region?: string;
+    aws_user_pools_id?: string;
+    aws_user_pools_web_client_id?: string;
+    oauth?: Record<string, any>;
+    aws_cognito_username_attributes?: string[];
+    aws_cognito_social_providers?: string[];
+    aws_cognito_signup_attributes?: string[];
+    aws_cognito_mfa_configuration?: string;
+    aws_cognito_mfa_types?: string[];
+    aws_cognito_password_protection_settings?: {
+      passwordPolicyMinLength?: number;
+      passwordPolicyCharacters?: string[];
+    };
+    aws_cognito_verification_mechanisms?: string[];
+    aws_user_files_s3_bucket?: string;
+    aws_user_files_s3_bucket_region?: string;
+    aws_appsync_graphqlEndpoint?: string;
+    aws_appsync_region?: string;
+    aws_appsync_authenticationType?: string;
+    aws_appsync_apiKey?: string;
+    // Add any other properties that might be present in your aws-exports.js
+    // For example, if you have Analytics, Push Notifications, etc.
+    // aws_mobile_analytics_app_id?: string;
+    // aws_mobile_analytics_region?: string;
+  }
 
-export const configureAmplify = () => {
-    try {
-        console.log('Starting Amplify configuration...');
-        
-        // Create a base configuration using any to bypass TypeScript errors
-        // Note: For newer Amplify (v6+), 'Cognito' might be directly under 'Auth'
-        // and its structure might be slightly different. Assuming v5 structure here.
-        const authConfig: any = {
-            Cognito: {
-                userPoolClientId: import.meta.env.VITE_COGNITO_CLIENT_ID || DEFAULT_CONFIG.userPoolClientId,
-                userPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID || DEFAULT_CONFIG.userPoolId,
-                loginWith: {
-                    email: true,
-                    username: true
-                }
-            }
-        };
-
-        // Only add identityPoolId if it's defined in the environment variables
-        if (import.meta.env.VITE_COGNITO_IDENTITY_POOL_ID) {
-            authConfig.Cognito.identityPoolId = import.meta.env.VITE_COGNITO_IDENTITY_POOL_ID;
-            console.log('Identity pool ID included in configuration:', authConfig.Cognito.identityPoolId);
-        } else {
-            console.warn('No VITE_COGNITO_IDENTITY_POOL_ID found in environment variables. S3 uploads might fail.');
-        }
-
-        // 🔧 FIX: Add Storage configuration for S3 using env variables
-        const storageConfig: any = {
-            S3: {
-                // Ensure VITE_S3_BUCKET_NAME matches the actual bucket created by Amplify CLI or manually
-                bucket: import.meta.env.VITE_S3_BUCKET_NAME || 'fund-image-uploads', 
-                region: import.meta.env.VITE_AWS_REGION || 'eu-west-2',
-            }
-        };
-
-        // Configure Amplify with both Auth and Storage
-        Amplify.configure({
-            Auth: authConfig,
-            Storage: storageConfig // This was confirmed as added previously
-            // Add API config here if not already handled elsewhere, e.g.:
-            // API: {
-            //     endpoints: [
-            //         {
-            //             name: "FundAPI",
-            //             endpoint: import.meta.env.VITE_AMPLIFY_API,
-            //             region: import.meta.env.VITE_AWS_REGION,
-            //         },
-            //     ]
-            // }
-        });
-        
-        console.log('Amplify configuration completed successfully.');
-        console.log('Configured Storage bucket:', storageConfig.S3.bucket);
-        return true;
-    } catch (error) {
-        console.error('Error configuring Amplify:', error);
-        
-        // Try with minimal configuration as fallback if main config fails
-        try {
-            console.log('Attempting fallback configuration...');
-            Amplify.configure({
-                Auth: {
-                    Cognito: {
-                        userPoolClientId: DEFAULT_CONFIG.userPoolClientId,
-                        userPoolId: DEFAULT_CONFIG.userPoolId,
-                        loginWith: { email: true, username: true }
-                    }
-                }
-            });
-            console.log('Fallback configuration applied (no storage or identity pool configured).');
-            return true;
-        } catch (fallbackError) {
-            console.error('Fallback configuration also failed:', fallbackError);
-            return false;
-        }
-    }
-};
+  // Export the default configuration object
+  const awsmobile: AmplifyConfig;
+  export default awsmobile;
+}
