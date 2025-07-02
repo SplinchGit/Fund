@@ -1,15 +1,17 @@
 // src/components/CampaignCard.tsx
 // (Days Left display removed)
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Campaign as CampaignData } from '../services/CampaignService'; // Adjust path if CampaignService is elsewhere
+import { ensService } from '../services/EnsService';
 
 export interface CampaignDisplayInfo extends CampaignData {
   daysLeft?: number; // Remains optional, but will no longer be displayed by this card
-  creator?: string;
+  creator?: string; // This will now be the formatted ENS name or truncated address
   isVerified?: boolean;
   progressPercentage: number;
+  ownerEnsName?: string; // Add a field to store the resolved ENS name
 }
 
 export interface CampaignCardProps {
@@ -25,8 +27,8 @@ export interface CampaignCardProps {
 const cardStyles: { [key: string]: React.CSSProperties } = {
   campaignCard: {
     backgroundColor: 'white',
-    borderRadius: '12px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+    borderRadius: '16px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column' as const,
@@ -34,111 +36,109 @@ const cardStyles: { [key: string]: React.CSSProperties } = {
     height: '100%',
     boxSizing: 'border-box' as const,
     textAlign: 'left' as const,
+    transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+    '&:hover': {
+      transform: 'translateY(-5px)',
+      boxShadow: '0 12px 36px rgba(0,0,0,0.18)',
+    },
   },
   cardImage: {
     width: '100%',
-    height: '180px',
+    height: '200px',
     objectFit: 'cover' as const,
     borderBottom: '1px solid #f0f0f0',
   },
   noImagePlaceholder: {
     width: '100%',
-    height: '90px',
+    height: '100px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#f1f3f4',
     color: '#9aa0a6',
-    fontSize: '1rem',
+    fontSize: '1.1rem',
     borderBottom: '1px solid #e0e0e0',
     boxSizing: 'border-box' as const,
   },
   cardContent: {
-    padding: '1rem',
+    padding: '1.25rem',
     flexGrow: 1,
     display: 'flex',
     flexDirection: 'column' as const,
     boxSizing: 'border-box' as const,
   },
   cardTitle: {
-    fontSize: '1.125rem',
-    fontWeight: 600,
+    fontSize: '1.35rem',
+    fontWeight: 700,
     color: '#202124',
-    marginBottom: '0.5rem',
+    marginBottom: '0.6rem',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap' as const,
   },
   cardDescription: {
-    fontSize: '0.875rem',
+    fontSize: '0.95rem',
     color: '#5f6368',
-    marginBottom: '0.75rem',
+    marginBottom: '1rem',
     display: '-webkit-box',
     WebkitLineClamp: 3,
     WebkitBoxOrient: 'vertical' as const,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    minHeight: 'calc(3 * 1.4em)',
-    lineHeight: '1.4em',
+    minHeight: 'calc(3 * 1.5 * 0.95rem)',
+    lineHeight: '1.5em',
     flexGrow: 1,
   },
   progressBar: {
     width: '100%',
-    height: '8px',
+    height: '10px',
     backgroundColor: '#e9ecef',
-    borderRadius: '4px',
+    borderRadius: '5px',
     overflow: 'hidden',
-    marginBottom: '0.5rem',
+    marginBottom: '0.6rem',
     marginTop: 'auto', 
   },
   progressFill: {
     height: '100%',
     backgroundColor: '#34a853',
-    borderRadius: '4px',
+    borderRadius: '5px',
     transition: 'width 0.4s ease-in-out',
   },
   progressStats: {
     display: 'flex',
     justifyContent: 'space-between',
-    fontSize: '0.75rem',
+    fontSize: '0.85rem',
     color: '#5f6368',
-    // marginBottom: '0.5rem', // Adjusted: daysLeftText will provide bottom margin for content area
+    marginBottom: '1rem',
   },
-  // daysLeftText style is no longer needed if we remove the element
-  // daysLeftText: {
-  //   fontSize: '0.75rem',
-  //   color: '#5f6368',
-  //   textAlign: 'right' as const,
-  //   marginBottom: '0.75rem', 
-  // },
   cardFooter: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '0.75rem 1rem',
+    padding: '1rem 1.25rem',
     borderTop: '1px solid #f1f3f4',
     backgroundColor: '#fcfcfc',
     boxSizing: 'border-box' as const,
-    minHeight: '50px',
+    minHeight: '60px',
   },
   creatorDetails: {
       display: 'flex',
       alignItems: 'center',
       flexShrink: 1, 
       overflow: 'hidden', 
-      marginRight: '0.5rem', 
+      marginRight: '0.75rem', 
   },
   creatorAvatar: {
-    width: '24px',
-    height: '24px',
+    width: '32px',
+    height: '32px',
     borderRadius: '50%',
     backgroundColor: '#e0e0e0',
-    marginRight: '0.5rem',
+    marginRight: '0.6rem',
     display: 'inline-block',
     flexShrink: 0,
   },
   creatorName: {
-    fontSize: '0.75rem',
+    fontSize: '0.9rem',
     color: '#5f6368',
     whiteSpace: 'nowrap' as const,
     overflow: 'hidden',
@@ -149,23 +149,23 @@ const cardStyles: { [key: string]: React.CSSProperties } = {
     alignItems: 'center',
     backgroundColor: 'rgba(52, 168, 83, 0.1)',
     color: '#34a853',
-    fontSize: '0.6rem',
-    padding: '0.1rem 0.25rem',
-    borderRadius: '0.125rem',
-    marginLeft: '0.5rem',
-    fontWeight: 500,
+    fontSize: '0.7rem',
+    padding: '0.15rem 0.4rem',
+    borderRadius: '0.15rem',
+    marginLeft: '0.6rem',
+    fontWeight: 600,
     flexShrink: 0,
   },
   actionButtonsContainer: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.5rem', 
+    gap: '0.6rem', 
     flexShrink: 0, 
   },
   actionButton: { 
-    fontSize: '0.8rem', 
-    padding: '0.375rem 0.75rem', 
-    borderRadius: '4px', 
+    fontSize: '0.9rem', 
+    padding: '0.4rem 0.9rem', 
+    borderRadius: '6px', 
     textDecoration: 'none', 
     color: 'white',
     cursor: 'pointer',
@@ -176,7 +176,7 @@ const cardStyles: { [key: string]: React.CSSProperties } = {
 };
 
 export const CampaignCard: React.FC<CampaignCardProps> = ({
-  campaign,
+  campaign: initialCampaign,
   showViewDetailsButton = true,
   showAdminActions,
   onEdit,
@@ -184,6 +184,26 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
   editButtonStyle,
   deleteButtonStyle,
 }) => {
+  const [campaign, setCampaign] = useState(initialCampaign);
+
+  useEffect(() => {
+    const resolveEns = async () => {
+      if (initialCampaign.ownerId) {
+        const ensName = await ensService.formatAddressOrEns(initialCampaign.ownerId);
+        setCampaign(prev => ({
+          ...prev,
+          creator: ensName,
+          ownerEnsName: ensName, // Store the resolved ENS name separately if needed
+        }));
+      }
+    };
+    resolveEns();
+  }, [initialCampaign.ownerId, initialCampaign]);
+
+  useEffect(() => {
+    setCampaign(initialCampaign);
+  }, [initialCampaign]);
+
 
   const handleEdit = () => {
     if (onEdit && campaign.id) {

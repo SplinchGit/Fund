@@ -10,6 +10,7 @@ import { useAuth } from '../components/AuthContext';
 // Ensure CampaignData from CampaignService includes 'category'
 import { campaignService, Campaign as CampaignData } from '../services/CampaignService';
 import { triggerMiniKitWalletAuth } from '../MiniKitProvider';
+import { ensService } from '../services/EnsService';
 
 // Import Swiper React components and styles
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -151,13 +152,13 @@ const LandingPage: React.FC = () => {
                 
                 if (result.success && result.campaigns) {
                     // Transform campaigns for display
-                    const displayCampaigns: CampaignDisplay[] = result.campaigns.map(campaign => ({
+                    const displayCampaigns: CampaignDisplay[] = await Promise.all(result.campaigns.map(async campaign => ({
                         ...campaign,
-                        creator: formatAddress(campaign.ownerId),
+                        creator: await ensService.formatAddressOrEns(campaign.ownerId),
                         isVerified: true, // Assuming default or to be fetched later
                         progressPercentage: campaign.goal > 0 ? Math.min(Math.round((campaign.raised / campaign.goal) * 100), 100) : 0,
                         // 'category' should now be part of 'campaign' object from service
-                    }));
+                    })));
                     
                     setCampaigns(displayCampaigns);
                     console.log('[LandingPage] Campaigns processed and set successfully:', displayCampaigns.length);
@@ -300,8 +301,11 @@ const LandingPage: React.FC = () => {
     // # ############################################################################ #
     // # #                       SECTION 13 - HELPER FUNCTIONS                       #
     // # ############################################################################ #
-    const formatAddress = (address: string): string => address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Anonymous';
-    const isActivePath = (path: string): boolean => location.pathname === path || (path === '/' && location.pathname === '/landing') || (path === '/campaigns' && (location.pathname === '/campaigns' || location.pathname.startsWith('/campaigns/')));
+    const isActivePath = (path: string, locationPathname: string): boolean => locationPathname === path || (path === '/' && locationPathname === '/landing') || (path === '/campaigns' && (locationPathname === '/campaigns' || locationPathname.startsWith('/campaigns/')));
+
+const formatAddressForDisplay = async (address: string): Promise<string> => {
+    return await ensService.formatAddressOrEns(address);
+};
 
     // # ############################################################################ #
     // # #                     SECTION 14 - INLINE STYLES OBJECT                     #
@@ -318,16 +322,17 @@ const LandingPage: React.FC = () => {
         button: { padding: '0.5rem 0.75rem', borderRadius: '0.25rem', fontWeight: 500, cursor: 'pointer', textDecoration: 'none', textAlign: 'center' as const, fontSize: '0.875rem', transition: 'background-color 0.2s, border-color 0.2s', border: '1px solid transparent', minHeight: '36px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
         buttonPrimary: { backgroundColor: '#1a73e8', color: 'white', borderColor: '#1a73e8' },
         buttonSecondary: { backgroundColor: '#f1f3f4', color: '#202124', borderColor: '#dadce0' },
-        hero: { 
-            background: '#f5f7fa', 
-            padding: '0.5rem 1rem 1.5rem', // UPDATED: Reduced top padding
-            textAlign: 'center' as const, 
-            width: '100%', 
-            boxSizing: 'border-box' as const, 
-            marginBottom: '0.5rem', 
+        hero: {
+            background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%)',
+            padding: '2rem 1rem 3rem',
+            textAlign: 'center' as const,
+            width: '100%',
+            boxSizing: 'border-box' as const,
+            marginBottom: '1rem',
+            color: 'white',
         },
-        heroTitle: { fontSize: '2rem', fontWeight: 700, color: '#202124', marginBottom: '0.25rem', padding: 0 },
-        heroSubtitle: { fontSize: '1.125rem', color: '#5f6368', margin: '0 auto 1rem', maxWidth: '800px', padding: 0 },
+        heroTitle: { fontSize: '2.5rem', fontWeight: 800, marginBottom: '0.5rem', padding: 0, textShadow: '0 2px 4px rgba(0,0,0,0.2)' },
+        heroSubtitle: { fontSize: '1.25rem', margin: '0 auto 1.5rem', maxWidth: '800px', padding: 0, opacity: 0.9 },
         searchAndFilterContainer: {
             display: 'flex',
             flexDirection: 'column' as const,
@@ -356,52 +361,53 @@ const LandingPage: React.FC = () => {
         },
         campaignsSection: { padding: '0.5rem 0 2rem', flexGrow: 1, width: '100%', boxSizing: 'border-box' as const, },
         sectionHeader: { textAlign: 'center' as const, marginBottom: '1rem' },
-        sectionTitle: { fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.25rem', padding: 0, color: '#202124' },
-        sectionSubtitle: { color: '#5f6368', fontSize: '1rem', margin: '0 auto 1rem', padding: 0, maxWidth: '700px' },
+        sectionTitle: { fontSize: '2rem', fontWeight: 700, marginBottom: '0.5rem', padding: 0, color: '#202124' },
+        sectionSubtitle: { color: '#5f6368', fontSize: '1.1rem', margin: '0 auto 1.5rem', padding: 0, maxWidth: '700px' },
         swiperContainer: { width: '100%', flexGrow: 1, minHeight: 0, padding: '0.5rem 0', position: 'relative' as const, },
         swiperSlide: { display: 'flex', justifyContent: 'center', alignItems: 'stretch', padding: '0 0.25rem', boxSizing: 'border-box' as const, },
-        campaignCard: { backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', overflow: 'hidden', transition: 'transform 0.2s, box-shadow 0.2s', display: 'flex', flexDirection: 'column' as const, width: '100%', height: 'auto', boxSizing: 'border-box' as const, },
+        campaignCard: { backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 6px 20px rgba(0,0,0,0.15)', overflow: 'hidden', transition: 'transform 0.2s, box-shadow 0.2s', display: 'flex', flexDirection: 'column' as const, width: '100%', height: 'auto', boxSizing: 'border-box' as const, },
         cardImage: { width: '100%', height: '180px', objectFit: 'cover' as const },
         noImagePlaceholder: { width: '100%', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f3f4', color: '#9aa0a6', fontSize: '0.875rem', boxSizing: 'border-box' as const },
-        cardContent: { padding: '1rem', textAlign: 'left' as const, flexGrow: 1, display: 'flex', flexDirection: 'column' as const, boxSizing: 'border-box' as const },
-        cardTitle: { fontSize: '1.125rem', fontWeight: 600, color: '#202124', marginBottom: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
-        cardDescription: { fontSize: '0.875rem', color: '#5f6368', marginBottom: '0.75rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden', textOverflow: 'ellipsis', minHeight: 'calc(3 * 1.5 * 0.875rem)', lineHeight: 1.5, flexGrow: 1},
+        cardContent: { padding: '1.25rem', textAlign: 'left' as const, flexGrow: 1, display: 'flex', flexDirection: 'column' as const, boxSizing: 'border-box' as const },
+        cardTitle: { fontSize: '1.25rem', fontWeight: 700, color: '#202124', marginBottom: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
+        cardDescription: { fontSize: '0.9rem', color: '#5f6368', marginBottom: '0.75rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden', textOverflow: 'ellipsis', minHeight: 'calc(3 * 1.5 * 0.875rem)', lineHeight: 1.5, flexGrow: 1},
         cardCategory: {
-            fontSize: '0.7rem',
-            fontWeight: 500,
-            color: '#1a73e8',
-            backgroundColor: 'rgba(26, 115, 232, 0.1)',
-            padding: '0.2rem 0.5rem',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            color: 'var(--color-primary)',
+            backgroundColor: 'rgba(66, 133, 244, 0.1)',
+            padding: '0.3rem 0.6rem',
             borderRadius: '4px',
             display: 'inline-block',
-            marginBottom: '0.5rem',
-            textTransform: 'capitalize' as const,
+            marginBottom: '0.6rem',
+            textTransform: 'uppercase' as const,
+            letterSpacing: '0.05em',
         },
-        progressBar: { width: '100%', height: '6px', backgroundColor: '#e9ecef', borderRadius: '3px', overflow: 'hidden', marginBottom: '0.5rem', marginTop: 'auto' },
-        progressFill: { height: '100%', backgroundColor: '#34a853', borderRadius: '3px',   transition: 'width 0.4s ease-in-out' },
-        progressStats: { display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#5f6368', marginBottom: '0.75rem' },
-        cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', borderTop: '1px solid #f1f3f4', backgroundColor: '#fcfcfc', boxSizing: 'border-box' as const, marginTop: 'auto' },
-        creatorInfo: { fontSize: '0.75rem', color: '#5f6368', display: 'flex', alignItems: 'center' },
-        creatorAvatar: { width: '1.25rem', height: '1.25rem', borderRadius: '50%', backgroundColor: '#e5e7eb', marginRight: '0.375rem', display: 'inline-block' },
-        verifiedBadge: { display: 'inline-flex', alignItems: 'center', backgroundColor: 'rgba(52, 168, 83, 0.1)', color: '#34a853', fontSize: '0.6rem', padding: '0.1rem 0.25rem', borderRadius: '0.125rem', marginLeft: '0.25rem', fontWeight: 500 },
-        viewButton: { fontSize: '0.8rem', padding: '0.375rem 0.75rem', backgroundColor: '#1a73e8', color: 'white', borderRadius: '4px', textDecoration: 'none', transition: 'background-color 0.2s' },
+        progressBar: { width: '100%', height: '8px', backgroundColor: '#e9ecef', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.6rem', marginTop: 'auto' },
+        progressFill: { height: '100%', backgroundColor: 'var(--color-secondary)', borderRadius: '4px',   transition: 'width 0.4s ease-in-out' },
+        progressStats: { display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#5f6368', fontWeight: 500, marginBottom: '0.8rem' },
+        cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem 1.25rem', borderTop: '1px solid #f1f3f4', backgroundColor: '#fcfcfc', boxSizing: 'border-box' as const, marginTop: 'auto' },
+        creatorInfo: { fontSize: '0.8rem', color: '#5f6368', display: 'flex', alignItems: 'center' },
+        creatorAvatar: { width: '1.5rem', height: '1.5rem', borderRadius: '50%', backgroundColor: '#e5e7eb', marginRight: '0.4rem', display: 'inline-block' },
+        verifiedBadge: { display: 'inline-flex', alignItems: 'center', backgroundColor: 'rgba(52, 168, 83, 0.1)', color: 'var(--color-secondary)', fontSize: '0.65rem', padding: '0.15rem 0.4rem', borderRadius: '0.15rem', marginLeft: '0.3rem', fontWeight: 600 },
+        viewButton: { fontSize: '0.85rem', padding: '0.4rem 0.9rem', backgroundColor: 'var(--color-primary)', color: 'white', borderRadius: '6px', textDecoration: 'none', transition: 'background-color 0.2s' },
         tabs: { display: 'flex', justifyContent: 'space-around', backgroundColor: '#fff', borderTop: '1px solid #e0e0e0', position: 'fixed' as const, bottom: 0, left: 0, width: '100%', zIndex: 100, padding: '0.75rem 0', boxShadow: '0 -1px 3px rgba(0,0,0,0.1)', boxSizing: 'border-box' as const, },
         tab: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', fontSize: '0.65rem', color: '#5f6368', textDecoration: 'none', padding: '0.1rem 0.5rem', flexGrow: 1, textAlign: 'center' as const, transition: 'color 0.2s' },
-        tabActive: { color: '#1a73e8' },
-        tabIcon: { width: '1.125rem', height: '1.125rem', marginBottom: '0.125rem' },
+        tabActive: { color: 'var(--color-primary)' },
+        tabIcon: { width: '1.2rem', height: '1.2rem', marginBottom: '0.15rem' },
         legalNotice: { 
-            fontSize: '0.7rem', 
+            fontSize: '0.75rem', 
             color: '#5f6368', 
-            padding: '1rem', 
-            marginTop: '0.25rem', 
-            marginBottom: '4.5rem', // CORRECTED: Reverted to a value that should clear the bottom navigation
+            padding: '1.5rem 1rem', 
+            marginTop: '0.5rem', 
+            marginBottom: '4.5rem', 
             borderTop: '1px solid #eee', 
             width: '100%', 
             boxSizing: 'border-box' as const, 
             textAlign: 'center' as const, 
         },
         errorMessage: { textAlign: 'center' as const, padding: '1rem', backgroundColor: 'rgba(234, 67, 53, 0.1)', border: '1px solid rgba(234, 67, 53, 0.2)', borderRadius: '8px', color: '#c53929', margin: '1rem auto', fontSize: '0.9rem', maxWidth: '1200px', boxSizing: 'border-box' as const, },
-        emptyStateContainer: { display: 'flex', flexDirection: 'column' as const, justifyContent: 'center', alignItems: 'center', padding: '3rem 1rem', textAlign: 'center' as const, color: '#5f6368', flexGrow: 1, minHeight: '300px', boxSizing: 'border-box' as const, },
+        emptyStateContainer: { display: 'flex', flexDirection: 'column' as const, justifyContent: 'center', alignItems: 'center', padding: '4rem 1rem', textAlign: 'center' as const, color: '#5f6368', flexGrow: 1, minHeight: '300px', boxSizing: 'border-box' as const, },
     };
 
     // # ############################################################################ #
@@ -423,46 +429,45 @@ const LandingPage: React.FC = () => {
     // # ############################################################################ #
     const CampaignCardComponent: React.FC<{ campaign: CampaignDisplay }> = ({ campaign }) => {
         return (
-            <div style={styles.campaignCard}>
-                {campaign.image ? ( 
-                    <img 
-                        src={campaign.image} 
-                        alt={campaign.title} 
-                        style={styles.cardImage} 
-                        onError={(e) => { 
-                            (e.target as HTMLImageElement).src = 'https://placehold.co/400x180/e5e7eb/9aa0a6?text=Img+Error'; 
-                        }} 
-                    /> 
-                ) : ( 
-                    <div style={styles.noImagePlaceholder}>No Image</div> 
-                )}
-                <div style={styles.cardContent}>
-                    {campaign.category && (
-                        <div style={styles.cardCategory}>{campaign.category}</div>
+            <Link to={`/campaigns/${campaign.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+                <div style={styles.campaignCard}>
+                    {campaign.image ? ( 
+                        <img 
+                            src={campaign.image} 
+                            alt={campaign.title} 
+                            style={styles.cardImage} 
+                            onError={(e) => { 
+                                (e.target as HTMLImageElement).src = 'https://placehold.co/400x180/e5e7eb/9aa0a6?text=Img+Error'; 
+                            }} 
+                        /> 
+                    ) : ( 
+                        <div style={styles.noImagePlaceholder}>No Image</div> 
                     )}
-                    <h3 style={styles.cardTitle}>{campaign.title}</h3>
-                    <p style={styles.cardDescription}>{campaign.description || 'No description provided.'}</p>
-                    <div style={styles.progressBar}>
-                        <div style={{ ...styles.progressFill, width: `${campaign.progressPercentage}%` }}></div>
-                    </div>
-                    <div style={styles.progressStats}>
-                        <span>{campaign.raised.toLocaleString()} / {campaign.goal.toLocaleString()} WLD</span>
-                        <span>{campaign.progressPercentage}%</span>
-                    </div>
-                </div>
-                <div style={styles.cardFooter}>
-                    <div style={styles.creatorInfo}>
-                        <span style={styles.creatorAvatar}></span> 
-                        <span>{campaign.creator}</span>
-                        {campaign.isVerified && ( 
-                            <span style={styles.verifiedBadge}>Verified</span> 
+                    <div style={styles.cardContent}>
+                        {campaign.category && (
+                            <div style={styles.cardCategory}>{campaign.category}</div>
                         )}
+                        <h3 style={styles.cardTitle}>{campaign.title}</h3>
+                        <p style={styles.cardDescription}>{campaign.description || 'No description provided.'}</p>
+                        <div style={styles.progressBar}>
+                            <div style={{ ...styles.progressFill, width: `${campaign.progressPercentage}%` }}></div>
+                        </div>
+                        <div style={styles.progressStats}>
+                            <span>{campaign.raised.toLocaleString()} / {campaign.goal.toLocaleString()} WLD</span>
+                            <span>{campaign.progressPercentage}%</span>
+                        </div>
                     </div>
-                    <Link to={`/campaigns/${campaign.id}`} style={styles.viewButton}>
-                        View Details
-                    </Link>
+                    <div style={styles.cardFooter}>
+                        <div style={styles.creatorInfo}>
+                            <span style={styles.creatorAvatar}></span> 
+                            <span>{campaign.creator}</span>
+                            {campaign.isVerified && ( 
+                                <span style={styles.verifiedBadge}>Verified</span> 
+                            )}
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </Link>
         );
     };
 

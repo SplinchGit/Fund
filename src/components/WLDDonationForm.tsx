@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { wldPaymentService, TransactionStatus, type WorldIDProofData } from '../services/WLDPaymentService';
+import { ensService } from '../services/EnsService';
 import { VerificationLevel } from '@worldcoin/minikit-js';
 
 // # ############################################################################ #
@@ -78,7 +79,8 @@ export const WLDDonationForm: React.FC<WLDDonationFormProps> = ({
         if (isMounted) {
           if (campaignAddress) {
             setRecipientAddress(campaignAddress);
-            setUiMessage(`Ready to donate to: ${campaignAddress.substring(0,6)}...${campaignAddress.substring(campaignAddress.length-4)}`);
+            const formattedAddress = await ensService.formatAddressOrEns(campaignAddress);
+            setUiMessage(`Ready to donate to: ${formattedAddress}`);
           } else {
             throw new Error('Campaign recipient address not found.');
           }

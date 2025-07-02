@@ -2,6 +2,7 @@
 // # #                           SECTION 1 - IMPORTS                            #
 // # ############################################################################ #
 import { authService } from './AuthService';
+import { ensService } from './EnsService';
 
 // # ############################################################################ #
 // # #                       SECTION 2 - INTERFACE DEFINITIONS                  #
@@ -210,7 +211,8 @@ class AdminService {
         return false;
       }
 
-      console.log(`[AdminService] Checking admin status for wallet ${authData.walletAddress.substring(0, 6)}...`);
+      const formattedWalletAddress = await ensService.formatAddressOrEns(authData.walletAddress);
+      console.log(`[AdminService] Checking admin status for wallet ${formattedWalletAddress}...`);
 
       // Call the server-side admin status endpoint (SECURITY FIX)
       const result = await this.makeRequest<AdminStatusResponse>(
@@ -220,7 +222,8 @@ class AdminService {
 
       if (result.success && result.data) {
         const isAdmin = result.data.isAdmin;
-        console.log(`[AdminService] Server-side admin status check: ${isAdmin} for wallet ${authData.walletAddress.substring(0, 6)}...`);
+        const formattedWalletAddress = await ensService.formatAddressOrEns(authData.walletAddress);
+        console.log(`[AdminService] Server-side admin status check: ${isAdmin} for wallet ${formattedWalletAddress}...`);
         return isAdmin;
       } else {
         console.error('[AdminService] Failed to check admin status:', result.error);
@@ -239,7 +242,8 @@ class AdminService {
   // # #                   SECTION 9 - PUBLIC METHOD: BAN USER                    #
   // # ############################################################################ #
   public async banUser(request: AdminBanUserRequest): Promise<AdminBanResult> {
-    console.log(`[AdminService] Banning user: ${request.walletAddress.substring(0, 6)}...`);
+    const formattedWalletAddress = await ensService.formatAddressOrEns(request.walletAddress);
+    console.log(`[AdminService] Banning user: ${formattedWalletAddress}...`);
 
     if (!request.walletAddress) {
       return { success: false, error: 'Wallet address is required' };
@@ -285,7 +289,8 @@ class AdminService {
   // # #                   SECTION 10 - PUBLIC METHOD: UNBAN USER                 #
   // # ############################################################################ #
   public async unbanUser(request: AdminUnbanUserRequest): Promise<AdminUnbanResult> {
-    console.log(`[AdminService] Unbanning user: ${request.walletAddress.substring(0, 6)}...`);
+    const formattedWalletAddress = await ensService.formatAddressOrEns(request.walletAddress);
+    console.log(`[AdminService] Unbanning user: ${formattedWalletAddress}...`);
 
     if (!request.walletAddress) {
       return { success: false, error: 'Wallet address is required' };

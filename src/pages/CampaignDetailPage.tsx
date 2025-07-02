@@ -9,6 +9,7 @@ import { useAuth } from '../components/AuthContext';
 import { campaignService, Campaign, Donation } from '../services/CampaignService';
 import { adminService } from '../services/AdminService'; // ADDED
 import { MiniKit, tokenToDecimals, Tokens, PayCommandInput } from '@worldcoin/minikit-js';
+import { ensService } from '../services/EnsService';
 
 // # ############################################################################ #
 // # #                     SECTION 2 - TYPE DEFINITIONS                         #
@@ -275,6 +276,51 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#e9ecef',
     cursor: 'not-allowed' as const,
     opacity: 0.7,
+  },
+  socialShareSection: {
+    marginTop: '1.5rem',
+    marginBottom: '1.5rem',
+    textAlign: 'center' as const,
+  },
+  socialShareTitle: {
+    fontSize: '1.125rem',
+    fontWeight: 600,
+    color: '#202124',
+    marginBottom: '1rem',
+  },
+  socialButtonsContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '1rem',
+    flexWrap: 'wrap' as const,
+  },
+  socialButton: {
+    padding: '0.75rem 1.25rem',
+    borderRadius: '6px',
+    fontWeight: 500,
+    cursor: 'pointer',
+    border: 'none',
+    color: 'white',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'background-color 0.2s',
+    textDecoration: 'none',
+  },
+  twitterButton: {
+    backgroundColor: '#1DA1F2',
+  },
+  facebookButton: {
+    backgroundColor: '#1877F2',
+  },
+  copyLinkButton: {
+    backgroundColor: '#607D8B',
+  },
+  socialIcon: {
+    marginRight: '0.5rem',
+    width: '1.25rem',
+    height: '1.25rem',
+    fill: 'currentColor',
   },
   donationsListSection: {
     marginTop: '1.5rem',
@@ -574,6 +620,37 @@ const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
   const [adminActionSuccess, setAdminActionSuccess] = useState('');
   const [adminActionError, setAdminActionError] = useState('');
 
+  // Social sharing state
+  const [copySuccess, setCopySuccess] = useState<string | null>(null);
+
+  // # ############################################################################ #
+  // # #           SECTION 9.5 - SOCIAL SHARING HANDLERS                        #
+  // # ############################################################################ #
+  const handleShareTwitter = useCallback(() => {
+    if (!campaign) return;
+    const tweetText = `Support ${campaign.title} on WorldFund!`;
+    const url = window.location.href;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(url)}`, '_blank');
+  }, [campaign]);
+
+  const handleShareFacebook = useCallback(() => {
+    if (!campaign) return;
+    const url = window.location.href;
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+  }, [campaign]);
+
+  const handleCopyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopySuccess('Link copied!');
+      setTimeout(() => setCopySuccess(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy: ', err);
+      setCopySuccess('Failed to copy!');
+      setTimeout(() => setCopySuccess(null), 2000);
+    }
+  }, []);
+
   // # ############################################################################ #
   // # #           SECTION 5 - EFFECT: FETCH CAMPAIGN DATA                        #
   // # ############################################################################ #
@@ -586,16 +663,28 @@ const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
         const result = await campaignService.fetchCampaign(id);
 
         if (result.success && result.campaign) {
-          setCampaign(result.campaign);
+          const fetchedCampaign = result.campaign;
+
+          // Resolve ENS name for campaign owner
+          if (fetchedCampaign.ownerId) {
+            const ownerEns = await ensService.formatAddressOrEns(fetchedCampaign.ownerId);
+            fetchedCampaign.ownerId = ownerEns; // Update ownerId to display ENS name
+          }
+
+          setCampaign(fetchedCampaign);
 
           // Handle donations - they should be in campaign.donations array
-          if (result.campaign.donations && Array.isArray(result.campaign.donations)) {
-            console.log(`[CampaignDetail] Found ${result.campaign.donations.length} donations in campaign data`);
+          if (fetchedCampaign.donations && Array.isArray(fetchedCampaign.donations)) {
+            console.log(`[CampaignDetail] Found ${fetchedCampaign.donations.length} donations in campaign data`);
 
-            // Convert to ExtendedDonation format and add transactionId if missing
-            const extendedDonations: ExtendedDonation[] = result.campaign.donations.map((donation, index) => ({
-              ...donation,
-              transactionId: donation.txHash || `donation-${index}-${Date.now()}`
+            // Convert to ExtendedDonation format and add transactionId if missing, and resolve donor ENS
+            const extendedDonations: ExtendedDonation[] = await Promise.all(fetchedCampaign.donations.map(async (donation, index) => {
+              const donorEns = donation.donor ? await ensService.formatAddressOrEns(donation.donor) : 'Anonymous';
+              return {
+                ...donation,
+                donor: donorEns,
+                transactionId: donation.txHash || `donation-${index}-${Date.now()}`
+              };
             }));
 
             // Show first page of donations
@@ -1013,7 +1102,7 @@ const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
             <h1 style={styles.title}>{campaign.title}</h1>
 
             <div style={styles.cardMeta}>
-              <span>Created by: {campaign.ownerId ? `${campaign.ownerId.slice(0, 6)}...${campaign.ownerId.slice(-4)}` : 'N/A'}</span>
+              <span>Created by: {campaign.ownerId || 'N/A'}</span>
               <span style={styles.metaSeparator}>•</span>
               <span>{new Date(campaign.createdAt).toLocaleDateString()}</span>
               <span style={styles.metaSeparator}>•</span>
@@ -1044,6 +1133,36 @@ const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
               <div style={styles.progressStats}>
                 <span style={styles.progressRaised}>{campaign.raised.toLocaleString()} WLD raised</span>
                 <span style={styles.progressGoal}>Goal: {campaign.goal.toLocaleString()} WLD</span>
+              </div>
+            </div>
+
+            <div style={styles.divider}></div>
+
+            {/* Social Share Section */}
+            <div style={styles.socialShareSection}>
+              <h2 style={styles.socialShareTitle}>Share This Campaign</h2>
+              <div style={styles.socialButtonsContainer}>
+                <button
+                  style={{ ...styles.socialButton, ...styles.twitterButton }}
+                  onClick={handleShareTwitter}
+                >
+                  <svg style={styles.socialIcon} viewBox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.37-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.4 7.5 3.53 4.73c-.36.62-.56 1.35-.56 2.14 0 1.48.75 2.79 1.91 3.56-.7-.02-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.81 3.44 4.2-.36.1-.74.15-1.13.15-.28 0-.55-.03-.81-.08 1.46 4.28 5.68 7.4 10.65 7.4-4.67 3.67-10.5 5.85-16.9 5.85-1.1 0-2.16-.06-3.2-.18C2.8 20.8 8.3 23 14.2 23c6.2 0 11.6-4.07 11.6-11.47 0-.17 0-.34-.01-.51.8-.58 1.49-1.3 2.04-2.13z"/></svg>
+                  Share on Twitter
+                </button>
+                <button
+                  style={{ ...styles.socialButton, ...styles.facebookButton }}
+                  onClick={handleShareFacebook}
+                >
+                  <svg style={styles.socialIcon} viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                  Share on Facebook
+                </button>
+                <button
+                  style={{ ...styles.socialButton, ...styles.copyLinkButton }}
+                  onClick={handleCopyLink}
+                >
+                  <svg style={styles.socialIcon} viewBox="0 0 24 24"><path d="M16 1H8C6.34 1 5 2.34 5 4v14c0 1.66 1.34 3 3 3h8c1.66 0 3-1.34 3-3V4c0-1.66-1.34-3-3-3zm-2 14h-4v-2h4v2zm0-4h-4V9h4v2zm0-4h-4V5h4v2z"/></svg>
+                  Copy Link
+                </button>
               </div>
             </div>
 
@@ -1132,7 +1251,7 @@ const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
                     <div key={donation.transactionId || donation.id || `donation-${idx}`} style={styles.donationItem}>
                       <div style={styles.donorInfo}>
                         <div style={styles.donorAddress}>
-                          {donation.donor ? `${donation.donor.slice(0, 6)}...${donation.donor.slice(-4)}` : 'Anonymous'}
+                          {donation.donor || 'Anonymous'}
                         </div>
                         <div style={styles.donationDate}>
                           {donation.createdAt ? new Date(donation.createdAt).toLocaleString() : ''}
@@ -1203,7 +1322,7 @@ const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
               
               <div style={styles.modalWarning}>
                 <strong>Campaign:</strong> {campaign?.title}<br/>
-                <strong>Owner:</strong> {campaign?.ownerId ? `${campaign.ownerId.slice(0, 6)}...${campaign.ownerId.slice(-4)}` : 'N/A'}
+                <strong>Owner:</strong> {campaign?.ownerId || 'N/A'}
               </div>
 
               {adminActionSuccess && (

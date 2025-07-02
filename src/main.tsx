@@ -209,6 +209,28 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 // # ############################################################################ #
 // Initialize app with API connectivity test
 const initializeApp = async () => {
+  // Check if the app is running on a mobile device
+  const isMobile = () => {
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    return /android|iphone|ipad|ipod|blackberry|windows phone/i.test(userAgent) ||
+           (window.innerWidth <= 768 && window.innerHeight <= 1024); // Simple check for smaller screens
+  };
+
+  if (!isMobile()) {
+    const rootEl = document.getElementById('root');
+    if (rootEl) {
+      rootEl.innerHTML = `
+        <div style="padding: 20px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;">
+          <h1>Access Restricted</h1>
+          <p>This application is designed to be accessed only from a mobile device.</p>
+          <p>Please open this link on your smartphone or tablet.</p>
+        </div>
+      `;
+    }
+    console.warn('Access restricted: Not a mobile device.');
+    return; // Stop further initialization
+  }
+
   console.log('[main.tsx] Starting app initialization...');
   
   // Run API connectivity test first

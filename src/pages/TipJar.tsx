@@ -7,6 +7,7 @@ import React, { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { IDKitWidget, VerificationLevel, ISuccessResult } from '@worldcoin/idkit';
 import { useAuth } from '../components/AuthContext';
+import { tipService } from '../services/TipService';
 
 // ############################################################################ #
 // # #             SECTION 1.5 - HELPER FOR WORLD ID APP ID                 #
@@ -232,6 +233,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontFamily: 'monospace, "Courier New", Courier',
     transition: 'border-color 0.2s, box-shadow 0.2s',
   },
+  textarea: {
+    width: '100%',
+    padding: '0.75rem 1rem',
+    fontSize: '1rem',
+    border: '1px solid #dadce0',
+    borderRadius: '6px',
+    resize: 'vertical' as const,
+    minHeight: '80px',
+    backgroundColor: 'white',
+    boxSizing: 'border-box' as const,
+    transition: 'border-color 0.2s, box-shadow 0.2s',
+  },
   verifyButton: {
     width: '100%',
     padding: '0.75rem 1rem',
@@ -410,6 +423,7 @@ const TipJar: React.FC = () => {
   const [tipAmount, setTipAmount] = useState<number | ''>('');
   const [customAmount, setCustomAmount] = useState<string>('');
   const [txHash, setTxHash] = useState('');
+  const [tipMessage, setTipMessage] = useState(''); // New state for tip message
   const [verifyingTx, setVerifyingTx] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -494,11 +508,25 @@ const TipJar: React.FC = () => {
     setErrorMessage('');
 
     try {
+      // Simulate transaction verification and then submit to backend
       await new Promise(resolve => setTimeout(resolve, 2000));
+
       if (txHash.startsWith('0x') && txHash.length >= 66) {
-        console.log('Mock Transaction Verified:', { txHash, amount: tipAmount });
-        setShowThankYou(true);
-        setErrorMessage(''); // Clear any previous error message
+        console.log('Mock Transaction Verified:', { txHash, amount: tipAmount, message: tipMessage });
+
+        // Submit tip to backend
+        const submitResult = await tipService.submitTip({
+          amount: tipAmount as number,
+          txHash: txHash,
+          message: tipMessage.trim() || undefined,
+        });
+
+        if (submitResult.success) {
+          setShowThankYou(true);
+          setErrorMessage(''); // Clear any previous error message
+        } else {
+          setErrorMessage(submitResult.error || 'Failed to record tip with backend.');
+        }
       } else {
         setErrorMessage('Invalid transaction hash. Please ensure it is correct and try again.');
       }
@@ -662,6 +690,19 @@ const TipJar: React.FC = () => {
                       )}
                     </button>
                   </div>
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Message (optional)</label>
+                  <textarea
+                    value={tipMessage}
+                    onChange={(e) => setTipMessage(e.target.value)}
+                    placeholder="Add a message with your tip (max 100 characters)"
+                    maxLength={100}
+                    rows={3}
+                    style={styles.textarea}
+                    disabled={verifyingTx}
+                  />
                 </div>
 
                 <ol style={styles.instructionsList}>

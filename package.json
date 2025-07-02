@@ -15,7 +15,7 @@
     "build": "vite build",
     "build:production": "vite build",
     "dev": "vite dev",
-    "lint": "eslint . --ext .ts,.tsx",
+    "lint": "eslint -c configs/linting/eslint.config.js . --ext .ts,.tsx",
     "start": "vite preview",
     "type-check": "tsc --noEmit"
   },

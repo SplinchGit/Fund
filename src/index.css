@@ -5,17 +5,36 @@
   --line-height-base: 1.5;
   --font-weight-base: 400;
 
-  --color-default: rgba(255, 255, 255, 0.87);
-  --bg-default: #242424;
+  --color-default: #202124; /* Darker text for light mode */
+  --bg-default: #f0f2f5; /* Light gray background */
+
+  /* New vibrant colors */
+  --color-primary: #4285F4; /* Google Blue */
+  --color-secondary: #34A853; /* Google Green */
+  --color-accent: #FBBC04; /* Google Yellow */
+  --color-danger: #EA4335; /* Google Red */
 }
 
 /* Base styles */
+html {
+  box-sizing: border-box; /* Global box-sizing for consistent padding */
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+html, body {
+  overflow: hidden; /* Prevent scroll bounce on iOS */
+}
+
 body {
   font-family: var(--font-sans);
   line-height: var(--line-height-base);
   font-weight: var(--font-weight-base);
   color: var(--color-default);
   background-color: var(--bg-default);
+  overscroll-behavior-y: contain; /* Prevent scroll bounce on iOS */
 }
 
 /* Global link styles */

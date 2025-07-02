@@ -15,6 +15,7 @@ import React, {
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/AuthService';
 import { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
+import { ensService } from '../services/EnsService';
 
 // # ############################################################################ #
 // # #                     SECTION 2 - CORE TYPE DEFINITIONS                    #
@@ -265,10 +266,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Store session data
     storeSessionData(token, address);
 
+    // Resolve ENS name for the address before updating state
+    const formattedAddress = await ensService.formatAddressOrEns(address);
+
     // Update auth state atomically
     updateAuthState({
       isAuthenticated: true,
-      walletAddress: address,
+      walletAddress: formattedAddress,
       sessionToken: token,
       isLoading: false,
       lastAuthAttempt: Date.now()
@@ -525,9 +529,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('[AuthContext] Session data found in storage');
 
       // First set authenticated state for quick UI update
+      const formattedAddress = await ensService.formatAddressOrEns(address);
       updateAuthState({
         isAuthenticated: true,
-        walletAddress: address,
+        walletAddress: formattedAddress,
         sessionToken: token,
         isLoading: true, // Keep loading while we verify
       }, true);

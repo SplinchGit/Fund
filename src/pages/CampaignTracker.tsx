@@ -10,6 +10,7 @@ import { useAuth } from '../components/AuthContext';
 import { campaignService, Campaign } from '../services/CampaignService';
 // Import the reusable CampaignCard and its interface
 import { CampaignCard, CampaignDisplayInfo } from '../components/CampaignCard'; 
+import { ensService } from '../services/EnsService';
 
 // ############################################################################ #
 // # #                        SECTION 1.5 - HELPER FUNCTIONS                     #
@@ -30,10 +31,7 @@ const formatDate = (dateString: string) => {
 // REMOVED: calculateDaysLeft function as it's no longer used for card display
 // and CampaignCard.tsx no longer displays it.
 
-const formatAddress = (address: string): string => {
-  if (!address || address.length < 10) return address || 'Unknown';
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-};
+// Removed formatAddress as ensService.formatAddressOrEns will handle it
 
 // # ############################################################################ #
 // # #                 SECTION 2 - COMPONENT: DEFINITION & STATE                  #
@@ -41,10 +39,10 @@ const formatAddress = (address: string): string => {
 
 interface CampaignTrackerProps {
   deleteButtonStyle?: React.CSSProperties;
-  // editButtonStyle?: React.CSSProperties; // You can pass this from Dashboard if needed
+  statusFilter?: 'active' | 'completed'; // New prop for filtering campaigns by status
 }
 
-export const CampaignTracker: React.FC<CampaignTrackerProps> = ({ deleteButtonStyle }) => {
+export const CampaignTracker: React.FC<CampaignTrackerProps> = ({ deleteButtonStyle, statusFilter = 'active' }) => {
   const { walletAddress } = useAuth();
   const navigate = useNavigate();
   const [userCampaigns, setUserCampaigns] = useState<CampaignDisplayInfo[]>([]);
@@ -70,14 +68,21 @@ export const CampaignTracker: React.FC<CampaignTrackerProps> = ({ deleteButtonSt
       try {
         const result = await campaignService.fetchUserCampaigns(walletAddress);
         if (result.success && result.campaigns) {
-          const transformedCampaigns: CampaignDisplayInfo[] = result.campaigns.map(campaign => ({
+          const filteredCampaigns = result.campaigns.filter(campaign => {
+            if (statusFilter === 'active') {
+              return campaign.status === 'active';
+            } else if (statusFilter === 'completed') {
+              return campaign.status === 'completed';
+            }
+            return true; // No filter applied if statusFilter is not 'active' or 'completed'
+          });
+
+          const transformedCampaigns: CampaignDisplayInfo[] = await Promise.all(filteredCampaigns.map(async campaign => ({
             ...campaign, 
             progressPercentage: campaign.goal > 0 ? Math.min(Math.round((campaign.raised / campaign.goal) * 100), 100) : 0,
-            // daysLeft is no longer calculated here
-            creator: campaign.ownerId ? formatAddress(campaign.ownerId) : 'You', 
-            isVerified: true, // Or determine based on actual campaign data
-            // The 'image' field from 'campaign' (which should be a URL) will be used by CampaignCard
-          }));
+            creator: campaign.ownerId ? await ensService.formatAddressOrEns(campaign.ownerId) : 'You', 
+            isVerified: true,
+          })));
           setUserCampaigns(transformedCampaigns);
         } else {
           setError(result.error || 'Failed to load your campaigns.');
@@ -91,7 +96,7 @@ export const CampaignTracker: React.FC<CampaignTrackerProps> = ({ deleteButtonSt
     };
 
     fetchUserCampaigns();
-  }, [walletAddress]);
+  }, [walletAddress, statusFilter]);
 
 // # ############################################################################ #
 // # #                 SECTION 4 - EVENT HANDLER: DELETE CAMPAIGN                 #
@@ -145,22 +150,26 @@ export const CampaignTracker: React.FC<CampaignTrackerProps> = ({ deleteButtonSt
         <p className="font-medium">Error Loading Campaigns</p>
         <p className="text-sm">{error}</p>
         <button
-          onClick={() => { 
+          onClick={async () => { 
             if (walletAddress) {
               setLoading(true); 
-              campaignService.fetchUserCampaigns(walletAddress).then(result => {
-                  if (result.success && result.campaigns) {
-                      const transformedCampaigns: CampaignDisplayInfo[] = result.campaigns.map(campaign => ({
-                          ...campaign,
-                          progressPercentage: campaign.goal > 0 ? Math.min(Math.round((campaign.raised / campaign.goal) * 100), 100) : 0,
-                          creator: campaign.ownerId ? formatAddress(campaign.ownerId) : 'You',
-                          isVerified: true,
-                      }));
-                      setUserCampaigns(transformedCampaigns);
-                      setError(null);
-                  } else { setError(result.error || 'Failed to reload campaigns.'); }
-              }).catch(err => { setError('Failed to reload campaigns.');
-              }).finally(() => setLoading(false));
+              try {
+                const result = await campaignService.fetchUserCampaigns(walletAddress, statusFilter);
+                if (result.success && result.campaigns) {
+                    const transformedCampaigns: CampaignDisplayInfo[] = await Promise.all(result.campaigns.map(async campaign => ({
+                        ...campaign,
+                        progressPercentage: campaign.goal > 0 ? Math.min(Math.round((campaign.raised / campaign.goal) * 100), 100) : 0,
+                        creator: campaign.ownerId ? await ensService.formatAddressOrEns(campaign.ownerId) : 'You',
+                        isVerified: true,
+                    })));
+                    setUserCampaigns(transformedCampaigns);
+                    setError(null);
+                } else { setError(result.error || 'Failed to reload campaigns.'); }
+              } catch (err) {
+                setError('Failed to reload campaigns.');
+              } finally {
+                setLoading(false);
+              }
             }
           }}
           className="mt-2 text-sm font-semibold text-red-700 hover:text-red-900 transition-colors"

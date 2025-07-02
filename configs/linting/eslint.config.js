@@ -1,16 +1,26 @@
-module.exports = {
-  root: true,
-  parser: '@typescript-eslint/parser',
-  plugins: ['@typescript-eslint'],
-  extends: [
-    'eslint:recommended',
-    'plugin:@typescript-eslint/recommended'
-  ],
-  env: {
-    browser: true,
-    node: true
+import globals from "globals";
+import pluginJs from "@eslint/js";
+import tseslint from "typescript-eslint";
+
+export default [
+  {
+    languageOptions: {
+      globals: globals.browser,
+      parser: tseslint.parser,
+      parserOptions: {
+        ecmaVersion: "latest",
+        sourceType: "module",
+        project: ['./tsconfig.json'],
+      },
+    },
+    plugins: {
+      typescript: tseslint.plugin,
+    },
+    rules: {
+      ...tseslint.configs.recommended.rules,
+      // Add your custom rules here
+    },
   },
-  rules: {
-    // Customize your linting rules here
-  }
-};
+  pluginJs.configs.recommended,
+  ...tseslint.configs.recommended,
+];

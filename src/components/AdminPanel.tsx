@@ -6,8 +6,9 @@
 /// <reference types="vite/client" />
 
 // # ############################################################################ #
-// # #                 SECTION 2 - ENVIRONMENT TYPE DEFINITIONS                 #
+// # #                 SECTION 2 - ENVIRONMENT TYPE DEFINITIONS                   #
 // # ############################################################################ #
+
 // Define ImportMetaEnv and ImportMeta interfaces for Vite environment variables
 interface ImportMetaEnv {
   MODE: string
@@ -38,7 +39,7 @@ import React, { useState, useCallback } from 'react';
 // Removed import for userStore and UserData as they are not used / implemented with backend
 
 // # ############################################################################ #
-// # #                 SECTION 4 - COMPONENT DEFINITION & STATE                 #
+// # #                 SECTION 4 - COMPONENT DEFINITION & STATE                  #
 // # ############################################################################ #
 const AdminPanel: React.FunctionComponent = () => {
   // State to manage if the panel is open or closed

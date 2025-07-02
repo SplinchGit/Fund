@@ -9,6 +9,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext';
 import { CampaignTracker } from './CampaignTracker';
 import { campaignService } from '../services/CampaignService';
+import { ensService } from '../services/EnsService';
+import BadgesDisplay from '../components/BadgesDisplay';
 
 // # ############################################################################ #
 // # # SECTION 2 - STYLES OBJECT DEFINITION (styles BEFORE responsiveStyles)    #
@@ -32,10 +34,15 @@ const styles: { [key: string]: React.CSSProperties } = {
   container: {
     margin: '0 auto',
     width: '100%',
-    padding: '1rem 0.5rem 2rem 0.5rem',
+    padding: '1.5rem 1rem 3rem 1rem',
     boxSizing: 'border-box' as const,
     maxWidth: '1200px',
     flexGrow: 1,
+    backgroundColor: '#ffffff', /* Subtle background for main content */
+    borderRadius: '12px',
+    boxShadow: '0 6px 20px rgba(0,0,0,0.08)',
+    marginTop: '1.5rem',
+    marginBottom: '1.5rem',
   },
   header: {
     background: 'white',
@@ -91,31 +98,31 @@ const styles: { [key: string]: React.CSSProperties } = {
   whiteSpace: 'nowrap' as const,
   backgroundColor: '#dc3545', // Only difference - red background
 },
-  dashboardHeader: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', marginBottom: '1.5rem', padding: '1rem 0.5rem 0.5rem 0.5rem', boxSizing: 'border-box' as const, textAlign: 'center' as const, },
-  dashboardTitle: { fontSize: '1.75rem', fontWeight: 700, color: '#202124', margin: 0, padding: 0, },
-  dashboardSubtitle: { fontSize: '0.9rem', color: '#5f6368', marginTop: '0.5rem', maxWidth: '600px', lineHeight: 1.5, },
-  walletInfo: { fontSize: '0.8rem', color: '#5f6368', display: 'flex', alignItems: 'center', },
+  dashboardHeader: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', marginBottom: '2rem', padding: '1rem 0.5rem 0.5rem 0.5rem', boxSizing: 'border-box' as const, textAlign: 'center' as const, },
+  dashboardTitle: { fontSize: '2rem', fontWeight: 700, color: '#202124', margin: 0, padding: 0, },
+  dashboardSubtitle: { fontSize: '1rem', color: '#5f6368', marginTop: '0.5rem', maxWidth: '600px', lineHeight: 1.5, },
+  walletInfo: { fontSize: '0.9rem', color: '#5f6368', display: 'flex', alignItems: 'center', },
   walletAddress: { marginRight: '1rem', },
   contentSection: { backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', padding: '1.5rem', marginBottom: '1.5rem', boxSizing: 'border-box' as const, },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', marginBottom: '2rem', },
-  statCard: { backgroundColor: '#ffffff', borderRadius: '8px', padding: '1.25rem', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', textAlign: 'center' as const, boxSizing: 'border-box' as const, },
-  statValue: { fontSize: '1.75rem', fontWeight: 700, color: '#1a73e8', margin: '0 0 0.25rem 0', padding: 0, },
-  statLabel: { fontSize: '0.8rem', color: '#5f6368', marginTop: '0.25rem', padding: 0, },
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.5rem', marginBottom: '2rem', },
+  statCard: { backgroundColor: '#ffffff', borderRadius: '8px', padding: '1.5rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', textAlign: 'center' as const, boxSizing: 'border-box' as const, },
+  statValue: { fontSize: '2rem', fontWeight: 700, color: 'var(--color-primary)', margin: '0 0 0.5rem 0', padding: 0, },
+  statLabel: { fontSize: '0.9rem', color: '#5f6368', marginTop: '0.25rem', padding: 0, },
   createButtonContainer: { textAlign: 'center' as const, margin: '1.5rem 0 2rem 0', },
   createButton: {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '0.6rem 1.2rem',
-    backgroundColor: '#1a73e8',
+    padding: '0.8rem 1.5rem',
+    backgroundColor: 'var(--color-primary)',
     color: 'white',
-    borderRadius: '0.25rem',
-    fontWeight: 500,
+    borderRadius: '8px',
+    fontWeight: 600,
     textDecoration: 'none',
-    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+    boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
     transition: 'transform 0.2s, box-shadow 0.2s',
     border: 'none',
-    fontSize: '0.85rem',
+    fontSize: '1rem',
     cursor: 'pointer',
     lineHeight: 1.2,
   },
@@ -128,6 +135,31 @@ const styles: { [key: string]: React.CSSProperties } = {
   tabs: { display: 'flex', justifyContent: 'space-around', backgroundColor: '#fff', borderTop: '1px solid #e0e0e0', position: 'fixed' as const, bottom: 0, left: 0, width: '100%', zIndex: 100, padding: '0.75rem 0', boxShadow: '0 -1px 3px rgba(0,0,0,0.1)', boxSizing: 'border-box' as const, },
   tab: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', fontSize: '0.65rem', color: '#5f6368', textDecoration: 'none', padding: '0.1rem 0.5rem', flexGrow: 1, textAlign: 'center' as const, transition: 'color 0.2s', },
   tabActive: { color: '#1a73e8', },
+  tabButton: {
+    padding: '0.5rem 1rem',
+    borderRadius: '0.25rem',
+    fontWeight: 500,
+    cursor: 'pointer',
+    border: '1px solid #dadce0',
+    backgroundColor: '#f1f3f4',
+    color: '#202124',
+    transition: 'background-color 0.2s, border-color 0.2s',
+    flex: 1,
+    textAlign: 'center' as const,
+    '&:first-of-type': {
+      borderTopRightRadius: 0,
+      borderBottomRightRadius: 0,
+    },
+    '&:last-of-type': {
+      borderTopLeftRadius: 0,
+      borderBottomLeftRadius: 0,
+    },
+  },
+  tabButtonActive: {
+    backgroundColor: '#1a73e8',
+    color: 'white',
+    borderColor: '#1a73e8',
+  },
   tabIcon: { width: '1.125rem', height: '1.125rem', marginBottom: '0.125rem', },
   legalNotice: {
     fontSize: '0.7rem',
@@ -143,21 +175,21 @@ const styles: { [key: string]: React.CSSProperties } = {
   loadingContainer: { display: 'flex', flexDirection: 'column' as const, justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f7fa', boxSizing: 'border-box' as const, },
   loadingSpinner: { borderRadius: '50%', width: '40px', height: '40px', border: '3px solid rgba(0, 0, 0, 0.1)', borderTopColor: '#1a73e8', animation: 'spin 1s ease-in-out infinite', },
   loadingText: { marginTop: '1rem', color: '#5f6368', fontSize: '0.9rem', },
-  quickAccessSection: { backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', padding: '1.5rem', marginBottom: '1.5rem', boxSizing: 'border-box' as const, },
-  sectionTitle: { fontSize: '1.125rem', fontWeight: 600, color: '#202124', marginTop: 0, marginBottom: '1rem', textAlign: 'left' as const, },
-  quickLinks: { display: 'flex', flexDirection: 'column' as const, gap: '0.5rem', },
-  quickLink: { padding: '0.75rem 0.5rem', color: '#1a73e8', textDecoration: 'none', textAlign: 'left' as const, display: 'flex', alignItems: 'center', fontSize: '0.875rem', transition: 'background-color 0.2s, color 0.2s', borderRadius: '4px', },
-  quickLinkIcon: { marginRight: '0.75rem', width: '1rem', height: '1rem', flexShrink: 0, },
+  quickAccessSection: { backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', padding: '1.5rem', marginBottom: '1.5rem', boxSizing: 'border-box' as const, },
+  sectionTitle: { fontSize: '1.25rem', fontWeight: 600, color: '#202124', marginTop: 0, marginBottom: '1rem', textAlign: 'left' as const, },
+  quickLinks: { display: 'flex', flexDirection: 'column' as const, gap: '0.75rem', },
+  quickLink: { padding: '0.75rem 1rem', color: 'var(--color-primary)', textDecoration: 'none', textAlign: 'left' as const, display: 'flex', alignItems: 'center', fontSize: '0.9rem', transition: 'background-color 0.2s, color 0.2s', borderRadius: '6px', },
+  quickLinkIcon: { marginRight: '0.8rem', width: '1.1rem', height: '1.1rem', flexShrink: 0, },
   infoSection: { 
     backgroundColor: 'white',
     borderRadius: '8px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
     padding: '1.5rem',
     marginBottom: '1.5rem',
     boxSizing: 'border-box' as const,
   },
   infoText: { 
-    fontSize: '0.875rem',
+    fontSize: '0.9rem',
     color: '#5f6368',
     marginBottom: '0rem', 
     lineHeight: '1.6',
@@ -190,8 +222,8 @@ const responsiveStyles = `
     box-sizing: inherit; 
   }
   .quickLinkHoverable:hover { 
-    background-color: #f0f0f0 !important; 
-    color: #1a73e8 !important;
+    background-color: #e8f0fe !important; /* Light blue hover for quick links */
+    color: var(--color-primary) !important;
   }
   @keyframes spin {
     0% { transform: rotate(0deg); }
@@ -203,8 +235,22 @@ const responsiveStyles = `
 // # #       SECTION 3 - COMPONENT: PAGE DEFINITION & HOOKS                     #
 // # ############################################################################ #
 const Dashboard: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const { walletAddress, isAuthenticated, logout } = useAuth(); 
   const navigate = useNavigate();
+  const [displayedAddress, setDisplayedAddress] = useState<string | null>(null);
+
+  useEffect(() => {
+    const formatAndSetAddress = async () => {
+      if (walletAddress) {
+        const formatted = await ensService.formatAddressOrEns(walletAddress);
+        setDisplayedAddress(formatted);
+      } else {
+        setDisplayedAddress(null);
+      }
+    };
+    formatAndSetAddress();
+  }, [walletAddress]);
   
   // FIXED: Calculate stats from user campaigns instead of separate API call
   const [stats, setStats] = useState({
@@ -248,26 +294,32 @@ const Dashboard: React.FC = () => {
       console.log('[Dashboard] Fetching user campaigns to calculate stats...');
       
       try {
-        const result = await campaignService.fetchUserCampaigns(walletAddress);
+        // Fetch all campaigns to calculate total raised across all statuses
+        const allCampaignsResult = await campaignService.fetchUserCampaigns(walletAddress);
+        let totalRaisedAcrossAllCampaigns = 0;
+
+        if (allCampaignsResult.success && allCampaignsResult.campaigns) {
+          totalRaisedAcrossAllCampaigns = allCampaignsResult.campaigns.reduce((sum, campaign) => sum + (campaign.raised || 0), 0);
+        }
+
+        // Fetch campaigns for the active tab
+        const result = await campaignService.fetchUserCampaigns(walletAddress, activeTab);
         
         if (result.success && result.campaigns) {
           const totalCampaigns = result.campaigns.length;
-          const totalRaised = result.campaigns.reduce((sum, campaign) => sum + (campaign.raised || 0), 0);
           
           setStats({
             totalCampaigns,
-            totalRaised
+            totalRaised: totalRaisedAcrossAllCampaigns
           });
           
-          console.log('[Dashboard] Stats calculated from user campaigns:', { totalCampaigns, totalRaised });
+          console.log('[Dashboard] Stats calculated from user campaigns:', { totalCampaigns, totalRaised: totalRaisedAcrossAllCampaigns });
         } else {
-          // If campaigns fail to load, we'll still show 0 stats rather than error
           console.warn('[Dashboard] Failed to fetch user campaigns for stats:', result.error);
-          setStats({ totalCampaigns: 0, totalRaised: 0 });
+          setStats({ totalCampaigns: 0, totalRaised: totalRaisedAcrossAllCampaigns });
         }
       } catch (error) {
         console.error("[Dashboard] Error fetching campaigns for stats:", error);
-        // Don't show error for stats calculation - just show 0
         setStats({ totalCampaigns: 0, totalRaised: 0 });
       } finally {
         setIsLoadingStats(false);
@@ -319,9 +371,9 @@ const Dashboard: React.FC = () => {
         <div style={styles.headerContent}>
           <Link to="/" style={styles.logo}>Fund<span style={styles.logoSpan}></span></Link>
           <div style={styles.walletInfo}>
-            {walletAddress && (
+            {displayedAddress && (
                 <span style={styles.walletAddress}>
-                  Connected: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+                  Connected: {displayedAddress}
                 </span>
             )}
             <button
@@ -373,8 +425,32 @@ const Dashboard: React.FC = () => {
         )}
 
         <div style={styles.contentSection}>
-          <h2 style={styles.sectionTitle}>Your Campaigns</h2>
-          <CampaignTracker deleteButtonStyle={styles.buttonDanger} />
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+            <button
+              onClick={() => setActiveTab('active')}
+              style={{
+                ...styles.tabButton,
+                ...(activeTab === 'active' ? styles.tabButtonActive : {}),
+              }}
+            >
+              Active Campaigns
+            </button>
+            <button
+              onClick={() => setActiveTab('completed')}
+              style={{
+                ...styles.tabButton,
+                ...(activeTab === 'completed' ? styles.tabButtonActive : {}),
+              }}
+            >
+              Completed Campaigns
+            </button>
+          </div>
+          {activeTab === 'active' && (
+            <CampaignTracker deleteButtonStyle={styles.buttonDanger} statusFilter="active" />
+          )}
+          {activeTab === 'completed' && (
+            <CampaignTracker deleteButtonStyle={styles.buttonDanger} statusFilter="completed" />
+          )}
         </div>
 
         <div style={styles.quickAccessSection}>
@@ -400,6 +476,11 @@ const Dashboard: React.FC = () => {
               Tip Jar
             </Link>
           </div>
+        </div>
+
+        <div style={styles.quickAccessSection}>
+          <h2 style={styles.sectionTitle}>Your Badges</h2>
+          <BadgesDisplay />
         </div>
 
         {stats.totalCampaigns === 0 && !isLoadingStats && (

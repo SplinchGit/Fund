@@ -10,6 +10,7 @@
 // # ############################################################################ #
 import type { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
 import type { ISuccessResult as IDKitSuccessResult } from '@worldcoin/idkit';
+import { ensService } from './EnsService';
 
 // # ############################################################################ #
 // # #                           SECTION 3 - GLOBAL CONSTANTS (STORAGE KEYS)                          #
@@ -845,14 +846,15 @@ class AuthService {
       }
 
       // Store session data
+      const resolvedWalletAddress = await ensService.formatAddressOrEns(data.walletAddress);
       this.safeLocalStorage.setItem(SESSION_TOKEN_KEY, data.token);
-      this.safeLocalStorage.setItem(WALLET_ADDRESS_KEY, data.walletAddress);
+      this.safeLocalStorage.setItem(WALLET_ADDRESS_KEY, resolvedWalletAddress);
 
       console.log('[AuthService] Signature verified successfully, session stored');
       return {
         success: true,
         token: data.token,
-        walletAddress: data.walletAddress,
+        walletAddress: resolvedWalletAddress,
       };
 
     } catch (error: any) {

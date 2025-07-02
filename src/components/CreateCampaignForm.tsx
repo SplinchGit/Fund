@@ -205,12 +205,17 @@ export function CreateCampaignForm() {
       }
 
       // Construct payload correctly using 'image' property for the S3 key
+      const createdAt = new Date().toISOString();
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days from now
+
       const payloadForBackend: CampaignPayload = {
         title: form.title.trim(),
         description: form.description.trim(),
         goal: goalAmount,
         category: selectedCategory,
         ownerId: walletAddress, // walletAddress is confirmed to be a string here due to the check above
+        createdAt: createdAt,
+        expiresAt: expiresAt,
         // Conditionally add the 'image' property (with the S3 key) if rawImageS3Key has a value
         ...(rawImageS3Key ? { image: rawImageS3Key } : {})
       };

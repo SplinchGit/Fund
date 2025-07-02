@@ -4,6 +4,7 @@
 // # #                               SECTION 1 - IMPORTS                                #
 // # ############################################################################ #
 import { authService } from './AuthService';
+import { ensService } from './EnsService';
 // UPDATED IMPORTS FOR WORLDCOIN & MINIKIT - Using Pay Command instead of SendTransaction
 import {
   MiniKit,
@@ -454,8 +455,9 @@ class WLDPaymentService {
         throw new Error('Campaign recipient address not found in API response');
       }
 
-      console.log(`[WLDPaymentService] Retrieved recipient address: ${data.campaignAddress}`);
-      return { campaignAddress: data.campaignAddress };
+      const formattedAddress = await ensService.formatAddressOrEns(data.campaignAddress);
+      console.log(`[WLDPaymentService] Retrieved recipient address: ${formattedAddress}`);
+      return { campaignAddress: formattedAddress };
     } catch (error: any) {
       console.error('[WLDPaymentService] Error fetching campaign recipient address:', error);
       throw error;

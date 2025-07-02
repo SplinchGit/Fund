@@ -35,6 +35,7 @@ export interface Campaign {
   status: 'active' | 'completed' | 'cancelled' | 'PENDING_REVIEW';
   createdAt: string;
   updatedAt: string;
+  expiresAt?: string; // New field for auto-archiving
   donations: Donation[];
   currency: 'WLD';
 }
@@ -52,6 +53,8 @@ export interface CampaignPayload {
   category: string;
   ownerId: string;
   image?: string;
+  createdAt: string;
+  expiresAt: string;
 }
 
 export interface UpdateCampaignPayload {
@@ -595,7 +598,8 @@ class CampaignService {
   // # #            SECTION 16 - PUBLIC METHOD: FETCH USER CAMPAIGNS (CORS FIX)   #
   // # ############################################################################ #
   public async fetchUserCampaigns(
-    walletAddress: string
+    walletAddress: string,
+    status?: 'active' | 'completed' | 'cancelled' | 'PENDING_REVIEW'
   ): Promise<{ success: boolean; campaigns?: Campaign[]; error?: string }> {
     if (!walletAddress || walletAddress.trim() === '') {
       return {
@@ -605,8 +609,10 @@ class CampaignService {
     }
 
     try {
-      // FIXED: Use query parameter instead of custom header to avoid CORS preflight
-      const url = `${this.API_BASE}/campaigns?userOnly=true`;
+      let url = `${this.API_BASE}/campaigns?userOnly=true`;
+      if (status) {
+        url += `&status=${status}`;
+      }
 
       console.log('[CampaignService] Making SECURE request for user campaigns to:', url);
       console.log('[CampaignService] Using query parameter approach (CORS-friendly)');
@@ -684,6 +690,18 @@ class CampaignService {
   // # ############################################################################ #
   // # #            SECTION 17 - SINGLETON INSTANCE EXPORT                        #
   // # ############################################################################ #
+  // # ############################################################################ #
+  // # #            SECTION 17 - PUBLIC METHOD: FETCH AGGREGATED USER STATS       #
+  // # ############################################################################ #
+  public async fetchAggregatedUserStats(walletAddress: string): Promise<{ success: boolean; totalRaised: number; error?: string }> {
+    // NOTE: This is a frontend placeholder. A real implementation would require a backend endpoint
+    // that aggregates total raised across all campaigns (active, completed, deleted, archived) for a user.
+    // The current `fetchUserCampaigns` only returns non-deleted campaigns.
+    console.warn('[CampaignService] fetchAggregatedUserStats: This is a frontend mock. Backend implementation is required.');
+    
+    // Simulate a successful response with some mock data
+    return { success: true, totalRaised: 12345 };
+  }
 }
 
 export const campaignService = CampaignService.getInstance();
