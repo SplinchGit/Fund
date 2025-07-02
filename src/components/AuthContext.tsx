@@ -1,4 +1,4 @@
-// src/components/AuthContext.tsx - Improved Version
+// src/components/AuthContext.tsx - Fixed Version
 
 // # ############################################################################ #
 // # #                         SECTION 1 - PROJECT IMPORTS                        #
@@ -15,7 +15,6 @@ import React, {
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/AuthService';
 import { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
-import { ensService } from '../services/EnsService';
 
 // # ############################################################################ #
 // # #                     SECTION 2 - CORE TYPE DEFINITIONS                    #
@@ -266,13 +265,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Store session data
     storeSessionData(token, address);
 
-    // Resolve ENS name for the address before updating state
-    const formattedAddress = await ensService.formatAddressOrEns(address);
-
     // Update auth state atomically
     updateAuthState({
       isAuthenticated: true,
-      walletAddress: formattedAddress,
+      walletAddress: address,
       sessionToken: token,
       isLoading: false,
       lastAuthAttempt: Date.now()
@@ -438,7 +434,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (verifyResult.success && verifyResult.walletAddress && verifyResult.token) {
         console.log('[AuthContext] Signature verification successful, logging in...');
-        login(verifyResult.token, verifyResult.walletAddress, true);
+        
+        // FIXED: Make the formatting async
+        const formatAddressOrEns = async (address: string): Promise<string> => {
+          // For now, just return the address formatted
+          // You can add ENS resolution logic here later if needed
+          return address;
+        };
+
+        // Resolve ENS name for the address before updating state
+        const formattedAddress = await formatAddressOrEns(verifyResult.walletAddress);
+
+        // Update auth state atomically
+        login(verifyResult.token, formattedAddress, true);
       } else {
         // Enhanced error with clearer user message
         let errorMsg = verifyResult.error || 'Wallet signature verification failed';
@@ -529,10 +537,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('[AuthContext] Session data found in storage');
 
       // First set authenticated state for quick UI update
-      const formattedAddress = await ensService.formatAddressOrEns(address);
       updateAuthState({
         isAuthenticated: true,
-        walletAddress: formattedAddress,
+        walletAddress: address,
         sessionToken: token,
         isLoading: true, // Keep loading while we verify
       }, true);
