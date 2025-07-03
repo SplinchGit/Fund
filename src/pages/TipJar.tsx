@@ -1,7 +1,7 @@
 // src/pages/TipJar.tsx
 
 // # ############################################################################ #
-// # #                               SECTION 1 - IMPORTS                                #
+// # #                     SECTION 1 - IMPORTS                                  #
 // # ############################################################################ #
 import React, { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
@@ -11,7 +11,7 @@ import { tipService } from '../services/TipService';
 import { contentModerationService, PreviewResult } from '../services/ContentModerationService';
 
 // ############################################################################ #
-// # #             SECTION 1.5 - HELPER FOR WORLD ID APP ID                 #
+// # #             SECTION 1.5 - HELPER FOR WORLD ID APP ID                   #
 // # ############################################################################ #
 const getVerifiedAppId = (): `app_${string}` => {
   const appIdFromEnv = process.env.REACT_APP_WORLD_ID_APP_ID;
@@ -26,7 +26,7 @@ const worldIDAppIdToUse = getVerifiedAppId();
 
 
 // # ############################################################################ #
-// # #                               SECTION 2 - STYLES                                #
+// # #                     SECTION 2 - STYLES                                   #
 // # ############################################################################ #
 const styles: { [key: string]: React.CSSProperties } = {
   page: {
@@ -345,6 +345,17 @@ const styles: { [key: string]: React.CSSProperties } = {
     fill: 'currentColor', // Inherits color from button text
     // marginRight: '8px', // Gap is handled by parent's gap style
   },
+  verificationSuccess: {
+    backgroundColor: 'rgba(52, 168, 83, 0.08)',
+    color: '#188038',
+    padding: '0.75rem 1.25rem',
+    borderRadius: '8px',
+    marginBottom: '1.5rem',
+    fontSize: '0.9rem',
+    fontWeight: 500,
+    textAlign: 'center' as const,
+    border: '1px solid rgba(52, 168, 83, 0.2)',
+  },
   tabs: {
     display: 'flex',
     justifyContent: 'space-around',
@@ -412,50 +423,59 @@ const responsiveStyles = `
 `;
 
 // # ############################################################################ #
-// # #                 SECTION 3 - COMPONENT: DEFINITION & STATE                 #
+// # #             SECTION 3 - COMPONENT: DEFINITION & STATE                    #
 // # ############################################################################ #
 const TipJar: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  // 🆕 UPDATED: Get World ID state from global AuthContext
+  const {
+    isAuthenticated,
+    isWorldIdVerifiedGlobally,
+    setWorldIdVerifiedGlobally,
+    worldIdProofResult
+  } = useAuth();
 
-  const [isVerified, setIsVerified] = useState(false);
-  const [verificationLoading, setVerificationLoading] = useState(false);
+  // ❌ REMOVED: Local World ID verification state
+  // const [isVerified, setIsVerified] = useState(false);
+  // const [verificationLoading, setVerificationLoading] = useState(false);
+
+  // ✅ KEEP: Other local state that's specific to tip jar
   const [showThankYou, setShowThankYou] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [tipAmount, setTipAmount] = useState<number | ''>('');
   const [customAmount, setCustomAmount] = useState<string>('');
   const [txHash, setTxHash] = useState('');
-  const [tipMessage, setTipMessage] = useState(''); // New state for tip message
+  const [tipMessage, setTipMessage] = useState('');
   const [verifyingTx, setVerifyingTx] = useState(false);
   const [copied, setCopied] = useState(false);
   const [messagePreview, setMessagePreview] = useState<PreviewResult | null>(null);
 
 // # ############################################################################ #
-// # #                 SECTION 4 - CONSTANTS: DONATION ADDRESS                 #
+// # #             SECTION 4 - CONSTANTS: DONATION ADDRESS                      #
 // # ############################################################################ #
   const WLD_ADDRESS = '0x28043f711ab042b1780ede66d317929693f59c87';
   const PRESET_AMOUNTS = [5, 10, 20, 50];
 
 // # ############################################################################ #
-// # #         SECTION 5 - CALLBACK: WORLD ID VERIFICATION SUCCESS         #
+// # #             SECTION 5 - CALLBACK: WORLD ID VERIFICATION SUCCESS          #
 // # ############################################################################ #
+  // 🆕 UPDATED: Handle verification success by updating global state
   const handleVerificationSuccess = useCallback((result: ISuccessResult) => {
-    console.log('World ID Verification Success:', result);
-    setVerificationLoading(false);
-    setIsVerified(true);
+    console.log('[TipJar] World ID Verification Success:', result);
+    setWorldIdVerifiedGlobally(true); // Update global state to true
     setErrorMessage('');
-  }, []);
+  }, [setWorldIdVerifiedGlobally]);
 
 // # ############################################################################ #
-// # #         SECTION 6 - CALLBACK: WORLD ID VERIFICATION ERROR         #
+// # #             SECTION 6 - CALLBACK: WORLD ID VERIFICATION ERROR            #
 // # ############################################################################ #
-  const handleVerificationError = useCallback((error?: { message?: string } | any) => { // Made error param optional and typed
-    console.error('World ID verification error:', error);
+  // ✅ KEEP: Error handler (unchanged)
+  const handleVerificationError = useCallback((error?: { message?: string } | any) => {
+    console.error('[TipJar] World ID verification error:', error);
     setErrorMessage(error?.message || 'Verification failed. Please try again.');
-    setVerificationLoading(false);
   }, []);
 
 // # ############################################################################ #
-// # #         SECTION 7 - EVENT HANDLER: PRESET TIP SELECTION         #
+// # #             SECTION 7 - EVENT HANDLER: PRESET TIP SELECTION              #
 // # ############################################################################ #
   const handlePresetTip = (amount: number) => {
     setTipAmount(amount);
@@ -464,7 +484,7 @@ const TipJar: React.FC = () => {
   };
 
 // # ############################################################################ #
-// # #         SECTION 8 - EVENT HANDLER: CUSTOM TIP AMOUNT         #
+// # #             SECTION 8 - EVENT HANDLER: CUSTOM TIP AMOUNT                 #
 // # ############################################################################ #
   const handleCustomAmount = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -480,7 +500,7 @@ const TipJar: React.FC = () => {
   };
 
 // # ############################################################################ #
-// # #                 SECTION 9 - EVENT HANDLER: COPY ADDRESS                 #
+// # #             SECTION 9 - EVENT HANDLER: COPY ADDRESS                      #
 // # ############################################################################ #
   const handleCopyAddress = async () => {
     try {
@@ -494,7 +514,7 @@ const TipJar: React.FC = () => {
   };
 
 // # ############################################################################ #
-// # #         SECTION 10 - EVENT HANDLER: VERIFY TRANSACTION         #
+// # #             SECTION 10 - EVENT HANDLER: VERIFY TRANSACTION               #
 // # ############################################################################ #
   const handleVerifyTransaction = async () => {
     if (!txHash.trim()) {
@@ -555,25 +575,30 @@ const TipJar: React.FC = () => {
   };
 
 // # ############################################################################ #
-// # #                 SECTION 11 - EVENT HANDLER: RESET                 #
+// # #             SECTION 11 - EVENT HANDLER: RESET                            #
 // # ############################################################################ #
-  const handleReset = () => {
+  // 🆕 UPDATED: Reset function no longer touches World ID verification
+  const handleReset = useCallback(() => {
+    console.log('[TipJar] Resetting tip jar for new tip...');
     setShowThankYou(false);
     setTipAmount('');
     setCustomAmount('');
     setTxHash('');
+    setTipMessage('');
+    setVerifyingTx(false);
+    setCopied(false);
     setErrorMessage('');
-    setIsVerified(false); // Reset World ID verification
-    setVerificationLoading(false);
-  };
+    setMessagePreview(null);
+    // ❌ REMOVED: setIsVerified(false) - Don't reset global World ID state
+  }, []); // No dependencies on World ID setters
 
 // # ############################################################################ #
-// # #         SECTION 11.5 - EVENT HANDLER: MESSAGE CHANGE WITH MODERATION         #
+// # #             SECTION 11.5 - EVENT HANDLER: MESSAGE CHANGE WITH MODERATION #
 // # ############################################################################ #
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const message = e.target.value;
     setTipMessage(message);
-    
+
     if (message.trim()) {
       const preview = contentModerationService.getContentPreview(message.trim());
       setMessagePreview(preview.hasChanges ? preview : null);
@@ -583,7 +608,7 @@ const TipJar: React.FC = () => {
   };
 
 // # ############################################################################ #
-// # #                 SECTION 12 - JSX RETURN: TIP JAR COMPONENT                 #
+// # #             SECTION 12 - JSX RETURN: TIP JAR COMPONENT                   #
 // # ############################################################################ #
   return (
     <div style={styles.page}>
@@ -620,42 +645,38 @@ const TipJar: React.FC = () => {
                 <div style={styles.errorMessage}>{errorMessage}</div>
             )}
 
-            {!isVerified && !showThankYou && (
+            {/* 🆕 UPDATED: Use global World ID verification state */}
+            {!isWorldIdVerifiedGlobally && !showThankYou && (
               <div style={styles.worldIdContainer}>
                 <p style={styles.worldIdText}>
                   To ensure transparency and prevent abuse, please verify with World ID before tipping.
                 </p>
                 <IDKitWidget
-                  app_id={worldIDAppIdToUse} // FIXED: Using correctly typed app_id
-                  action="tip_jar_donation_v2" // Ensure unique action string per environment/use-case
+                  app_id={worldIDAppIdToUse}
+                  action="tip_jar_donation_v2"
                   verification_level={VerificationLevel.Device}
                   onSuccess={handleVerificationSuccess}
                   onError={handleVerificationError}
-                  // signal={uniqueSignal} // Consider adding a signal if needed
                 >
                   {({ open }: { open: () => void }) => (
                     <button
                       onClick={() => {
-                        setVerificationLoading(true);
                         setErrorMessage('');
                         open();
                       }}
-                      style={{
-                          ...styles.worldIdButton,
-                          ...(verificationLoading ? { opacity: 0.7, cursor: 'progress' as const } : {})
-                      }}
-                      disabled={verificationLoading}
+                      style={styles.worldIdButton}
                     >
-                      <svg style={styles.worldIdButtonIcon} viewBox="0 0 24 24"> {/* World ID Orb Icon */}
+                      <svg style={styles.worldIdButtonIcon} viewBox="0 0 24 24">
                         <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm0-13a5 5 0 100 10 5 5 0 000-10zm0 8a3 3 0 110-6 3 3 0 010 6z"/>
                       </svg>
-                      {verificationLoading ? 'Verifying...' : 'Verify with World ID'}
+                      Verify with World ID
                     </button>
                   )}
                 </IDKitWidget>
               </div>
             )}
 
+            {/* Thank you state unchanged */}
             {showThankYou && (
               <div style={styles.successMessage}>
                 <svg style={styles.successIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -674,8 +695,13 @@ const TipJar: React.FC = () => {
               </div>
             )}
 
-            {isVerified && !showThankYou && (
+            {/* 🆕 UPDATED: Show tip form if globally verified */}
+            {isWorldIdVerifiedGlobally && !showThankYou && (
               <>
+                <div style={styles.verificationSuccess}>
+                  ✅ World ID Verified! You can now leave a tip.
+                </div>
+
                 <div style={styles.formGroup}>
                   <label style={styles.label}>Select or Enter Tip Amount (WLD)</label>
                   <div style={styles.amountSelector}>
@@ -822,6 +848,6 @@ const TipJar: React.FC = () => {
 };
 
 // # ############################################################################ #
-// # #                               SECTION 13 - DEFAULT EXPORT                                #
+// # #                     SECTION 13 - DEFAULT EXPORT                          #
 // # ############################################################################ #
 export default TipJar;

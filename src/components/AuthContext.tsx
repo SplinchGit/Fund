@@ -1,7 +1,7 @@
 // src/components/AuthContext.tsx - Fixed Version
 
 // # ############################################################################ #
-// # #                         SECTION 1 - PROJECT IMPORTS                        #
+// # #                     SECTION 1 - PROJECT IMPORTS                          #
 // # ############################################################################ #
 import React, {
   createContext,
@@ -15,9 +15,10 @@ import React, {
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/AuthService';
 import { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
+import { ISuccessResult } from '@worldcoin/idkit'; // 🆕 NEW: Import ISuccessResult
 
 // # ############################################################################ #
-// # #                     SECTION 2 - CORE TYPE DEFINITIONS                    #
+// # #                   SECTION 2 - CORE TYPE DEFINITIONS                      #
 // # ############################################################################ #
 // Auth state interface with additional fields
 interface AuthState {
@@ -38,6 +39,12 @@ interface AuthContextType extends AuthState {
   loginWithWallet: (authResult: MiniAppWalletAuthSuccessPayload) => Promise<void>;
   getNonceForMiniKit: () => Promise<string>;
   clearError: () => void; // New function to clear errors
+  
+  // 🆕 NEW: Global World ID State
+  isWorldIdVerifiedGlobally: boolean;
+  setWorldIdVerifiedGlobally: (status: boolean) => void;
+  worldIdProofResult: ISuccessResult | null;
+  setWorldIdProofResult: (result: ISuccessResult | null) => void;
 }
 
 // Provider component props interface
@@ -46,13 +53,13 @@ interface AuthProviderProps {
 }
 
 // # ############################################################################ #
-// # #                  SECTION 3 - AUTH CONTEXT INSTANTIATION                  #
+// # #                 SECTION 3 - AUTH CONTEXT INSTANTIATION                   #
 // # ############################################################################ #
 // Create context with undefined default value
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // # ############################################################################ #
-// # #                        SECTION 4 - GLOBAL CONSTANTS                        #
+// # #                   SECTION 4 - GLOBAL CONSTANTS                           #
 // # ############################################################################ #
 // Storage keys with namespace
 const STORAGE_NAMESPACE = 'worldfund_';
@@ -61,7 +68,7 @@ const WALLET_ADDRESS_KEY = `${STORAGE_NAMESPACE}wallet_address`;
 const USERNAME_KEY = `${STORAGE_NAMESPACE}username`;
 
 // # ############################################################################ #
-// # #                   SECTION 5 - UTILITY: NONCE VALIDATION                  #
+// # #                 SECTION 5 - UTILITY: NONCE VALIDATION                    #
 // # ############################################################################ #
 // Improved nonce validation - strict hexadecimal format check
 const isValidNonce = (nonce: string): boolean => {
@@ -69,7 +76,7 @@ const isValidNonce = (nonce: string): boolean => {
 };
 
 // # ############################################################################ #
-// # #                  SECTION 6 - UTILITY: NONCE EXTRACTION                   #
+// # #                 SECTION 6 - UTILITY: NONCE EXTRACTION                    #
 // # ############################################################################ #
 /**
  * Helper to safely extract nonce from different message formats with enhanced SIWE handling
@@ -197,6 +204,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     lastAuthAttempt: null,
   });
 
+  // 🆕 NEW: Global World ID State
+  const [isWorldIdVerifiedGlobally, setIsWorldIdVerifiedGlobally] = useState<boolean>(false);
+  const [worldIdProofResult, setWorldIdProofResult] = useState<ISuccessResult | null>(null);
+
   // Active operation tracking refs to prevent race conditions
   const isLoginInProgressRef = useRef(false);
   const nonceRequestInProgressRef = useRef<Promise<string> | null>(null);
@@ -205,7 +216,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const MAX_RETRIES = 2;
 
 // # ############################################################################ #
-// # #                SECTION 9 - AUTHPROVIDER: STATE MANAGEMENT                #
+// # #                 SECTION 9 - AUTHPROVIDER: STATE MANAGEMENT               #
 // # ############################################################################ #
   // Function to safely update state that prevents race conditions
   const updateAuthState = useCallback((
@@ -225,7 +236,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [updateAuthState]);
 
 // # ############################################################################ #
-// # #          SECTION 10 - AUTHPROVIDER: ASYNC OPERATION UTILITY          #
+// # #               SECTION 10 - AUTHPROVIDER: ASYNC OPERATION UTILITY         #
 // # ############################################################################ #
   // Helper function to retry an async operation with improved error handling
   const retryOperation = async <T,>(
@@ -254,7 +265,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
 // # ############################################################################ #
-// # #             SECTION 11 - AUTHPROVIDER: CORE LOGIN FUNCTION             #
+// # #                SECTION 11 - AUTHPROVIDER: CORE LOGIN FUNCTION            #
 // # ############################################################################ #
   // Login function - Improved with atomic state updates
   const login = useCallback((token: string, address: string, username?: string, shouldNavigate: boolean = true) => {
@@ -283,6 +294,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       lastAuthAttempt: Date.now()
     }, true);
 
+    // 🆕 Check if this login included World ID verification
+    // (You can add a parameter or check proof result to handle it here, e.g., if login payload contains World ID proof)
+    // Example: if (loginPayload.worldIdProof) handleWorldIdVerificationSuccess(loginPayload.worldIdProof);
+    
     console.log('[AuthContext] Auth state updated, user is now authenticated');
 
     // Navigate to dashboard if requested
@@ -484,7 +499,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [login, updateAuthState]);
 
 // # ############################################################################ #
-// # #                SECTION 14 - AUTHPROVIDER: LOGOUT FUNCTION                #
+// # #                  SECTION 14 - AUTHPROVIDER: LOGOUT FUNCTION              #
 // # ############################################################################ #
   // Logout function with improved error handling
   const logout = useCallback(async (): Promise<void> => {
@@ -494,6 +509,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       // Clear local storage
       clearStoredSessionData();
+
+      // 🆕 Clear World ID state
+      setIsWorldIdVerifiedGlobally(false);
+      setWorldIdProofResult(null);
+      // Also clear from sessionStorage
+      sessionStorage.removeItem('worldId_verified');
+      sessionStorage.removeItem('worldId_proof');
 
       // Try backend logout, continue if it fails
       try {
@@ -527,7 +549,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [navigate, updateAuthState]);
 
 // # ############################################################################ #
-// # #             SECTION 15 - AUTHPROVIDER: SESSION CHECK LOGIC             #
+// # #                  SECTION 15 - AUTHPROVIDER: SESSION CHECK LOGIC          #
 // # ############################################################################ #
   // Check session on mount with improved validation
   const checkSession = useCallback(async () => {
@@ -546,6 +568,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           sessionToken: null,
           isLoading: false,
         }, true);
+        
+        // 🆕 Clear World ID state if no session
+        setIsWorldIdVerifiedGlobally(false);
+        setWorldIdProofResult(null);
+        sessionStorage.removeItem('worldId_verified');
+        sessionStorage.removeItem('worldId_proof');
+
         return;
       }
 
@@ -560,6 +589,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isLoading: true, // Keep loading while we verify
       }, true);
 
+      // 🆕 Restore World ID state from sessionStorage
+      try {
+        const storedVerified = sessionStorage.getItem('worldId_verified');
+        const storedProof = sessionStorage.getItem('worldId_proof');
+        
+        if (storedVerified === 'true') {
+          setIsWorldIdVerifiedGlobally(true);
+          if (storedProof) {
+            setWorldIdProofResult(JSON.parse(storedProof));
+          }
+          console.log('[AuthContext] Restored World ID verification state from session');
+        }
+      } catch (error) {
+        console.warn('[AuthContext] Could not restore World ID state:', error);
+        // Clear potentially corrupted World ID session data
+        sessionStorage.removeItem('worldId_verified');
+        sessionStorage.removeItem('worldId_proof');
+        setIsWorldIdVerifiedGlobally(false);
+        setWorldIdProofResult(null);
+      }
+      
       // Then validate token asynchronously
       try {
         const verifyResult = await retryOperation(
@@ -572,6 +622,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (!verifyResult.isValid) {
           console.log('[AuthContext] Session token invalid, logging out:', verifyResult.error);
           clearStoredSessionData();
+          setIsWorldIdVerifiedGlobally(false); // Clear World ID on invalid token
+          setWorldIdProofResult(null);
+          sessionStorage.removeItem('worldId_verified');
+          sessionStorage.removeItem('worldId_proof');
+
 
           updateAuthState({
             isAuthenticated: false,
@@ -609,11 +664,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isLoading: false,
         error: 'Failed to check authentication status'
       });
+      // Ensure World ID state is cleared on general session check failure
+      setIsWorldIdVerifiedGlobally(false);
+      setWorldIdProofResult(null);
+      sessionStorage.removeItem('worldId_verified');
+      sessionStorage.removeItem('worldId_proof');
     }
-  }, [updateAuthState]); // Removed navigate from dependencies as it's not directly used here for navigation on error
+  }, [updateAuthState]);
+
+  // 5. NEW: HANDLE WORLD ID VERIFICATION SUCCESS
+  const handleWorldIdVerificationSuccess = useCallback((result: ISuccessResult) => {
+    console.log('[AuthContext] World ID verification successful globally');
+    setIsWorldIdVerifiedGlobally(true);
+    setWorldIdProofResult(result);
+    
+    // Optionally persist to sessionStorage for tab refreshes
+    try {
+      sessionStorage.setItem('worldId_verified', 'true');
+      sessionStorage.setItem('worldId_proof', JSON.stringify(result));
+    } catch (error) {
+      console.warn('[AuthContext] Could not persist World ID state:', error);
+    }
+  }, []);
 
 // # ############################################################################ #
-// # #             SECTION 16 - AUTHPROVIDER: LIFECYCLE & EFFECTS             #
+// # #                SECTION 16 - AUTHPROVIDER: LIFECYCLE & EFFECTS            #
 // # ############################################################################ #
   // Check session on mount and when storage changes
   useEffect(() => {
@@ -621,7 +696,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Listen for storage events (e.g. other tabs)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === SESSION_TOKEN_KEY || e.key === WALLET_ADDRESS_KEY) {
+      if (e.key === SESSION_TOKEN_KEY || e.key === WALLET_ADDRESS_KEY || e.key?.startsWith('worldId_')) { // 🆕 Listen for World ID storage changes
         console.log('[AuthContext] Session storage changed, re-checking session');
         checkSession();
       }
@@ -645,11 +720,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       hasError: !!authState.error,
       hasNonce: !!authState.nonce,
       lastAuthAttempt: authState.lastAuthAttempt,
+      // 🆕 NEW: World ID state logging
+      isWorldIdVerifiedGlobally: isWorldIdVerifiedGlobally,
+      hasWorldIdProofResult: !!worldIdProofResult,
     });
-  }, [authState]);
+  }, [authState, isWorldIdVerifiedGlobally, worldIdProofResult]);
 
 // # ############################################################################ #
-// # #          SECTION 17 - AUTHPROVIDER: CONTEXT VALUE & RETURN           #
+// # #               SECTION 17 - AUTHPROVIDER: CONTEXT VALUE & RETURN          #
 // # ############################################################################ #
   // Provide context value
   const contextValue: AuthContextType = {
@@ -659,13 +737,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loginWithWallet,
     getNonceForMiniKit,
     clearError,
+    // 🆕 NEW: World ID properties and methods
+    isWorldIdVerifiedGlobally,
+    setWorldIdVerifiedGlobally: setIsWorldIdVerifiedGlobally, // Use the correct setter for boolean status
+    worldIdProofResult,
+    setWorldIdProofResult, // Provide direct setter for cases where it's not a full success flow
   };
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 };
 
 // # ############################################################################ #
-// # #                       SECTION 18 - CUSTOM AUTH HOOK                      #
+// # #                  SECTION 18 - CUSTOM AUTH HOOK                           #
 // # ############################################################################ #
 // Hook for using auth context
 export const useAuth = (): AuthContextType => {
