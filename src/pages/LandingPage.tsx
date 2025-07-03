@@ -110,8 +110,73 @@ const LandingPage: React.FC = () => {
         });
     }, [isAuthenticated, walletAddress, authIsLoading]);
 
+    // ############################################################################ #
+    // # #                 SECTION 9 - ENHANCED USERNAME RESOLUTION FUNCTION                 #
+    // ############################################################################ #
+    const resolveUserIdentity = async (address: string): Promise<{ username: string; isVerified: boolean }> => {
+        console.log(`[LandingPage] Resolving identity for: ${address}`);
+
+        try {
+            // Priority 1: World ID via MiniKit
+            if (typeof window !== 'undefined' && (window as any).MiniKit) {
+                try {
+                    const MiniKit = (window as any).MiniKit;
+                    if (MiniKit.getUserByAddress && typeof MiniKit.getUserByAddress === 'function') {
+                        const worldIdUser = await MiniKit.getUserByAddress(address);
+                        if (worldIdUser?.username) {
+                            console.log(`[LandingPage] Found World ID username: ${worldIdUser.username}`);
+                            return {
+                                username: worldIdUser.username,
+                                isVerified: true
+                            };
+                        }
+                    }
+                } catch (error) {
+                    console.warn(`[LandingPage] World ID lookup failed for ${address}:`, error);
+                }
+            }
+
+            // Priority 2: ENS resolution
+            try {
+                const ensName = await ensService.lookupEnsAddress(address);
+                if (ensName) {
+                    console.log(`[LandingPage] Found ENS name: ${ensName}`);
+                    return {
+                        username: ensName,
+                        isVerified: false
+                    };
+                }
+            } catch (error) {
+                console.warn(`[LandingPage] ENS lookup failed for ${address}:`, error);
+            }
+
+            // Priority 3: Check if it's already a known username (not an address)
+            if (!address.startsWith('0x') && address.length < 42) {
+                return {
+                    username: address,
+                    isVerified: false
+                };
+            }
+
+            // Fallback: Truncated address
+            const truncated = `${address.slice(0, 6)}...${address.slice(-4)}`;
+            console.log(`[LandingPage] Using truncated address: ${truncated}`);
+            return {
+                username: truncated,
+                isVerified: false
+            };
+
+        } catch (error) {
+            console.error(`[LandingPage] Error resolving identity for ${address}:`, error);
+            return {
+                username: `${address.slice(0, 6)}...${address.slice(-4)}`,
+                isVerified: false
+            };
+        }
+    };
+
     // # ############################################################################ #
-    // # #                 SECTION 9 - EFFECT: FETCH CAMPAIGNS (ENHANCED)                 #
+    // # #                 SECTION 10 - EFFECT: FETCH CAMPAIGNS (ENHANCED)                 #
     // # ############################################################################ #
     useEffect(() => {
         const fetchCampaignsData = async () => {
@@ -135,34 +200,58 @@ const LandingPage: React.FC = () => {
                 }
 
                 // Pass category to service if it's not "All Categories"
-                const categoryToFetch = selectedFilterCategory === ALL_CATEGORIES_FILTER_OPTION 
-                                        ? undefined 
-                                        : selectedFilterCategory;
-                
+                const categoryToFetch = selectedFilterCategory === ALL_CATEGORIES_FILTER_OPTION
+                    ? undefined
+                    : selectedFilterCategory;
+
                 console.log('[LandingPage] Calling campaignService.fetchAllCampaigns with category:', categoryToFetch || 'all');
-                
+
                 // Call the campaign service
                 const result = await campaignService.fetchAllCampaigns(categoryToFetch);
-                
+
                 console.log('[LandingPage] Campaign service result:', {
                     success: result.success,
                     campaignCount: result.campaigns ? result.campaigns.length : 0,
                     error: result.error
                 });
-                
+
                 if (result.success && result.campaigns) {
-                    // Transform campaigns for display
-                    const displayCampaigns: CampaignDisplay[] = await Promise.all(result.campaigns.map(async campaign => ({
-                        ...campaign,
-                        creator: await ensService.formatAddressOrEns(campaign.ownerId),
-                        isVerified: true, // Assuming default or to be fetched later
-                        progressPercentage: campaign.goal > 0 ? Math.min(Math.round((campaign.raised / campaign.goal) * 100), 100) : 0,
-                        // 'category' should now be part of 'campaign' object from service
+                    // Add this debug code right after you get the campaigns from the service:
+                    console.log('[DEBUG] Raw campaigns from service:', result.campaigns.map(c => ({
+                        id: c.id,
+                        title: c.title,
+                        ownerId: c.ownerId,
+                        ownerIdType: typeof c.ownerId,
+                        ownerIdLength: c.ownerId?.length
                     })));
-                    
+
+                    // Replace your current campaign transformation with this:
+                    const displayCampaigns: CampaignDisplay[] = await Promise.all(
+                        result.campaigns.map(async campaign => {
+                            console.log(`[DEBUG] Processing campaign ${campaign.id} with ownerId: ${campaign.ownerId}`);
+                            const identity = await resolveUserIdentity(campaign.ownerId);
+                            console.log(`[DEBUG] Resolved creator: ${identity.username} (original: ${campaign.ownerId})`);
+
+                            return {
+                                ...campaign,
+                                creator: identity.username,
+                                isVerified: identity.isVerified,
+                                progressPercentage: campaign.goal > 0 ?
+                                    Math.min(Math.round((campaign.raised / campaign.goal) * 100), 100) : 0,
+                            };
+                        })
+                    );
+
+                    console.log('[DEBUG] Final display campaigns:', displayCampaigns.map(c => ({
+                        id: c.id,
+                        title: c.title,
+                        creator: c.creator,
+                        isVerified: c.isVerified
+                    })));
+
                     setCampaigns(displayCampaigns);
                     console.log('[LandingPage] Campaigns processed and set successfully:', displayCampaigns.length);
-                    
+
                     // Clear any previous errors
                     setPageError(null);
                 } else {
@@ -172,7 +261,7 @@ const LandingPage: React.FC = () => {
                 }
             } catch (err) {
                 console.error('[LandingPage] Exception while fetching campaigns:', err);
-                
+
                 // Provide user-friendly error messages
                 let userFriendlyError = 'An unknown error occurred while loading campaigns.';
                 if (err instanceof Error) {
@@ -186,7 +275,7 @@ const LandingPage: React.FC = () => {
                         userFriendlyError = err.message;
                     }
                 }
-                
+
                 setPageError(userFriendlyError);
             } finally {
                 setLoadingCampaigns(false);
@@ -197,19 +286,19 @@ const LandingPage: React.FC = () => {
     }, [selectedFilterCategory]);
 
     // # ############################################################################ #
-    // # #                 SECTION 10 - CALLBACK: CONNECT WALLET                 #
+    // # #                 SECTION 11 - CALLBACK: CONNECT WALLET                 #
     // # ############################################################################ #
     const handleConnectWallet = useCallback(async () => {
-        if (isConnectingWallet || authIsLoading) { 
+        if (isConnectingWallet || authIsLoading) {
             console.log('[LandingPage] handleConnectWallet: Already connecting or auth is loading. Aborting.');
-            return; 
+            return;
         }
-        
+
         console.log('[LandingPage] handleConnectWallet: Starting wallet connection flow...');
-        setIsConnectingWallet(true); 
-        setPageError(null); 
+        setIsConnectingWallet(true);
+        setPageError(null);
         setConnectionAttempts(prev => prev + 1);
-        
+
         try {
             if (import.meta.env.DEV && (window as any).__triggerWalletAuth) {
                 console.log("[LandingPage] handleConnectWallet: Using window.__triggerWalletAuth (debug mode)");
@@ -219,11 +308,11 @@ const LandingPage: React.FC = () => {
                     throw new Error('Wallet authentication via debug trigger failed. Check console.');
                 }
             } else {
-                console.log("[LandingPage] API URL check:", { 
-                    VITE_AMPLIFY_API: import.meta.env.VITE_AMPLIFY_API, 
-                    VITE_APP_BACKEND_API_URL: import.meta.env.VITE_APP_BACKEND_API_URL 
+                console.log("[LandingPage] API URL check:", {
+                    VITE_AMPLIFY_API: import.meta.env.VITE_AMPLIFY_API,
+                    VITE_APP_BACKEND_API_URL: import.meta.env.VITE_APP_BACKEND_API_URL
                 });
-                
+
                 console.log("[LandingPage] handleConnectWallet: Fetching nonce for MiniKit auth...");
                 let serverNonce;
                 try {
@@ -233,9 +322,9 @@ const LandingPage: React.FC = () => {
                     console.error("[LandingPage] Failed to get nonce:", nonceError);
                     throw new Error(`Failed to get authentication nonce: ${nonceError instanceof Error ? nonceError.message : 'Unknown error'}`);
                 }
-                
+
                 if (!serverNonce) throw new Error("Server didn't return a valid nonce");
-                
+
                 console.log("[LandingPage] handleConnectWallet: Calling triggerMiniKitWalletAuth with fetched nonce...");
                 let authPayload;
                 try {
@@ -245,9 +334,9 @@ const LandingPage: React.FC = () => {
                     console.error("[LandingPage] Wallet auth failed:", walletError);
                     throw new Error(`Wallet authentication failed: ${walletError instanceof Error ? walletError.message : 'Unknown error'}`);
                 }
-                
+
                 if (!authPayload) throw new Error("Wallet didn't return a valid authentication payload");
-                
+
                 console.log("[LandingPage] handleConnectWallet: MiniKit auth success, calling loginWithWallet from AuthContext.");
                 try {
                     await loginWithWallet(authPayload);
@@ -256,13 +345,13 @@ const LandingPage: React.FC = () => {
                     throw new Error(`Login failed: ${loginError instanceof Error ? loginError.message : 'Unknown error'}`);
                 }
             }
-            
+
             console.log("[LandingPage] handleConnectWallet: Wallet connection and login process successfully completed.");
         } catch (error) {
             console.error("[LandingPage] handleConnectWallet: Error during wallet connection/login process:", error);
             let userErrorMessage = "Connection failed";
-            if (error instanceof Error) { 
-                userErrorMessage = error.message.includes("https://") ? "API connection error. Please try again or contact support." : error.message; 
+            if (error instanceof Error) {
+                userErrorMessage = error.message.includes("https://") ? "API connection error. Please try again or contact support." : error.message;
             }
             setPageError(userErrorMessage);
             if (connectionAttempts > 2) setPageError(`${userErrorMessage}. You may need to refresh the page.`);
@@ -272,14 +361,14 @@ const LandingPage: React.FC = () => {
     }, [isConnectingWallet, authIsLoading, getNonceForMiniKit, loginWithWallet, connectionAttempts]);
 
     // # ############################################################################ #
-    // # #               SECTION 11 - CALLBACK: ACCOUNT NAVIGATION               #
+    // # #               SECTION 12 - CALLBACK: ACCOUNT NAVIGATION               #
     // # ############################################################################ #
     const handleAccountNavigation = useCallback(async (e?: React.MouseEvent) => {
         if (e) e.preventDefault();
         console.log('[LandingPage] handleAccountNavigation: Clicked. Auth state:', { isAuthenticated, authIsLoading });
-        if (authIsLoading) { 
+        if (authIsLoading) {
             console.log('[LandingPage] handleAccountNavigation: Auth state is loading. Please wait.');
-            return; 
+            return;
         }
         if (isAuthenticated) {
             console.log('[LandingPage] handleAccountNavigation: User is authenticated. Navigating to /dashboard.');
@@ -291,7 +380,7 @@ const LandingPage: React.FC = () => {
     }, [isAuthenticated, authIsLoading, navigate, handleConnectWallet]);
 
     // # ############################################################################ #
-    // # #           SECTION 12 - CALLBACK: DASHBOARD HEADER NAVIGATION           #
+    // # #           SECTION 13 - CALLBACK: DASHBOARD HEADER NAVIGATION           #
     // # ############################################################################ #
     const goToDashboardHeader = useCallback(() => {
         console.log('[LandingPage] goToDashboardHeader: Navigating to /dashboard.');
@@ -299,16 +388,16 @@ const LandingPage: React.FC = () => {
     }, [navigate]);
 
     // # ############################################################################ #
-    // # #                       SECTION 13 - HELPER FUNCTIONS                       #
+    // # #                       SECTION 14 - HELPER FUNCTIONS                       #
     // # ############################################################################ #
     const isActivePath = (path: string, locationPathname: string): boolean => locationPathname === path || (path === '/' && locationPathname === '/landing') || (path === '/campaigns' && (locationPathname === '/campaigns' || locationPathname.startsWith('/campaigns/')));
 
-const formatAddressForDisplay = async (address: string): Promise<string> => {
-    return await ensService.formatAddressOrEns(address);
-};
+    const formatAddressForDisplay = async (address: string): Promise<string> => {
+        return await ensService.formatAddressOrEns(address);
+    };
 
     // # ############################################################################ #
-    // # #                     SECTION 14 - INLINE STYLES OBJECT                     #
+    // # #                     SECTION 15 - INLINE STYLES OBJECT                     #
     // # ############################################################################ #
     const styles: { [key: string]: React.CSSProperties } = {
         page: { textAlign: 'center' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif', color: '#202124', backgroundColor: '#ffffff', margin: 0, padding: 0, overflowX: 'hidden' as const, width: '100vw', minHeight: '100%', display: 'flex', flexDirection: 'column' as const, boxSizing: 'border-box' as const, },
@@ -353,7 +442,7 @@ const formatAddressForDisplay = async (address: string): Promise<string> => {
             boxSizing: 'border-box' as const,
             backgroundColor: 'white',
             appearance: 'none' as const,
-            backgroundImage: `url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%235f6368%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22/%3E%3C/svg%3E')`,
+            backgroundImage: `url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%235f6368%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22/%3E%3C/svg%3E')`,
             backgroundRepeat: 'no-repeat',
             backgroundPosition: 'right 1rem center',
             backgroundSize: '0.65em auto',
@@ -370,7 +459,7 @@ const formatAddressForDisplay = async (address: string): Promise<string> => {
         noImagePlaceholder: { width: '100%', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f3f4', color: '#9aa0a6', fontSize: '0.875rem', boxSizing: 'border-box' as const },
         cardContent: { padding: '1.25rem', textAlign: 'left' as const, flexGrow: 1, display: 'flex', flexDirection: 'column' as const, boxSizing: 'border-box' as const },
         cardTitle: { fontSize: '1.25rem', fontWeight: 700, color: '#202124', marginBottom: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
-        cardDescription: { fontSize: '0.9rem', color: '#5f6368', marginBottom: '0.75rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden', textOverflow: 'ellipsis', minHeight: 'calc(3 * 1.5 * 0.875rem)', lineHeight: 1.5, flexGrow: 1},
+        cardDescription: { fontSize: '0.9rem', color: '#5f6368', marginBottom: '0.75rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden', textOverflow: 'ellipsis', minHeight: 'calc(3 * 1.5 * 0.875rem)', lineHeight: 1.5, flexGrow: 1 },
         cardCategory: {
             fontSize: '0.75rem',
             fontWeight: 600,
@@ -384,7 +473,7 @@ const formatAddressForDisplay = async (address: string): Promise<string> => {
             letterSpacing: '0.05em',
         },
         progressBar: { width: '100%', height: '8px', backgroundColor: '#e9ecef', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.6rem', marginTop: 'auto' },
-        progressFill: { height: '100%', backgroundColor: 'var(--color-secondary)', borderRadius: '4px',   transition: 'width 0.4s ease-in-out' },
+        progressFill: { height: '100%', backgroundColor: 'var(--color-secondary)', borderRadius: '4px', transition: 'width 0.4s ease-in-out' },
         progressStats: { display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#5f6368', fontWeight: 500, marginBottom: '0.8rem' },
         cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem 1.25rem', borderTop: '1px solid #f1f3f4', backgroundColor: '#fcfcfc', boxSizing: 'border-box' as const, marginTop: 'auto' },
         creatorInfo: { fontSize: '0.8rem', color: '#5f6368', display: 'flex', alignItems: 'center' },
@@ -395,53 +484,76 @@ const formatAddressForDisplay = async (address: string): Promise<string> => {
         tab: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', fontSize: '0.65rem', color: '#5f6368', textDecoration: 'none', padding: '0.1rem 0.5rem', flexGrow: 1, textAlign: 'center' as const, transition: 'color 0.2s' },
         tabActive: { color: 'var(--color-primary)' },
         tabIcon: { width: '1.2rem', height: '1.2rem', marginBottom: '0.15rem' },
-        legalNotice: { 
-            fontSize: '0.75rem', 
-            color: '#5f6368', 
-            padding: '1.5rem 1rem', 
-            marginTop: '0.5rem', 
-            marginBottom: '4.5rem', 
-            borderTop: '1px solid #eee', 
-            width: '100%', 
-            boxSizing: 'border-box' as const, 
-            textAlign: 'center' as const, 
+        legalNotice: {
+            fontSize: '0.75rem',
+            color: '#5f6368',
+            padding: '1.5rem 1rem',
+            marginTop: '0.5rem',
+            marginBottom: '4.5rem',
+            borderTop: '1px solid #eee',
+            width: '100%',
+            boxSizing: 'border-box' as const,
+            textAlign: 'center' as const,
         },
         errorMessage: { textAlign: 'center' as const, padding: '1rem', backgroundColor: 'rgba(234, 67, 53, 0.1)', border: '1px solid rgba(234, 67, 53, 0.2)', borderRadius: '8px', color: '#c53929', margin: '1rem auto', fontSize: '0.9rem', maxWidth: '1200px', boxSizing: 'border-box' as const, },
         emptyStateContainer: { display: 'flex', flexDirection: 'column' as const, justifyContent: 'center', alignItems: 'center', padding: '4rem 1rem', textAlign: 'center' as const, color: '#5f6368', flexGrow: 1, minHeight: '300px', boxSizing: 'border-box' as const, },
     };
 
     // # ############################################################################ #
-    // # #                     SECTION 15 - RESPONSIVE STYLES                     #
+    // # #                     SECTION 16 - RESPONSIVE STYLES                     #
     // # ############################################################################ #
     const responsiveStyles = `
     html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow-x: hidden; font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'}; box-sizing: border-box; }
     *, *::before, *::after { box-sizing: inherit; }
     input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; height: 1em; width: 1em; margin-left: .25em; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23777'%3e%3cpath d='M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'/%3e%3c/svg>'); background-size: 1em 1em; cursor: pointer; }
-    .swiper-pagination-bullet { background-color: #cccccc !important; opacity: 1 !important; width: 8px !important; height: 8px !important; }
-    .swiper-pagination-bullet-active { background-color: #1a73e8 !important; }
-    .swiper-button-next, .swiper-button-prev { color: #1a73e8 !important; transform: scale(0.7); }
-    .swiper-slide { overflow: hidden; }
+    /* Replace the existing swiper styles with these smaller dots */
+    .swiper-pagination-bullet {
+      background-color: #cccccc !important;
+      opacity: 1 !important;
+      width: 6px !important;
+      height: 6px !important;
+      margin: 0 3px !important;
+    }
+
+    .swiper-pagination-bullet-active {
+      background-color: #1a73e8 !important;
+      width: 8px !important;
+      height: 8px !important;
+    }
+
+    .swiper-pagination {
+      bottom: 10px !important;
+    }
+
+    .swiper-button-next, .swiper-button-prev {
+      color: #1a73e8 !important;
+      transform: scale(0.7);
+    }
+
+    .swiper-slide {
+      overflow: hidden;
+    }
     select:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2); outline: none; }
     `;
 
     // # ############################################################################ #
-    // # #             SECTION 16 - INNER COMPONENT: CAMPAIGN CARD             #
+    // # #             SECTION 17 - INNER COMPONENT: CAMPAIGN CARD             #
     // # ############################################################################ #
     const CampaignCardComponent: React.FC<{ campaign: CampaignDisplay }> = ({ campaign }) => {
         return (
             <Link to={`/campaigns/${campaign.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
                 <div style={styles.campaignCard}>
-                    {campaign.image ? ( 
-                        <img 
-                            src={campaign.image} 
-                            alt={campaign.title} 
-                            style={styles.cardImage} 
-                            onError={(e) => { 
-                                (e.target as HTMLImageElement).src = 'https://placehold.co/400x180/e5e7eb/9aa0a6?text=Img+Error'; 
-                            }} 
-                        /> 
-                    ) : ( 
-                        <div style={styles.noImagePlaceholder}>No Image</div> 
+                    {campaign.image ? (
+                        <img
+                            src={campaign.image}
+                            alt={campaign.title}
+                            style={styles.cardImage}
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://placehold.co/400x180/e5e7eb/9aa0a6?text=Img+Error';
+                            }}
+                        />
+                    ) : (
+                        <div style={styles.noImagePlaceholder}>No Image</div>
                     )}
                     <div style={styles.cardContent}>
                         {campaign.category && (
@@ -459,10 +571,10 @@ const formatAddressForDisplay = async (address: string): Promise<string> => {
                     </div>
                     <div style={styles.cardFooter}>
                         <div style={styles.creatorInfo}>
-                            <span style={styles.creatorAvatar}></span> 
+                            <span style={styles.creatorAvatar}></span>
                             <span>{campaign.creator}</span>
-                            {campaign.isVerified && ( 
-                                <span style={styles.verifiedBadge}>Verified</span> 
+                            {campaign.isVerified && (
+                                <span style={styles.verifiedBadge}>Verified</span>
                             )}
                         </div>
                     </div>
@@ -472,9 +584,9 @@ const formatAddressForDisplay = async (address: string): Promise<string> => {
     };
 
     // # ############################################################################ #
-    // # #             SECTION 17 - JSX RETURN: PAGE STRUCTURE & CONTENT             #
+    // # #             SECTION 18 - JSX RETURN: PAGE STRUCTURE & CONTENT             #
     // # ############################################################################ #
-    
+
     // Swiper debug log as in your original code
     console.log('SWIPER_DEBUG (LandingPage):', {
         loadingCampaigns,
@@ -489,7 +601,7 @@ const formatAddressForDisplay = async (address: string): Promise<string> => {
     return (
         <div style={styles.page}>
             <style>{responsiveStyles}</style>
-            
+
             {/* Header Section */}
             <header style={styles.header}>
                 <div style={styles.headerContent}>
@@ -500,19 +612,19 @@ const formatAddressForDisplay = async (address: string): Promise<string> => {
                         {isAuthenticated ? (
                             <>
                                 <Link to="/dashboard" style={styles.navItem}>Dashboard</Link>
-                                <Link 
-                                    to="/new-campaign" 
-                                    style={{...styles.button, ...styles.buttonPrimary, marginLeft: '1rem'}}
+                                <Link
+                                    to="/new-campaign"
+                                    style={{ ...styles.button, ...styles.buttonPrimary, marginLeft: '1rem' }}
                                 >
                                     Create Campaign
                                 </Link>
                             </>
                         ) : (
-                            <button 
-                                onClick={handleConnectWallet} 
-                                disabled={isConnectingWallet || authIsLoading} 
-                                style={{ 
-                                    ...styles.button, 
+                            <button
+                                onClick={handleConnectWallet}
+                                disabled={isConnectingWallet || authIsLoading}
+                                style={{
+                                    ...styles.button,
                                     ...styles.buttonPrimary,
                                     ...(isConnectingWallet || authIsLoading ? { opacity: 0.7, cursor: 'not-allowed' as const } : {})
                                 }}
@@ -530,15 +642,15 @@ const formatAddressForDisplay = async (address: string): Promise<string> => {
                 <p style={styles.heroSubtitle}>
                     Fund projects that make a difference with transparent and secure donations.
                 </p>
-                
+
                 {/* Search and Category Filter */}
                 <div style={styles.searchAndFilterContainer}>
-                    <input 
-                        type="search" 
-                        placeholder="Search campaigns by title or description..." 
-                        value={searchQuery} 
-                        onChange={(e) => setSearchQuery(e.target.value)} 
-                        style={styles.searchInput} 
+                    <input
+                        type="search"
+                        placeholder="Search campaigns by title or description..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        style={styles.searchInput}
                     />
                     <select
                         value={selectedFilterCategory}
@@ -554,12 +666,12 @@ const formatAddressForDisplay = async (address: string): Promise<string> => {
 
             {/* Main Content Section */}
             <main style={styles.campaignsSection}>
-                <div style={styles.container}> 
+                <div style={styles.container}>
                     <div style={styles.sectionHeader}>
-                        <h2 style={styles.sectionTitle}>Explore Campaigns</h2> 
+                        <h2 style={styles.sectionTitle}>Explore Campaigns</h2>
                         <p style={styles.sectionSubtitle}>
                             Swipe through projects making a difference.
-                        </p> 
+                        </p>
                     </div>
 
                     {/* Campaign Content */}
@@ -567,69 +679,69 @@ const formatAddressForDisplay = async (address: string): Promise<string> => {
                         <div style={styles.emptyStateContainer}>
                             <div>Loading campaigns...</div>
                         </div>
-                    ) : pageError ? ( 
+                    ) : pageError ? (
                         <div style={styles.errorMessage}>
                             <p>{pageError}</p>
                             {typeof pageError === 'string' && connectionAttempts > 2 && !pageError.toLowerCase().includes("api connection error") && (
-                                <button 
-                                    onClick={() => window.location.reload()} 
+                                <button
+                                    onClick={() => window.location.reload()}
                                     style={{
-                                        ...styles.button, 
-                                        ...styles.buttonSecondary, 
-                                        marginTop: '1rem', 
-                                        width: 'auto', 
-                                        padding:'0.5rem 1rem'
+                                        ...styles.button,
+                                        ...styles.buttonSecondary,
+                                        marginTop: '1rem',
+                                        width: 'auto',
+                                        padding: '0.5rem 1rem'
                                     }}
                                 >
                                     Try Again or Refresh
                                 </button>
                             )}
                         </div>
-                    ) : filteredCampaignsBySearch.length === 0 ? ( 
+                    ) : filteredCampaignsBySearch.length === 0 ? (
                         <div style={styles.emptyStateContainer}>
                             <p>
-                                {searchQuery ? `No campaigns found for "${searchQuery}".` : 
-                                (selectedFilterCategory !== ALL_CATEGORIES_FILTER_OPTION ? 
-                                `No campaigns found in category "${selectedFilterCategory}".` : 
-                                "No campaigns available at the moment.")}
+                                {searchQuery ? `No campaigns found for "${searchQuery}".` :
+                                    (selectedFilterCategory !== ALL_CATEGORIES_FILTER_OPTION ?
+                                        `No campaigns found in category "${selectedFilterCategory}".` :
+                                        "No campaigns available at the moment.")}
                             </p>
-                            {!searchQuery && isAuthenticated && ( 
-                                <Link 
-                                    to="/new-campaign" 
+                            {!searchQuery && isAuthenticated && (
+                                <Link
+                                    to="/new-campaign"
                                     style={{
-                                        ...styles.button, 
-                                        ...styles.buttonPrimary, 
-                                        marginTop: '1rem', 
-                                        width: 'auto', 
-                                        padding:'0.625rem 1.25rem'
+                                        ...styles.button,
+                                        ...styles.buttonPrimary,
+                                        marginTop: '1rem',
+                                        width: 'auto',
+                                        padding: '0.625rem 1.25rem'
                                     }}
                                 >
                                     Create First Campaign
-                                </Link> 
+                                </Link>
                             )}
                         </div>
-                    ) : ( 
+                    ) : (
                         <Swiper
                             modules={[Pagination, A11y]} // REMOVED: Navigation
-                            spaceBetween={16} 
+                            spaceBetween={16}
                             slidesPerView={1}
                             // navigation // REMOVED: navigation prop
                             pagination={{ clickable: true, dynamicBullets: true }}
-                            loop={false} 
+                            loop={false}
                             style={styles.swiperContainer}
                             grabCursor={true}
-                            key={filteredCampaignsBySearch.map(c => c.id).join('-')} 
+                            key={filteredCampaignsBySearch.map(c => c.id).join('-')}
                         >
                             {filteredCampaignsBySearch.map(campaign => (
                                 <SwiperSlide key={campaign.id} style={styles.swiperSlide}>
-                                    <CampaignCardComponent campaign={campaign} /> 
+                                    <CampaignCardComponent campaign={campaign} />
                                 </SwiperSlide>
                             ))}
                         </Swiper>
                     )}
                 </div>
             </main>
-            
+
             {/* Footer */}
             <footer style={styles.legalNotice}>
                 &copy; {new Date().getFullYear()} Fund. All rights reserved. {/* CHANGED: WorldFund to Fund */}
@@ -637,24 +749,24 @@ const formatAddressForDisplay = async (address: string): Promise<string> => {
 
             {/* Bottom Navigation */}
             <nav style={styles.tabs}>
-                <Link to="/" style={{ ...styles.tab, ...(isActivePath('/') ? styles.tabActive : {}) }}>
+                <Link to="/" style={{ ...styles.tab, ...(isActivePath('/', location.pathname) ? styles.tabActive : {}) }}>
                     <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor">
                         <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
                     </svg>
                     <span>Home</span>
                 </Link>
-                <button 
-                    onClick={handleAccountNavigation} 
-                    disabled={authIsLoading && !isAuthenticated} 
-                    style={{ 
-                        ...styles.tab, 
-                        ...(isActivePath('/dashboard') ? styles.tabActive : {}), 
-                        background: 'none', 
-                        border: 'none', 
-                        fontFamily: 'inherit', 
-                        cursor: 'pointer', 
-                        padding: '0.1rem 0.5rem', 
-                        margin: 0, 
+                <button
+                    onClick={handleAccountNavigation}
+                    disabled={authIsLoading && !isAuthenticated}
+                    style={{
+                        ...styles.tab,
+                        ...(isActivePath('/dashboard', location.pathname) ? styles.tabActive : {}),
+                        background: 'none',
+                        border: 'none',
+                        fontFamily: 'inherit',
+                        cursor: 'pointer',
+                        padding: '0.1rem 0.5rem',
+                        margin: 0,
                     }}
                 >
                     <svg style={styles.tabIcon} viewBox="0 0 24 24" fill="currentColor">
@@ -668,6 +780,6 @@ const formatAddressForDisplay = async (address: string): Promise<string> => {
 };
 
 // # ############################################################################ #
-// # #                       SECTION 18 - DEFAULT EXPORT                       #
+// # #                       SECTION 19 - DEFAULT EXPORT                       #
 // # ############################################################################ #
 export default LandingPage;
