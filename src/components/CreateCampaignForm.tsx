@@ -1,33 +1,31 @@
 // src/components/CreateCampaignForm.tsx
-// (Full fix: Corrects image payload, category selection, and provides context for line 81 error)
 
 // # ############################################################################ #
-// # #                           SECTION 1 - IMPORTS                           #
+// # #                     SECTION 1 - IMPORTS                                  #
 // # ############################################################################ #
 import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
-// Ensure CampaignPayload in CampaignService.ts has:
-// category: string; image?: string; ownerId: string; title: string; description: string; goal: number;
 import { campaignService, CampaignPayload } from "../services/CampaignService";
 import { useAuth } from "./AuthContext";
-import { uploadData } from '@aws-amplify/storage';
+// REPLACE THIS IMPORT:
+// import { uploadData } from '@aws-amplify/storage';
+// WITH THIS Gen 2 import:
+import { uploadData } from 'aws-amplify/storage';
 import { contentModerationService, PreviewResult } from "../services/ContentModerationService";
 
 const PREDEFINED_CATEGORIES = [
-    "Technology & Innovation",
-    "Creative Works", 
-    "Community & Social Causes",
-    "Small Business & Entrepreneurship",
-    "Health & Wellness",
-    "Other"
+  "Technology & Innovation",
+  "Creative Works",
+  "Community & Social Causes",
+  "Small Business & Entrepreneurship",
+  "Health & Wellness",
+  "Other"
 ];
 
 // # ############################################################################ #
-// # #                           SECTION 2 - STYLES                           #
+// # #                     SECTION 2 - STYLES                                   #
 // # ############################################################################ #
 const styles: { [key: string]: React.CSSProperties } = {
-  // Using your styles from Turn 51. Line 81 error is reported within this block.
-  // If the error on Line 81 persists, please share that specific line and a few around it.
   page: { textAlign: 'center' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif', color: '#202124', backgroundColor: '#f5f7fa', margin: 0, padding: 0, overflowX: 'hidden' as const, width: '100vw', minHeight: '100%', display: 'flex', flexDirection: 'column' as const, boxSizing: 'border-box' as const, },
   container: { margin: '0 auto', width: '100%', padding: '0 0.5rem', boxSizing: 'border-box' as const, maxWidth: '1200px', flexGrow: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', paddingTop: '1rem', paddingBottom: '2rem', },
   header: { background: 'white', padding: '0.5rem 0', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', position: 'sticky' as const, top: 0, zIndex: 100, width: '100%', boxSizing: 'border-box' as const, },
@@ -63,14 +61,14 @@ const responsiveStyles = `
   html, body { font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'}; }
   *, *::before, *::after { box-sizing: inherit; }
   input:focus, textarea:focus, select:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2); outline: none; }
-  
+
   @media (max-width: 768px) {
     input, textarea, select {
       font-size: 16px !important;
       transform: translateZ(0);
       -webkit-appearance: none;
     }
-    
+
     button {
       min-height: 44px;
       touch-action: manipulation;
@@ -79,7 +77,7 @@ const responsiveStyles = `
 `;
 
 // # ############################################################################ #
-// # #                   SECTION 3 - COMPONENT DEFINITION & STATE                   #
+// # #           SECTION 3 - COMPONENT DEFINITION & STATE                       #
 // # ############################################################################ #
 
 interface CreateFormFields {
@@ -109,21 +107,21 @@ export function CreateCampaignForm() {
   }>({});
   const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
   const [pendingSubmit, setPendingSubmit] = useState<boolean>(false);
-  
+
 // # ############################################################################ #
-// # #                           SECTION 4 - CONSTANTS                           #
+// # #                     SECTION 4 - CONSTANTS                                #
 // # ############################################################################ #
   const MAX_TITLE_LENGTH = 40;
   const MAX_DESCRIPTION_LENGTH = 425;
   const MIN_GOAL_AMOUNT = 1;
-  const MAX_GOAL_AMOUNT = 10000000000; // Make sure this aligns with backend if any validation exists there
+  const MAX_GOAL_AMOUNT = 10000000000;
   const MAX_IMAGE_SIZE_MB = 5;
   const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
   const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png'];
   const ALLOWED_IMAGE_EXTENSIONS_DISPLAY = "JPEG, PNG";
 
 // # ############################################################################ #
-// # #                   SECTION 5 - EFFECT: AUTHENTICATION CHECK                   #
+// # #             SECTION 5 - EFFECT: AUTHENTICATION CHECK                     #
 // # ############################################################################ #
   useEffect(() => {
     if (!isAuthenticated) {
@@ -157,7 +155,7 @@ export function CreateCampaignForm() {
   }, [showPreviewModal]);
 
 // # ############################################################################ #
-// # #                   SECTION 6 - EVENT HANDLER: ONCHANGE                   #
+// # #             SECTION 6 - EVENT HANDLER: ONCHANGE                          #
 // # ############################################################################ #
   const onChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -165,11 +163,11 @@ export function CreateCampaignForm() {
         setSelectedCategory(value);
     } else {
         setForm(prev => ({ ...prev, [name]: value, }));
-        
+
         // Real-time content preview for title and description
         if (name === "title" || name === "description") {
           const preview = contentModerationService.getContentPreview(value);
-          
+
           setContentPreviews(prev => ({
             ...prev,
             [name]: preview.hasChanges ? preview : undefined
@@ -180,10 +178,10 @@ export function CreateCampaignForm() {
   };
 
 // # ############################################################################ #
-// # #                 SECTION 6.5 - EVENT HANDLER: HANDLE IMAGE CHANGE                 #
+// # #         SECTION 6.5 - EVENT HANDLER: HANDLE IMAGE CHANGE                 #
 // # ############################################################################ #
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setImageError(null); 
+    setImageError(null);
     if (imagePreview) { URL.revokeObjectURL(imagePreview); setImagePreview(null); }
     setImageFile(null);
     const file = e.target.files?.[0];
@@ -203,13 +201,135 @@ export function CreateCampaignForm() {
   };
 
 // # ############################################################################ #
-// # #                   SECTION 7 - EVENT HANDLER: ONSUBMIT                   #
+// # #             SECTION 7 - EVENT HANDLER: submitCampaign                    #
+// # ############################################################################ #
+  const submitCampaign = async (useFilteredContent: boolean) => {
+    setSubmitError(null);
+    setLoading(true);
+    let imageS3Key: string | undefined = undefined;
+
+    // Get the text to use (filtered or original)
+    let titleToSubmit = form.title.trim();
+    let descriptionToSubmit = form.description.trim();
+
+    if (useFilteredContent) {
+      if (contentPreviews.title?.hasChanges) {
+        titleToSubmit = contentPreviews.title.previewText;
+      }
+      if (contentPreviews.description?.hasChanges) {
+        descriptionToSubmit = contentPreviews.description.previewText;
+      }
+    }
+
+    try {
+      if (imageFile) {
+        // Gen 2 storage upload - cleaner and should work with custom auth
+        const uniqueFileName = `campaign-images/${walletAddress}-${Date.now()}-${imageFile.name.replace(/\s+/g, '_')}`;
+        console.log(`[CreateCampaignForm] Gen 2 upload starting: ${uniqueFileName}`);
+
+        try {
+          // ✅ Gen 2 uploadData API - handles auth automatically
+          const uploadResult = await uploadData({
+            path: uniqueFileName,  // Gen 2 uses 'path' instead of 'key'
+            data: imageFile,
+            options: {
+              onProgress: ({ transferredBytes, totalBytes }) => {
+                if (totalBytes) {
+                  const progress = Math.round((transferredBytes / totalBytes) * 100);
+                  console.log(`[CreateCampaignForm] Upload progress: ${progress}%`);
+                }
+              }
+            }
+          }).result;
+
+          imageS3Key = uploadResult.path;  // Gen 2 returns 'path' instead of 'key'
+          console.log('[CreateCampaignForm] Gen 2 upload successful! Path:', imageS3Key);
+        } catch (uploadError: any) {
+          console.error('[CreateCampaignForm] Gen 2 upload failed:', uploadError);
+
+          // Enhanced error handling for Gen 2
+          let friendlyError = 'Failed to upload campaign image.';
+          if (uploadError.message?.includes('Access Denied')) {
+            friendlyError = 'Upload permission denied. Please try logging in again.';
+          } else if (uploadError.message?.includes('Network')) {
+            friendlyError = 'Network error during upload. Please check your connection.';
+          } else if (uploadError.message) {
+            friendlyError = uploadError.message;
+          }
+
+          throw new Error(friendlyError);
+        }
+      }
+
+      // Rest of campaign creation logic
+      const goalAmount = parseFloat(form.goal);
+      const createdAt = new Date().toISOString();
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      if (!walletAddress) {
+        throw new Error('Wallet address is missing. Please reconnect your wallet.');
+      }
+      const payloadForBackend = {
+        title: titleToSubmit,
+        description: descriptionToSubmit,
+        goal: goalAmount,
+        category: selectedCategory,
+        ownerId: walletAddress,
+        createdAt: createdAt,
+        expiresAt: expiresAt,
+        ...(imageS3Key ? { image: imageS3Key } : {})
+      };
+
+      console.log('[CreateCampaignForm] Submitting campaign with Gen 2 data:', payloadForBackend);
+      const serviceResult = await campaignService.createCampaign(payloadForBackend);
+
+      if (serviceResult.success && serviceResult.id) {
+        console.log('[CreateCampaignForm] Campaign created successfully:', serviceResult.id);
+        navigate(`/campaigns/${serviceResult.id}`, {
+          state: { message: 'Campaign created successfully!' }
+        });
+      } else {
+        throw new Error(serviceResult.error || 'Failed to create campaign.');
+      }
+    } catch (error: any) {
+      console.error('[CreateCampaignForm] Error in submitCampaign:', error);
+      setSubmitError(error.message || 'An unexpected error occurred.');
+    } finally {
+      setLoading(false);
+      setPendingSubmit(false);
+      setShowPreviewModal(false);
+    }
+  };
+
+// Optional: Add a test function to verify Gen 2 storage works
+const testGen2Upload = async () => {
+  try {
+    console.log('Testing Gen 2 storage upload...');
+    const testBlob = new Blob(['Hello Gen 2!'], { type: 'text/plain' });
+    const testFile = new File([testBlob], 'gen2-test.txt', { type: 'text/plain' });
+
+    const result = await uploadData({
+      path: `test-uploads/gen2-test-${Date.now()}.txt`,
+      data: testFile
+    }).result;
+
+    console.log('✅ Gen 2 storage test successful!', result);
+    alert('Gen 2 storage works! Path: ' + result.path);
+  } catch (error: any) {
+    console.error('❌ Gen 2 storage test failed:', error);
+    alert('Gen 2 storage failed: ' + error.message);
+  }
+};
+
+
+// # ############################################################################ #
+// # #         SECTION 7.5 - EVENT HANDLER: ONSUBMIT & MODAL ACTIONS            #
 // # ############################################################################ #
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!isAuthenticated || !walletAddress) { 
-        setSubmitError('You must be logged in and have a connected wallet to create a campaign.'); 
-        return; 
+    if (!isAuthenticated || !walletAddress) {
+      setSubmitError('You must be logged in and have a connected wallet to create a campaign.');
+      return;
     }
 
     const goalAmount = parseFloat(form.goal);
@@ -217,8 +337,8 @@ export function CreateCampaignForm() {
     // --- Form Validations ---
     if (!form.title.trim()) { setSubmitError('Campaign title is required.'); return; }
     if (form.title.trim().length > MAX_TITLE_LENGTH) { setSubmitError(`Title cannot exceed ${MAX_TITLE_LENGTH} characters.`); return; }
-    if (!selectedCategory) { 
-        setSubmitError('Please select a campaign category.'); return;
+    if (!selectedCategory) {
+      setSubmitError('Please select a campaign category.'); return;
     }
     if (isNaN(goalAmount) || goalAmount < MIN_GOAL_AMOUNT || goalAmount > MAX_GOAL_AMOUNT) {
       setSubmitError(`Funding goal must be a number between ${MIN_GOAL_AMOUNT} and ${MAX_GOAL_AMOUNT} WLD.`); return;
@@ -232,13 +352,13 @@ export function CreateCampaignForm() {
       form.title.trim(),
       form.description.trim()
     );
-    
+
     // Check if content should be blocked entirely (only extreme cases)
     if (moderationResult.titlePreview.shouldBlock || moderationResult.descriptionPreview.shouldBlock) {
       setSubmitError('Your campaign contains inappropriate content and cannot be submitted. Please revise your title and description.');
       return;
     }
-    
+
     // If content will be censored, show preview and ask for confirmation
     if (moderationResult.titlePreview.hasChanges || moderationResult.descriptionPreview.hasChanges) {
       setContentPreviews({
@@ -255,82 +375,6 @@ export function CreateCampaignForm() {
     await submitCampaign(false);
   };
 
-  const submitCampaign = async (useFilteredContent: boolean) => {
-    setSubmitError(null);
-    setLoading(true);
-    let rawImageS3Key: string | undefined = undefined; // Variable to hold the S3 key from upload
-
-    // Get the text to use (filtered or original)
-    let titleToSubmit = form.title.trim();
-    let descriptionToSubmit = form.description.trim();
-    
-    if (useFilteredContent) {
-      if (contentPreviews.title?.hasChanges) {
-        titleToSubmit = contentPreviews.title.previewText;
-      }
-      if (contentPreviews.description?.hasChanges) {
-        descriptionToSubmit = contentPreviews.description.previewText;
-      }
-    }
-
-    try {
-      if (imageFile) {
-        // Ensure walletAddress is a string for the S3 key path
-        const uniqueFileName = `raw-campaign-uploads/${walletAddress}-${Date.now()}-${imageFile.name.replace(/\s+/g, '_')}`;
-        console.log(`[CreateCampaignForm] Uploading raw image: ${uniqueFileName}`);
-        try {
-          const uploadResult = await uploadData({
-            key: uniqueFileName, 
-            data: imageFile,
-            options: {
-              contentType: imageFile.type,
-              accessLevel: 'guest', // Changed from 'protected' to 'guest' for custom auth
-            }
-          }).result;
-          rawImageS3Key = uploadResult.key; // This key includes the 'protected/{identity_id}/' prefix
-          console.log('[CreateCampaignForm] Raw image uploaded, S3 Key:', rawImageS3Key);
-        } catch (uploadError: any) {
-          console.error('[CreateCampaignForm] Error uploading raw image to S3:', uploadError);
-          throw new Error(uploadError.message || 'Failed to upload campaign image.');
-        }
-      }
-
-      // Construct payload correctly using 'image' property for the S3 key
-      const createdAt = new Date().toISOString();
-      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days from now
-
-      const payloadForBackend: CampaignPayload = {
-        title: titleToSubmit,
-        description: descriptionToSubmit,
-        goal: goalAmount,
-        category: selectedCategory,
-        ownerId: walletAddress, // walletAddress is confirmed to be a string here due to the check above
-        createdAt: createdAt,
-        expiresAt: expiresAt,
-        // Conditionally add the 'image' property (with the S3 key) if rawImageS3Key has a value
-        ...(rawImageS3Key ? { image: rawImageS3Key } : {})
-      };
-      
-      console.log('[CreateCampaignForm] Submitting campaign data:', payloadForBackend);
-      // Ensure CampaignPayload in CampaignService.ts expects 'category: string' and 'image?: string'
-      const serviceResult = await campaignService.createCampaign(payloadForBackend);
-
-      if (serviceResult.success && serviceResult.id) {
-        console.log('[CreateCampaignForm] Campaign created successfully:', serviceResult.id);
-        navigate(`/campaigns/${serviceResult.id}`, { state: { message: 'Campaign created successfully!' } });
-      } else {
-        throw new Error(serviceResult.error || 'Failed to create campaign.');
-      }
-    } catch (error: any) {
-      console.error('[CreateCampaignForm] Error in onSubmit:', error);
-      setSubmitError(error.message || 'An unexpected error occurred.');
-    } finally {
-      setLoading(false);
-      setPendingSubmit(false);
-      setShowPreviewModal(false);
-    }
-  };
-
   const handleAcceptFiltered = async () => {
     setShowPreviewModal(false);
     await submitCampaign(true);
@@ -343,7 +387,7 @@ export function CreateCampaignForm() {
   };
 
 // # ############################################################################ #
-// # #                   SECTION 8 - JSX RETURN & FORM STRUCTURE                   #
+// # #             SECTION 8 - JSX RETURN & FORM STRUCTURE                      #
 // # ############################################################################ #
   return (
     <div style={styles.page}>
@@ -380,10 +424,10 @@ export function CreateCampaignForm() {
                 <label htmlFor="category" style={styles.label}>Category</label>
                 <select
                     id="category"
-                    name="category" 
+                    name="category"
                     value={selectedCategory}
-                    onChange={onChange} 
-                    style={styles.select} 
+                    onChange={onChange}
+                    style={styles.select}
                     disabled={!isAuthenticated || loading}
                     required
                 >
@@ -423,6 +467,8 @@ export function CreateCampaignForm() {
             <button type="submit" disabled={!isAuthenticated || loading || !!submitError || !!imageError} style={{ ...styles.button, marginTop: '1rem', ...((!isAuthenticated || loading || !!submitError || !!imageError) ? styles.buttonDisabled : {}) }} >
               {loading ? 'Creating Campaign...' : 'Launch Campaign'}
             </button>
+            {/* Temporarily add this test button to your form for testing Gen 2 storage */}
+            <button type="button" onClick={testGen2Upload} style={{ ...styles.buttonPrimary, margin: '1rem auto', display: 'block' }}>Test Gen 2 Storage</button>
           </form>
         </div>
       </div>
@@ -433,23 +479,23 @@ export function CreateCampaignForm() {
           <div style={styles.modalContent}>
             <h3 style={styles.modalTitle}>Content Will Be Filtered</h3>
             <p>Your campaign contains words that will be automatically censored. Here's how it will appear:</p>
-            
+
             {contentPreviews.title?.hasChanges && (
               <div style={{marginBottom: '1rem'}}>
                 <strong>Title:</strong>
                 <div style={styles.previewBox}>"{contentPreviews.title.previewText}"</div>
               </div>
             )}
-            
+
             {contentPreviews.description?.hasChanges && (
               <div style={{marginBottom: '1rem'}}>
                 <strong>Description:</strong>
                 <div style={styles.previewBox}>"{contentPreviews.description.previewText}"</div>
               </div>
             )}
-            
+
             <p>Would you like to submit with the filtered content or edit your text?</p>
-            
+
             <div style={styles.modalButtons}>
               <button onClick={handleRejectAndEdit} style={styles.modalButtonSecondary}>
                 Edit My Text
