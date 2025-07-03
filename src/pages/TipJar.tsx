@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { IDKitWidget, VerificationLevel, ISuccessResult } from '@worldcoin/idkit';
 import { useAuth } from '../components/AuthContext';
 import { tipService } from '../services/TipService';
+import { contentModerationService, PreviewResult } from '../services/ContentModerationService';
 
 // ############################################################################ #
 // # #             SECTION 1.5 - HELPER FOR WORLD ID APP ID                 #
@@ -37,7 +38,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: 0,
     overflowX: 'hidden' as const,
     width: '100vw', // MODIFIED
-    minHeight: '100vh',
+    minHeight: '100%',
     display: 'flex',
     flexDirection: 'column' as const,
     boxSizing: 'border-box' as const, // ADDED
@@ -426,6 +427,7 @@ const TipJar: React.FC = () => {
   const [tipMessage, setTipMessage] = useState(''); // New state for tip message
   const [verifyingTx, setVerifyingTx] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [messagePreview, setMessagePreview] = useState<PreviewResult | null>(null);
 
 // # ############################################################################ #
 // # #                 SECTION 4 - CONSTANTS: DONATION ADDRESS                 #
@@ -504,6 +506,20 @@ const TipJar: React.FC = () => {
         return;
     }
 
+    // Content moderation for tip message
+    let messageToSubmit = tipMessage.trim();
+    if (messageToSubmit) {
+      const preview = contentModerationService.getContentPreview(messageToSubmit);
+      if (preview.shouldBlock) {
+        setErrorMessage('Your tip message contains inappropriate content and cannot be submitted. Please revise your message.');
+        return;
+      }
+      // Use filtered text if there are changes
+      if (preview.hasChanges) {
+        messageToSubmit = preview.previewText;
+      }
+    }
+
     setVerifyingTx(true);
     setErrorMessage('');
 
@@ -518,7 +534,7 @@ const TipJar: React.FC = () => {
         const submitResult = await tipService.submitTip({
           amount: tipAmount as number,
           txHash: txHash,
-          message: tipMessage.trim() || undefined,
+          message: messageToSubmit || undefined,
         });
 
         if (submitResult.success) {
@@ -549,6 +565,21 @@ const TipJar: React.FC = () => {
     setErrorMessage('');
     setIsVerified(false); // Reset World ID verification
     setVerificationLoading(false);
+  };
+
+// # ############################################################################ #
+// # #         SECTION 11.5 - EVENT HANDLER: MESSAGE CHANGE WITH MODERATION         #
+// # ############################################################################ #
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const message = e.target.value;
+    setTipMessage(message);
+    
+    if (message.trim()) {
+      const preview = contentModerationService.getContentPreview(message.trim());
+      setMessagePreview(preview.hasChanges ? preview : null);
+    } else {
+      setMessagePreview(null);
+    }
   };
 
 // # ############################################################################ #
@@ -696,13 +727,32 @@ const TipJar: React.FC = () => {
                   <label style={styles.label}>Message (optional)</label>
                   <textarea
                     value={tipMessage}
-                    onChange={(e) => setTipMessage(e.target.value)}
+                    onChange={handleMessageChange}
                     placeholder="Add a message with your tip (max 100 characters)"
                     maxLength={100}
                     rows={3}
                     style={styles.textarea}
                     disabled={verifyingTx}
                   />
+                  <div style={{fontSize: '0.75rem', color: '#5f6368', marginTop: '0.25rem', textAlign: 'right'}}>
+                    {tipMessage.length}/100
+                    {messagePreview?.hasChanges && (
+                      <span style={{color: '#1a73e8', fontWeight: 500}}> • Content will be filtered</span>
+                    )}
+                  </div>
+                  {messagePreview?.hasChanges && (
+                    <div style={{
+                      padding: '0.75rem',
+                      marginTop: '0.5rem',
+                      backgroundColor: 'rgba(26, 115, 232, 0.05)',
+                      border: '1px solid rgba(26, 115, 232, 0.2)',
+                      color: '#1a73e8',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem'
+                    }}>
+                      <strong>Preview:</strong> "{messagePreview.previewText}"
+                    </div>
+                  )}
                 </div>
 
                 <ol style={styles.instructionsList}>
@@ -730,10 +780,10 @@ const TipJar: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleVerifyTransaction}
-                    disabled={!txHash.trim() || verifyingTx || tipAmount === '' || tipAmount <= 0}
+                    disabled={!txHash.trim() || verifyingTx || tipAmount === '' || tipAmount <= 0 || messagePreview?.shouldBlock}
                     style={{
                         ...styles.verifyButton,
-                        ...((!txHash.trim() || verifyingTx || tipAmount === '' || tipAmount <= 0) ? { opacity: 0.6, cursor: 'not-allowed' as const } : {})
+                        ...((!txHash.trim() || verifyingTx || tipAmount === '' || tipAmount <= 0 || messagePreview?.shouldBlock) ? { opacity: 0.6, cursor: 'not-allowed' as const } : {})
                     }}
                   >
                     {verifyingTx ? (

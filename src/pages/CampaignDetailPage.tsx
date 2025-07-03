@@ -8,6 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext';
 import { campaignService, Campaign, Donation } from '../services/CampaignService';
 import { adminService } from '../services/AdminService'; // ADDED
+import { shareService } from '../services/ShareService'; // ADDED
 import { MiniKit, tokenToDecimals, Tokens, PayCommandInput } from '@worldcoin/minikit-js';
 import { ensService } from '../services/EnsService';
 

@@ -34,6 +34,7 @@
     "@worldcoin/minikit-react": "^1.9.3",
     "aws-amplify": "^6.15.0",
     "aws-cdk-lib": "^2.189.1",
+    "bad-words": "^4.0.0",
     "class-variance-authority": "^0.7.1",
     "constructs": "^10.4.2",
     "eruda": "^3.4.1",

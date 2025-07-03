@@ -21,7 +21,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: 0,
     overflowX: 'hidden' as const,
     width: '100vw',
-    minHeight: '100vh',
+    minHeight: '100%',
     display: 'flex',
     flexDirection: 'column' as const,
     boxSizing: 'border-box' as const,

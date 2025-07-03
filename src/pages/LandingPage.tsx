@@ -311,7 +311,7 @@ const formatAddressForDisplay = async (address: string): Promise<string> => {
     // # #                     SECTION 14 - INLINE STYLES OBJECT                     #
     // # ############################################################################ #
     const styles: { [key: string]: React.CSSProperties } = {
-        page: { textAlign: 'center' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif', color: '#202124', backgroundColor: '#ffffff', margin: 0, padding: 0, overflowX: 'hidden' as const, width: '100vw', minHeight: '100vh', display: 'flex', flexDirection: 'column' as const, boxSizing: 'border-box' as const, },
+        page: { textAlign: 'center' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif', color: '#202124', backgroundColor: '#ffffff', margin: 0, padding: 0, overflowX: 'hidden' as const, width: '100vw', minHeight: '100%', display: 'flex', flexDirection: 'column' as const, boxSizing: 'border-box' as const, },
         container: { margin: '0 auto', width: '100%', padding: '0 0.5rem 6rem 0.5rem', boxSizing: 'border-box' as const, maxWidth: '1200px', flexGrow: 1, display: 'flex', flexDirection: 'column' as const, },
         header: { background: 'white', padding: '0.5rem 0', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', position: 'sticky' as const, top: 0, zIndex: 100, width: '100%', boxSizing: 'border-box' as const, },
         headerContent: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px', margin: '0 auto', padding: '0 0.5rem', boxSizing: 'border-box' as const, },

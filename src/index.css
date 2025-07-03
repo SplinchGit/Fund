@@ -24,9 +24,7 @@ html {
   box-sizing: inherit;
 }
 
-html, body {
-  overflow: hidden; /* Prevent scroll bounce on iOS */
-}
+
 
 body {
   font-family: var(--font-sans);
