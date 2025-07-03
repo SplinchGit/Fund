@@ -284,7 +284,7 @@ export function CreateCampaignForm() {
             data: imageFile,
             options: {
               contentType: imageFile.type,
-              accessLevel: 'protected', // Scoped to the authenticated user
+              accessLevel: 'guest', // Changed from 'protected' to 'guest' for custom auth
             }
           }).result;
           rawImageS3Key = uploadResult.key; // This key includes the 'protected/{identity_id}/' prefix
