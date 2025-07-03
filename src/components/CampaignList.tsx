@@ -5,6 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { campaignService, Campaign } from '../services/CampaignService';
+import UserDisplay from './UserDisplay';
 
 // # ############################################################################ #
 // # #        SECTION 2 - COMPONENT: CAMPAIGNLIST - DEFINITION & STATE        #
@@ -274,7 +275,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
           <h1 className="text-2xl font-bold mb-2">{campaign.title}</h1>
 
           <div className="flex items-center text-sm text-gray-600 mb-4">
-            <span>Created by: {campaign.ownerId.slice(0, 6)}...{campaign.ownerId.slice(-4)}</span>
+            <span>Created by: <UserDisplay address={campaign.ownerId} className="text-xs" /></span>
             <span className="mx-2">•</span>
             <span>{new Date(campaign.createdAt).toLocaleDateString()}</span>
             <span className="mx-2">•</span>
@@ -373,7 +374,7 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
                   <div key={donation.id} className="flex justify-between items-center border-b border-gray-100 pb-2">
                     <div>
                       <span className="text-sm font-medium">
-                        {donation.donor.slice(0, 6)}...{donation.donor.slice(-4)}
+                        <UserDisplay address={donation.donor} className="text-xs" />
                       </span>
                       <p className="text-xs text-gray-500">
                         {new Date(donation.createdAt).toLocaleString()}

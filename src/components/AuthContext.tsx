@@ -23,6 +23,7 @@ import { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
 interface AuthState {
   isAuthenticated: boolean;
   walletAddress: string | null;
+  username: string | null;
   sessionToken: string | null;
   isLoading: boolean;
   error: string | null;
@@ -32,7 +33,7 @@ interface AuthState {
 
 // Auth context interface
 interface AuthContextType extends AuthState {
-  login: (token: string, address: string, shouldNavigate?: boolean) => void;
+  login: (token: string, address: string, username?: string, shouldNavigate?: boolean) => void;
   logout: () => Promise<void>;
   loginWithWallet: (authResult: MiniAppWalletAuthSuccessPayload) => Promise<void>;
   getNonceForMiniKit: () => Promise<string>;
@@ -57,6 +58,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const STORAGE_NAMESPACE = 'worldfund_';
 const SESSION_TOKEN_KEY = `${STORAGE_NAMESPACE}session_token`;
 const WALLET_ADDRESS_KEY = `${STORAGE_NAMESPACE}wallet_address`;
+const USERNAME_KEY = `${STORAGE_NAMESPACE}username`;
 
 // # ############################################################################ #
 // # #                   SECTION 5 - UTILITY: NONCE VALIDATION                  #
@@ -128,10 +130,13 @@ const extractNonceFromMessage = (message: string): string => {
 // # #                 SECTION 7 - UTILITY: SESSION DATA STORAGE                #
 // # ############################################################################ #
 // Store session data helper - Using sessionStorage for tokens for better security
-const storeSessionData = (token: string, address: string): void => {
+const storeSessionData = (token: string, address: string, username?: string): void => {
   try {
     sessionStorage.setItem(SESSION_TOKEN_KEY, token);
     localStorage.setItem(WALLET_ADDRESS_KEY, address);
+    if (username) {
+      localStorage.setItem(USERNAME_KEY, username);
+    }
     console.log('[AuthContext] Session data stored in storage');
   } catch (error) {
     console.error("[AuthContext] Error storing session data:", error);
@@ -139,7 +144,7 @@ const storeSessionData = (token: string, address: string): void => {
 };
 
 // Get stored session data helper
-const getStoredSessionData = (): { token: string | null, address: string | null } => {
+const getStoredSessionData = (): { token: string | null, address: string | null, username: string | null } => {
   try {
     // Try sessionStorage first, then fall back to localStorage for backwards compatibility
     let token = sessionStorage.getItem(SESSION_TOKEN_KEY);
@@ -153,10 +158,11 @@ const getStoredSessionData = (): { token: string | null, address: string | null 
     }
 
     const address = localStorage.getItem(WALLET_ADDRESS_KEY);
-    return { token, address };
+    const username = localStorage.getItem(USERNAME_KEY);
+    return { token, address, username };
   } catch (error) {
     console.error("[AuthContext] Error getting session data:", error);
-    return { token: null, address: null };
+    return { token: null, address: null, username: null };
   }
 };
 
@@ -166,6 +172,7 @@ const clearStoredSessionData = (): void => {
     localStorage.removeItem(SESSION_TOKEN_KEY);
     sessionStorage.removeItem(SESSION_TOKEN_KEY);
     localStorage.removeItem(WALLET_ADDRESS_KEY);
+    localStorage.removeItem(USERNAME_KEY);
     console.log('[AuthContext] Session data cleared from storage');
   } catch (error) {
     console.error("[AuthContext] Error clearing session data:", error);
@@ -182,6 +189,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
     walletAddress: null,
+    username: null,
     sessionToken: null,
     isLoading: true, // Start loading until we check session
     error: null,
@@ -249,8 +257,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 // # #             SECTION 11 - AUTHPROVIDER: CORE LOGIN FUNCTION             #
 // # ############################################################################ #
   // Login function - Improved with atomic state updates
-  const login = useCallback((token: string, address: string, shouldNavigate: boolean = true) => {
-    console.log('[AuthContext] Login called with:', { hasToken: !!token, address, shouldNavigate });
+  const login = useCallback((token: string, address: string, username?: string, shouldNavigate: boolean = true) => {
+    console.log('[AuthContext] Login called with:', { hasToken: !!token, address, username, shouldNavigate });
 
     if (!token || !address) {
       console.error('[AuthContext] Invalid login parameters', { hasToken: !!token, hasAddress: !!address });
@@ -263,12 +271,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     // Store session data
-    storeSessionData(token, address);
+    storeSessionData(token, address, username);
 
     // Update auth state atomically
     updateAuthState({
       isAuthenticated: true,
       walletAddress: address,
+      username: username || null,
       sessionToken: token,
       isLoading: false,
       lastAuthAttempt: Date.now()
@@ -445,8 +454,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Resolve ENS name for the address before updating state
         const formattedAddress = await formatAddressOrEns(verifyResult.walletAddress);
 
+        // Try to get username from AuthService response (which now includes World ID username resolution)
+        const authStatus = await authService.checkAuthStatus();
+        const username = authStatus.username;
+        
         // Update auth state atomically
-        login(verifyResult.token, formattedAddress, true);
+        login(verifyResult.token, formattedAddress, username || undefined, true);
       } else {
         // Enhanced error with clearer user message
         let errorMsg = verifyResult.error || 'Wallet signature verification failed';
@@ -493,6 +506,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       updateAuthState({
         isAuthenticated: false,
         walletAddress: null,
+        username: null,
         sessionToken: null,
         isLoading: false,
         nonce: null,
@@ -521,13 +535,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateAuthState({ isLoading: true }, true);
 
     try {
-      const { token, address } = getStoredSessionData();
+      const { token, address, username } = getStoredSessionData();
 
       if (!token || !address) {
         console.log('[AuthContext] No session data found');
         updateAuthState({
           isAuthenticated: false,
           walletAddress: null,
+          username: null,
           sessionToken: null,
           isLoading: false,
         }, true);
@@ -540,6 +555,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       updateAuthState({
         isAuthenticated: true,
         walletAddress: address,
+        username: username,
         sessionToken: token,
         isLoading: true, // Keep loading while we verify
       }, true);
@@ -560,6 +576,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           updateAuthState({
             isAuthenticated: false,
             walletAddress: null,
+            username: null,
             sessionToken: null,
             isLoading: false,
             error: 'Session expired. Please login again.'
@@ -587,6 +604,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       updateAuthState({
         isAuthenticated: false,
         walletAddress: null,
+        username: null,
         sessionToken: null,
         isLoading: false,
         error: 'Failed to check authentication status'
@@ -621,6 +639,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('[AuthContext] Auth state updated:', {
       isAuthenticated: authState.isAuthenticated,
       hasWalletAddress: !!authState.walletAddress,
+      hasUsername: !!authState.username,
       hasSessionToken: !!authState.sessionToken,
       isLoading: authState.isLoading,
       hasError: !!authState.error,

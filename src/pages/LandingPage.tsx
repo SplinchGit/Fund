@@ -417,7 +417,7 @@ const formatAddressForDisplay = async (address: string): Promise<string> => {
     html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow-x: hidden; font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'}; box-sizing: border-box; }
     *, *::before, *::after { box-sizing: inherit; }
     input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; height: 1em; width: 1em; margin-left: .25em; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23777'%3e%3cpath d='M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'/%3e%3c/svg>'); background-size: 1em 1em; cursor: pointer; }
-    .swiper-pagination-bullet { background-color: #cccccc !important; opacity: 1 !important; }
+    .swiper-pagination-bullet { background-color: #cccccc !important; opacity: 1 !important; width: 8px !important; height: 8px !important; }
     .swiper-pagination-bullet-active { background-color: #1a73e8 !important; }
     .swiper-button-next, .swiper-button-prev { color: #1a73e8 !important; transform: scale(0.7); }
     .swiper-slide { overflow: hidden; }

@@ -18,6 +18,7 @@ import { ensService } from './EnsService';
 // Constants
 const SESSION_TOKEN_KEY = 'fund_session_token';
 const WALLET_ADDRESS_KEY = 'fund_wallet_address';
+const USERNAME_KEY = 'fund_username';
 
 // # ############################################################################ #
 // # #                SECTION 4 - CONFIGURATION: RETRY LOGIC (INTERFACE & DEFAULTS)                   #
@@ -850,6 +851,31 @@ class AuthService {
       this.safeLocalStorage.setItem(SESSION_TOKEN_KEY, data.token);
       this.safeLocalStorage.setItem(WALLET_ADDRESS_KEY, resolvedWalletAddress);
 
+      // Try to get World ID username if MiniKit is available
+      let username: string | null = null;
+      try {
+        if (typeof window !== 'undefined' && (window as any).MiniKit) {
+          const MiniKit = (window as any).MiniKit;
+          if (MiniKit.user && MiniKit.user.username) {
+            username = MiniKit.user.username;
+            console.log('[AuthService] World ID username found:', username);
+          } else if (MiniKit.getUserByAddress && typeof MiniKit.getUserByAddress === 'function') {
+            const worldIdUser = await MiniKit.getUserByAddress(data.walletAddress);
+            if (worldIdUser && worldIdUser.username) {
+              username = worldIdUser.username;
+              console.log('[AuthService] World ID username resolved:', username);
+            }
+          }
+        }
+      } catch (miniKitError) {
+        console.warn('[AuthService] Failed to get World ID username:', miniKitError);
+      }
+
+      // Store username if found
+      if (username) {
+        this.safeLocalStorage.setItem(USERNAME_KEY, username);
+      }
+
       console.log('[AuthService] Signature verified successfully, session stored');
       return {
         success: true,
@@ -967,6 +993,7 @@ class AuthService {
       // Clear local session
       this.safeLocalStorage.removeItem(SESSION_TOKEN_KEY);
       this.safeLocalStorage.removeItem(WALLET_ADDRESS_KEY);
+      this.safeLocalStorage.removeItem(USERNAME_KEY);
 
       console.log('[AuthService] Logout successful');
       return { success: true };
@@ -990,12 +1017,14 @@ public async checkAuthStatus(): Promise<{
   isAuthenticated: boolean;
   token: string | null;
   walletAddress: string | null;
+  username: string | null;
 }> {
   console.log('[AuthService] Checking auth status...');
 
   try {
     const token = this.safeLocalStorage.getItem(SESSION_TOKEN_KEY);
     const walletAddress = this.safeLocalStorage.getItem(WALLET_ADDRESS_KEY);
+    const username = this.safeLocalStorage.getItem(USERNAME_KEY);
 
     console.log(
       `[AuthService] Token found: ${Boolean(
@@ -1099,6 +1128,7 @@ public async checkAuthStatus(): Promise<{
       isAuthenticated,
       token: token && hasValidFormat ? token : null,
       walletAddress,
+      username,
     };
   } catch (error) {
     console.error('[AuthService] Error checking auth status:', error);
@@ -1106,6 +1136,7 @@ public async checkAuthStatus(): Promise<{
       isAuthenticated: false,
       token: null,
       walletAddress: null,
+      username: null,
     };
   }
 }
