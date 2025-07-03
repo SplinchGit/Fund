@@ -28,7 +28,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom'; // Import BrowserRouter here
 import App from './App';
 import './index.css';
-// import { configureAmplify } from './aws-config';      // AWS Amplify setup (Keep if used for backend)
+import './amplify-config';      // AWS Amplify setup
 import ErudaProvider from './debug/ErudaProvider';   // In-app debug console
 import MiniKitProvider from './MiniKitProvider';     // Official World ID MiniKit provider
 // Import the AuthProvider

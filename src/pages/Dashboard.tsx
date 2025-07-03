@@ -172,7 +172,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     width: '100%',
     boxSizing: 'border-box' as const,
   },
-  loadingContainer: { display: 'flex', flexDirection: 'column' as const, justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f7fa', boxSizing: 'border-box' as const, },
+  loadingContainer: { display: 'flex', flexDirection: 'column' as const, justifyContent: 'center', alignItems: 'center', height: '100%', backgroundColor: '#f5f7fa', boxSizing: 'border-box' as const, },
   loadingSpinner: { borderRadius: '50%', width: '40px', height: '40px', border: '3px solid rgba(0, 0, 0, 0.1)', borderTopColor: '#1a73e8', animation: 'spin 1s ease-in-out infinite', },
   loadingText: { marginTop: '1rem', color: '#5f6368', fontSize: '0.9rem', },
   quickAccessSection: { backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', padding: '1.5rem', marginBottom: '1.5rem', boxSizing: 'border-box' as const, },

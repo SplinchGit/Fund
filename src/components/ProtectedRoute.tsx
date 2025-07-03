@@ -16,7 +16,7 @@ const LoadingFallback: React.FC = () => (
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    height: '100vh',
+    height: '100%',
     fontFamily: 'sans-serif',
   }}>
     Loading...

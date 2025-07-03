@@ -49,8 +49,8 @@ const styles: { [key: string]: React.CSSProperties } = {
   authWarning: { padding: '1rem', marginBottom: '1.5rem', backgroundColor: 'rgba(251, 188, 5, 0.05)', border: '1px solid rgba(251, 188, 5, 0.2)', color: '#795500', borderRadius: '8px', fontSize: '0.875rem', textAlign: 'center' as const, boxSizing: 'border-box' as const, },
   filterIndicator: { fontSize: '0.75rem', color: '#1a73e8', fontWeight: 500 },
   previewBox: { padding: '0.75rem', marginTop: '0.5rem', backgroundColor: 'rgba(26, 115, 232, 0.05)', border: '1px solid rgba(26, 115, 232, 0.2)', color: '#1a73e8', borderRadius: '6px', fontSize: '0.75rem', textAlign: 'left' as const, boxSizing: 'border-box' as const, },
-  modal: { position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' },
-  modalContent: { backgroundColor: 'white', borderRadius: '12px', padding: '2rem', maxWidth: '600px', width: '100%', maxHeight: '80vh', overflow: 'auto' },
+  modal: { position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem', touchAction: 'none' },
+  modalContent: { backgroundColor: 'white', borderRadius: '12px', padding: '2rem', maxWidth: '600px', width: '100%', maxHeight: '80vh', overflow: 'auto', WebkitOverflowScrolling: 'touch' as const, touchAction: 'auto' },
   modalTitle: { fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem', color: '#202124' },
   modalButtons: { display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1.5rem' },
   modalButtonPrimary: { padding: '0.75rem 1.5rem', backgroundColor: '#1a73e8', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.875rem' },
@@ -63,6 +63,19 @@ const responsiveStyles = `
   html, body { font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'}; }
   *, *::before, *::after { box-sizing: inherit; }
   input:focus, textarea:focus, select:focus { border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2); outline: none; }
+  
+  @media (max-width: 768px) {
+    input, textarea, select {
+      font-size: 16px !important;
+      transform: translateZ(0);
+      -webkit-appearance: none;
+    }
+    
+    button {
+      min-height: 44px;
+      touch-action: manipulation;
+    }
+  }
 `;
 
 // # ############################################################################ #
@@ -130,6 +143,18 @@ export function CreateCampaignForm() {
       }
     };
   }, [imagePreview]);
+
+  // Modal scroll locking effect
+  useEffect(() => {
+    if (showPreviewModal) {
+      // Lock scroll when modal opens
+      document.body.classList.add('scroll-lock');
+      return () => {
+        // Unlock scroll when modal closes
+        document.body.classList.remove('scroll-lock');
+      };
+    }
+  }, [showPreviewModal]);
 
 // # ############################################################################ #
 // # #                   SECTION 6 - EVENT HANDLER: ONCHANGE                   #

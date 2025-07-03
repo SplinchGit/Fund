@@ -24,7 +24,7 @@ import { CreateCampaignForm } from './components/CreateCampaignForm';
 const LoadingFallback: React.FC = () => {
   console.log('[App] Showing loading fallback');
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
       Loading...
     </div>
   );

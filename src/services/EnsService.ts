@@ -54,6 +54,13 @@ class EnsService {
     if (this.ensCache.has(address)) {
       return this.ensCache.get(address)!;
     }
+    
+    // Validate that we have a full address (not truncated)
+    if (!address || address.length < 42 || !address.startsWith('0x')) {
+      console.warn(`[EnsService] Invalid or truncated address provided: ${address}. Skipping ENS lookup.`);
+      return null;
+    }
+    
     try {
       const ensName = await this.provider.lookupAddress(address);
       if (ensName) {

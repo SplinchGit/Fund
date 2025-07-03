@@ -18,13 +18,16 @@
 /* Base styles */
 html {
   box-sizing: border-box; /* Global box-sizing for consistent padding */
+  /* Comprehensive scroll optimization for mobile */
+  overscroll-behavior: none; /* Prevent scroll bounce on both axes */
+  -webkit-overflow-scrolling: touch; /* Enable momentum scrolling on iOS */
+  touch-action: manipulation; /* Optimize touch interactions */
+  height: 100%;
 }
 
 *, *::before, *::after {
   box-sizing: inherit;
 }
-
-
 
 body {
   font-family: var(--font-sans);
@@ -32,7 +35,26 @@ body {
   font-weight: var(--font-weight-base);
   color: var(--color-default);
   background-color: var(--bg-default);
-  overscroll-behavior-y: contain; /* Prevent scroll bounce on iOS */
+  
+  /* Comprehensive scroll bounce prevention */
+  overscroll-behavior: none; /* Prevent scroll bounce on both axes */
+  overscroll-behavior-x: none; /* Explicitly prevent horizontal bounce */
+  overscroll-behavior-y: none; /* Explicitly prevent vertical bounce */
+  
+  /* Mobile scroll optimizations */
+  -webkit-overflow-scrolling: touch; /* Smooth momentum scrolling on iOS */
+  touch-action: manipulation; /* Better touch responsiveness, disable zoom */
+  
+  /* Prevent text selection and zoom on touch */
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  
+  /* Ensure full height without scroll issues */
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  position: relative;
 }
 
 /* Global link styles */
@@ -82,4 +104,46 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 768px) {
+  /* Ensure mobile viewport handling */
+  html, body {
+    width: 100%;
+    overflow-x: hidden;
+  }
+  
+  /* Optimize input fields for mobile */
+  input, textarea, select {
+    /* Prevent zoom on focus for iOS */
+    font-size: 16px !important;
+    transform: translateZ(0); /* Force hardware acceleration */
+  }
+  
+  /* Better touch targets */
+  button, a, [role="button"] {
+    min-height: 44px; /* iOS recommended touch target size */
+    touch-action: manipulation;
+  }
+}
+
+/* Root container optimization */
+#root {
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Utility classes for scroll management */
+.scroll-lock {
+  overflow: hidden !important;
+  position: fixed !important;
+  width: 100% !important;
+}
+
+.scroll-auto {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
