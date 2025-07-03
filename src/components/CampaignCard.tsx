@@ -1,17 +1,18 @@
 // src/components/CampaignCard.tsx
-// (Days Left display removed)
+// UPDATED: Use ImageService for proper image display
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Campaign as CampaignData } from '../services/CampaignService'; // Adjust path if CampaignService is elsewhere
+import { Campaign as CampaignData } from '../services/CampaignService';
 import { ensService } from '../services/EnsService';
+import { imageService } from '../services/ImageService';
 
 export interface CampaignDisplayInfo extends CampaignData {
-  daysLeft?: number; // Remains optional, but will no longer be displayed by this card
-  creator?: string; // This will now be the formatted ENS name or truncated address
+  daysLeft?: number;
+  creator?: string;
   isVerified?: boolean;
   progressPercentage: number;
-  ownerEnsName?: string; // Add a field to store the resolved ENS name
+  ownerEnsName?: string;
 }
 
 export interface CampaignCardProps {
@@ -46,7 +47,7 @@ const cardStyles: { [key: string]: React.CSSProperties } = {
   },
   noImagePlaceholder: {
     width: '100%',
-    height: '100px',
+    height: '200px', // Consistent height with image
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -81,7 +82,7 @@ const cardStyles: { [key: string]: React.CSSProperties } = {
     WebkitBoxOrient: 'vertical' as const,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    minHeight: 'calc(3 * 1.5 * 0.95rem)',
+    minHeight: 'calc(3 * 1.5em)',
     lineHeight: '1.5em',
     flexGrow: 1,
   },
@@ -118,11 +119,11 @@ const cardStyles: { [key: string]: React.CSSProperties } = {
     minHeight: '60px',
   },
   creatorDetails: {
-      display: 'flex',
-      alignItems: 'center',
-      flexShrink: 1, 
-      overflow: 'hidden', 
-      marginRight: '0.75rem', 
+    display: 'flex',
+    alignItems: 'center',
+    flexShrink: 1, 
+    overflow: 'hidden', 
+    marginRight: '0.75rem', 
   },
   creatorAvatar: {
     width: '32px',
@@ -169,6 +170,17 @@ const cardStyles: { [key: string]: React.CSSProperties } = {
     transition: 'background-color 0.2s',
     whiteSpace: 'nowrap' as const,
   },
+  // Loading state for image
+  imageLoading: {
+    width: '100%',
+    height: '200px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8f9fa',
+    color: '#6c757d',
+    fontSize: '0.9rem',
+  }
 };
 
 export const CampaignCard: React.FC<CampaignCardProps> = ({
@@ -181,7 +193,11 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
   deleteButtonStyle,
 }) => {
   const [campaign, setCampaign] = useState(initialCampaign);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
+  // Load ENS data
   useEffect(() => {
     const resolveEns = async () => {
       if (initialCampaign.ownerId) {
@@ -189,17 +205,42 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
         setCampaign(prev => ({
           ...prev,
           creator: ensName,
-          ownerEnsName: ensName, // Store the resolved ENS name separately if needed
+          ownerEnsName: ensName,
         }));
       }
     };
     resolveEns();
-  }, [initialCampaign.ownerId, initialCampaign]);
+  }, [initialCampaign.ownerId]);
 
+  // Load campaign image
+  useEffect(() => {
+    const loadImage = async () => {
+      setImageLoading(true);
+      setImageError(false);
+      
+      if (initialCampaign.image) {
+        try {
+          const url = await imageService.getCampaignImageUrl(initialCampaign.image);
+          if (url) {
+            setImageUrl(url);
+          } else {
+            setImageError(true);
+          }
+        } catch (error) {
+          console.error('[CampaignCard] Failed to load image:', error);
+          setImageError(true);
+        }
+      }
+      setImageLoading(false);
+    };
+
+    loadImage();
+  }, [initialCampaign.image]);
+
+  // Update campaign when prop changes
   useEffect(() => {
     setCampaign(initialCampaign);
   }, [initialCampaign]);
-
 
   const handleEdit = () => {
     if (onEdit && campaign.id) {
@@ -213,72 +254,101 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
     }
   };
 
+  const handleImageError = () => {
+    setImageError(true);
+    setImageUrl(imageService.getFallbackImageUrl(400, 200));
+  };
+
   return (
     <div style={cardStyles.campaignCard}>
-      {campaign.image ? (
+      {/* Image Section */}
+      {imageLoading ? (
+        <div style={cardStyles.imageLoading}>
+          Loading image...
+        </div>
+      ) : campaign.image && imageUrl && !imageError ? (
         <img
-          src={campaign.image}
+          src={imageUrl}
           alt={campaign.title}
           style={cardStyles.cardImage}
-          onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/600x300/e5e7eb/9aa0a6?text=No+Image'; }}
+          onError={handleImageError}
         />
       ) : (
-        <div style={cardStyles.noImagePlaceholder}>No Image</div>
+        <div style={cardStyles.noImagePlaceholder}>
+          No Image
+        </div>
       )}
+
+      {/* Content Section */}
       <div style={cardStyles.cardContent}>
-        <h3 style={cardStyles.cardTitle} title={campaign.title}>{campaign.title}</h3>
+        <h3 style={cardStyles.cardTitle} title={campaign.title}>
+          {campaign.title}
+        </h3>
+        
         {campaign.description && (
           <p style={cardStyles.cardDescription}>
             {campaign.description}
           </p>
         )}
+        
+        {/* Progress Bar */}
         <div style={cardStyles.progressBar}>
-          <div style={{ ...cardStyles.progressFill, width: `${campaign.progressPercentage}%` }}></div>
+          <div 
+            style={{ 
+              ...cardStyles.progressFill, 
+              width: `${campaign.progressPercentage}%` 
+            }}
+          />
         </div>
+        
+        {/* Progress Stats */}
         <div style={cardStyles.progressStats}>
-          <span>{campaign.raised !== undefined ? campaign.raised.toLocaleString() : '0'} / {campaign.goal !== undefined ? campaign.goal.toLocaleString() : '0'} WLD</span>
-          <span>{campaign.progressPercentage !== undefined ? campaign.progressPercentage.toFixed(0) : '0'}%</span>
+          <span>
+            {campaign.raised !== undefined ? campaign.raised.toLocaleString() : '0'} / {campaign.goal !== undefined ? campaign.goal.toLocaleString() : '0'} WLD
+          </span>
+          <span>
+            {campaign.progressPercentage !== undefined ? campaign.progressPercentage.toFixed(0) : '0'}%
+          </span>
         </div>
-        {/* --- DAYS LEFT DISPLAY REMOVED ---
-        {campaign.daysLeft !== undefined && campaign.daysLeft >= 0 && (
-            <div style={cardStyles.daysLeftText}>{campaign.daysLeft} days left</div>
-        )}
-        */}
+        
         {/* Add a bottom margin to progressStats if daysLeft was the only thing providing space before footer */}
-         { (campaign.daysLeft === undefined || campaign.daysLeft < 0) && <div style={{ marginBottom: '0.75rem' }}></div> }
-
+        {(campaign.daysLeft === undefined || campaign.daysLeft < 0) && <div style={{ marginBottom: '0.75rem' }}></div>}
       </div>
-      <div style={cardStyles.cardFooter}>
-        <div style={cardStyles.creatorDetails}>
+
+      {/* Footer Section */}
+      {(showViewDetailsButton || showAdminActions) && (
+        <div style={cardStyles.cardFooter}>
+          <div style={cardStyles.creatorDetails}>
             {campaign.creator && <span style={cardStyles.creatorAvatar}></span>}
             {campaign.creator && <span style={cardStyles.creatorName} title={campaign.creator}>{campaign.creator}</span>}
             {campaign.isVerified && <span style={cardStyles.verifiedBadge}>Verified</span>}
-        </div>
-        
-        <div style={cardStyles.actionButtonsContainer}>
+          </div>
+          
+          <div style={cardStyles.actionButtonsContainer}>
             {showAdminActions && onEdit && (
-                <button 
-                    onClick={handleEdit} 
-                    style={{...cardStyles.actionButton, backgroundColor: '#f0ad4e', ...(editButtonStyle || {}) }}
-                >
-                    Edit
-                </button>
+              <button 
+                onClick={handleEdit} 
+                style={{...cardStyles.actionButton, backgroundColor: '#f0ad4e', ...(editButtonStyle || {}) }}
+              >
+                Edit
+              </button>
             )}
             {showAdminActions && onDelete && (
-                <button 
-                    onClick={handleDelete} 
-                    style={{...cardStyles.actionButton, ...(deleteButtonStyle || {backgroundColor: '#dc3545'})}}
-                >
-                    Delete
-                </button>
+              <button 
+                onClick={handleDelete} 
+                style={{...cardStyles.actionButton, ...(deleteButtonStyle || {backgroundColor: '#dc3545'})}}
+              >
+                Delete
+              </button>
             )}
             {showViewDetailsButton && !showAdminActions && (
-                 <Link to={`/campaigns/${campaign.id}`} style={{...cardStyles.actionButton, backgroundColor: '#1a73e8'}}>
-                    View Details
-                </Link>
+              <Link to={`/campaigns/${campaign.id}`} style={{...cardStyles.actionButton, backgroundColor: '#1a73e8'}}>
+                View Details
+              </Link>
             )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

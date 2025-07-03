@@ -282,9 +282,11 @@ export const CampaignDetail: React.FC<{ id: string }> = ({ id }) => {
             <span className={`px-2 py-0.5 rounded-full text-xs ${
               campaign.status === 'active' ? 'bg-green-100 text-green-800' :
               campaign.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+              campaign.status === 'PENDING_REVIEW' ? 'bg-yellow-100 text-yellow-800' :
               'bg-red-100 text-red-800'
             }`}>
-              {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
+              {campaign.status === 'PENDING_REVIEW' ? 'Pending Review' : 
+               campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
             </span>
           </div>
 
@@ -415,7 +417,7 @@ export const EditCampaignForm: React.FC<{ id: string }> = ({ id }) => {
     description: string;
     goal: number;
     image: string;
-    status: 'active' | 'completed' | 'cancelled';
+    status: 'active' | 'completed' | 'cancelled' | 'PENDING_REVIEW';
   }>({
     title: '',
     description: '',
@@ -588,6 +590,7 @@ export const EditCampaignForm: React.FC<{ id: string }> = ({ id }) => {
             <option value="active">Active</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
+            <option value="PENDING_REVIEW">Pending Review</option>
           </select>
         </div>
 
