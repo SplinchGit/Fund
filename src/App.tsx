@@ -16,19 +16,7 @@ import TipJar from './pages/TipJar';
 import EditCampaignPage from './pages/EditCampaignPage'; // Your existing component
 import CampaignDetail from './pages/CampaignDetailPage';
 import { CreateCampaignForm } from './components/CreateCampaignForm';
-
-// # ############################################################################ #
-// # #             SECTION 2 - HELPER COMPONENT: LOADING FALLBACK             #
-// # ############################################################################ #
-// Loading fallback component
-const LoadingFallback: React.FC = () => {
-  console.log('[App] Showing loading fallback');
-  return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-      Loading...
-    </div>
-  );
-};
+import LoadingFallback from './components/LoadingFallback';
 
 // # ############################################################################ #
 // # #        SECTION 3 - HELPER COMPONENT: CAMPAIGN DETAIL WRAPPER         #

@@ -1,36 +1,8 @@
 // src/components/AdminPanel.tsx
 
-// # ############################################################################ #
-// # #                      SECTION 1 - VITE CLIENT REFERENCE                     #
-// # ############################################################################ #
-/// <reference types="vite/client" />
 
-// # ############################################################################ #
-// # #                 SECTION 2 - ENVIRONMENT TYPE DEFINITIONS                   #
-// # ############################################################################ #
 
-// Define ImportMetaEnv and ImportMeta interfaces for Vite environment variables
-interface ImportMetaEnv {
-  MODE: string
-  BASE_URL: string
-  PROD: boolean
-  DEV: boolean
-  // Add other env variables used here if necessary
-}
 
-interface ImportMeta {
-  readonly env: ImportMetaEnv
-}
-
-// Define a placeholder type for user data if needed later
-// interface UserData {
-//   walletAddress: string; // Assuming walletAddress is the ID from DynamoDB
-//   isWorldIdVerified?: boolean;
-//   worldIdNullifier?: string | null;
-//   worldIdVerifiedAt?: string | null;
-//   createdAt?: string;
-//   lastLoginAt?: string;
-// }
 
 // # ############################################################################ #
 // # #                         SECTION 3 - PROJECT IMPORTS                        #
@@ -68,7 +40,7 @@ const AdminPanel: React.FunctionComponent = () => {
     //   setIsLoading(false);
     // }
     setIsLoading(false); // Remove this line once API call is implemented
-    alert('Refresh functionality not implemented yet.'); // Placeholder alert
+    
   }, []);
 
   // Placeholder function for clearing users - needs backend integration
@@ -78,7 +50,7 @@ const AdminPanel: React.FunctionComponent = () => {
       // TODO: Implement API call to delete all users (e.g., DELETE /admin/users)
       // await adminService.deleteAllUsers();
       // refreshUsers(); // Refresh after clearing
-      alert('Clear All functionality not implemented yet.'); // Placeholder alert
+      
     }
   }, []); // Removed dependency on local 'users' state
 
@@ -90,7 +62,7 @@ const AdminPanel: React.FunctionComponent = () => {
       // TODO: Implement API call to delete a specific user (e.g., DELETE /admin/users/${userId})
       // await adminService.deleteUser(userId);
       // refreshUsers(); // Refresh after removing
-      alert(`Remove user ${userId.substring(0,8)} functionality not implemented yet.`); // Placeholder alert
+      
     }
   }, []); // Removed dependency on refreshUsers for now
 

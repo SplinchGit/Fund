@@ -33,6 +33,10 @@ import ErudaProvider from './debug/ErudaProvider';   // In-app debug console
 import MiniKitProvider from './MiniKitProvider';     // Official World ID MiniKit provider
 // Import the AuthProvider
 import { AuthProvider } from './components/AuthContext';
+import LoadingFallback from './components/LoadingFallback';
+import ErrorBoundary from './components/ErrorBoundary';
+import testAPIConnectivity from './services/ConnectivityService';
+import isMobile from './utils/device';
 
 // # ############################################################################ #
 // # #                         SECTION 3 - GLOBAL TYPE DECLARATIONS                          #
@@ -43,69 +47,6 @@ declare global {
     __ENV__?: Record<string, string>;
   }
 }
-
-// # ############################################################################ #
-// # #                         SECTION 4 - API CONNECTIVITY TEST                          #
-// # ############################################################################ #
-// API connectivity test function
-const testAPIConnectivity = async (): Promise<void> => {
-  const apiBase = import.meta.env.VITE_AMPLIFY_API;
-  
-  if (!apiBase) {
-    console.error('[main.tsx] ❌ VITE_AMPLIFY_API not configured!');
-    console.error('[main.tsx] Please add VITE_AMPLIFY_API to your .env.local file');
-    return;
-  }
-
-  console.log('[main.tsx] 🔍 Testing API connectivity to:', apiBase);
-  
-  try {
-    // Test basic connectivity to campaigns endpoint
-    const testUrl = `${apiBase}/campaigns`;
-    console.log('[main.tsx] Testing URL:', testUrl);
-    
-    const response = await fetch(testUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      mode: 'cors'
-    });
-    
-    console.log('[main.tsx] API Test Result:', {
-      url: testUrl,
-      status: response.status,
-      ok: response.ok,
-      statusText: response.statusText,
-      headers: Object.fromEntries(response.headers.entries())
-    });
-
-    if (response.ok) {
-      console.log('[main.tsx] ✅ API connectivity test PASSED');
-      try {
-        const data = await response.json();
-        console.log('[main.tsx] Sample API response:', data);
-      } catch (jsonError) {
-        console.log('[main.tsx] ⚠️ Response received but not JSON format');
-      }
-    } else {
-      console.warn('[main.tsx] ⚠️ API responded with error status:', response.status);
-      const errorText = await response.text().catch(() => 'Unable to read error response');
-      console.warn('[main.tsx] Error response:', errorText);
-    }
-  } catch (error) {
-    console.error('[main.tsx] ❌ API connectivity test FAILED:', error);
-    
-    // Provide specific error guidance
-    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-      console.error('[main.tsx] This is likely a CORS or network connectivity issue');
-      console.error('[main.tsx] Check: 1) API Gateway CORS settings, 2) Network connection, 3) API URL correctness');
-    } else if (error instanceof TypeError && error.message.includes('NetworkError')) {
-      console.error('[main.tsx] Network error - check your internet connection');
-    }
-  }
-};
 
 // # ############################################################################ #
 // # #                      SECTION 5 - AMPLIFY INITIALIZATION                       #
@@ -155,67 +96,10 @@ if (envAppId) {
 }
 
 // # ############################################################################ #
-// # #                         SECTION 8 - ERROR BOUNDARY                          #
-// # ############################################################################ #
-// A simple React error boundary (No changes needed here)
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: any) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: any, info: any) {
-    console.error('React Error:', error, info);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{
-          padding: '20px', margin: '0 auto', maxWidth: '500px', textAlign: 'center',
-          color: '#e53e3e', backgroundColor: '#fff', borderRadius: '5px',
-          boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-        }}>
-          <h1>Something went wrong</h1>
-          <p>Please try reloading the page.</p>
-          <pre style={{
-            textAlign: 'left', backgroundColor: '#f7fafc', padding: '10px',
-            borderRadius: '5px', overflow: 'auto', fontSize: '12px'
-          }}>
-            {this.state.error?.message || this.state.error?.toString()}
-          </pre>
-          <button
-            onClick={() => window.location.reload()}
-            style={{
-              marginTop: '20px', padding: '10px 20px', backgroundColor: '#3182ce',
-              color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer'
-            }}
-          >
-            Reload Page
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-// # ############################################################################ #
 // # #                       SECTION 9 - APP INITIALIZATION                        #
 // # ############################################################################ #
 // Initialize app with API connectivity test
 const initializeApp = async () => {
-  // Check if the app is running on a mobile device
-  const isMobile = () => {
-    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-    return /android|iphone|ipad|ipod|blackberry|windows phone/i.test(userAgent) ||
-           (window.innerWidth <= 768 && window.innerHeight <= 1024); // Simple check for smaller screens
-  };
-
   if (!isMobile()) {
     const rootEl = document.getElementById('root');
     if (rootEl) {

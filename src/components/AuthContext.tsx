@@ -1,8 +1,8 @@
-// src/components/AuthContext.tsx - Fixed Version
+// src/components/AuthContext.tsx
 
-// # ############################################################################ #
-// # #                     SECTION 1 - PROJECT IMPORTS                          #
-// # ############################################################################ #
+// Imports
+
+
 import React, {
   createContext,
   useState,
@@ -17,9 +17,7 @@ import { authService } from '../services/AuthService';
 import { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
 import { ISuccessResult } from '@worldcoin/idkit'; // 🆕 NEW: Import ISuccessResult
 
-// # ############################################################################ #
-// # #                   SECTION 2 - CORE TYPE DEFINITIONS                      #
-// # ############################################################################ #
+
 // Auth state interface with additional fields
 interface AuthState {
   isAuthenticated: boolean;
@@ -52,32 +50,24 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-// # ############################################################################ #
-// # #                 SECTION 3 - AUTH CONTEXT INSTANTIATION                   #
-// # ############################################################################ #
+// Auth Context Instantiation
 // Create context with undefined default value
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// # ############################################################################ #
-// # #                   SECTION 4 - GLOBAL CONSTANTS                           #
-// # ############################################################################ #
+// Global Constants
 // Storage keys with namespace
 const STORAGE_NAMESPACE = 'worldfund_';
 const SESSION_TOKEN_KEY = `${STORAGE_NAMESPACE}session_token`;
 const WALLET_ADDRESS_KEY = `${STORAGE_NAMESPACE}wallet_address`;
 const USERNAME_KEY = `${STORAGE_NAMESPACE}username`;
 
-// # ############################################################################ #
-// # #                 SECTION 5 - UTILITY: NONCE VALIDATION                    #
-// # ############################################################################ #
+// Utility: Nonce Validation
 // Improved nonce validation - strict hexadecimal format check
 const isValidNonce = (nonce: string): boolean => {
   return /^[a-f0-9]{8,64}$/i.test(nonce);
 };
 
-// # ############################################################################ #
-// # #                 SECTION 6 - UTILITY: NONCE EXTRACTION                    #
-// # ############################################################################ #
+// Utility: Nonce Extraction
 /**
  * Helper to safely extract nonce from different message formats with enhanced SIWE handling
  */
