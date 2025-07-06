@@ -27,28 +27,21 @@ const TipJar: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // World ID verification state
-  const [isWorldIdVerified, setIsWorldIdVerified] = useState<boolean>(false);
-  const [worldIdProofData, setWorldIdProofData] = useState<WorldIDProofData | null>(null);
-
-  // Transaction tracking
-  const [worldcoinTransactionId, setWorldcoinTransactionId] = useState<string | undefined>(undefined);
-  const [onChainTxHash, setOnChainTxHash] = useState<string | undefined>(undefined);
-
   // Processing state check
   const isProcessing = [
-    TransactionStatus.PENDING_WORLDID_USER_INPUT,
-    TransactionStatus.PENDING_WORLDID_BACKEND_VERIFICATION,
     TransactionStatus.PENDING_WALLET_APPROVAL,
     TransactionStatus.PENDING_MINIKIT_SUBMISSION,
-    TransactionStatus.PENDING_CHAIN_CONFIRMATION,
-    TransactionStatus.BACKEND_VERIFICATION_NEEDED
+    TransactionStatus.PENDING_CHAIN_CONFIRMATION
   ].includes(status);
 
   // Initialize component
   useEffect(() => {
-    setUiMessage('Ready to support WorldFund! Select an amount to get started.');
-  }, []);
+    if (isAuthenticated) {
+      setUiMessage('Select an amount to support WorldFund.');
+    } else {
+      setUiMessage('Please sign in to support WorldFund.');
+    }
+  }, [isAuthenticated]);
 
   // Get final tip amount
   const getFinalAmount = (): number => {
@@ -79,45 +72,6 @@ const TipJar: React.FC = () => {
     }
   };
 
-  // World ID verification handler
-  const handleWorldIdVerifyClick = async () => {
-    if (!isAuthenticated) {
-      setErrorMessage('Please sign in first.');
-      return;
-    }
-    
-    setErrorMessage(null);
-    setSuccessMessage(null);
-    setStatus(TransactionStatus.PENDING_WORLDID_USER_INPUT);
-    setUiMessage('Please check your World App to verify your identity...');
-
-    try {
-      const proof = await wldPaymentService.verifyIdentityForDonation(
-        'tip-jar', // Using tip-jar as campaign ID
-        currentUserId,
-        VerificationLevel.Device
-      );
-      
-      setWorldIdProofData(proof);
-      setStatus(TransactionStatus.PENDING_WORLDID_BACKEND_VERIFICATION);
-      setUiMessage('Verifying World ID with server...');
-      
-      // Simulate backend verification
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      setIsWorldIdVerified(true);
-      setStatus(TransactionStatus.WORLDID_VERIFIED);
-      setUiMessage('');
-      setSuccessMessage('World ID Verified! Select an amount to continue.');
-
-    } catch (err: any) {
-      console.error('World ID Verification Error:', err);
-      setErrorMessage(err.message || 'World ID verification failed. Please try again.');
-      setStatus(TransactionStatus.WORLDID_FAILED);
-      setWorldIdProofData(null);
-      setUiMessage('');
-    }
-  };
 
   // Message change handler
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -126,8 +80,8 @@ const TipJar: React.FC = () => {
 
   // Tip submission handler
   const handleTipSubmit = async () => {
-    if (!isWorldIdVerified || !worldIdProofData) {
-      setErrorMessage('Please verify your World ID first.');
+    if (!isAuthenticated) {
+      setErrorMessage('Please sign in first.');
       return;
     }
     
@@ -150,15 +104,12 @@ const TipJar: React.FC = () => {
         finalAmount.toString()
       );
       
-      setWorldcoinTransactionId(txServiceId);
       setStatus(TransactionStatus.PENDING_MINIKIT_SUBMISSION);
       setUiMessage(`Transaction submitted. Processing...`);
 
       // Simulate transaction confirmation
       setTimeout(() => {
         if (txServiceId) {
-          const mockTxHash = `0x${Math.random().toString(16).slice(2, 66)}`;
-          setOnChainTxHash(mockTxHash);
           setStatus(TransactionStatus.CONFIRMED);
           setSuccessMessage(`Thank you for your ${finalAmount} WLD tip! It helps us improve WorldFund for everyone.`);
           setUiMessage('');
@@ -182,11 +133,7 @@ const TipJar: React.FC = () => {
     setTipMessage('');
     setErrorMessage(null);
     setSuccessMessage(null);
-    setUiMessage('Ready to support WorldFund! Select an amount to get started.');
-    setIsWorldIdVerified(false);
-    setWorldIdProofData(null);
-    setWorldcoinTransactionId(undefined);
-    setOnChainTxHash(undefined);
+    setUiMessage('Select an amount to support WorldFund.');
   }, []);
 
 
@@ -268,42 +215,11 @@ const TipJar: React.FC = () => {
             Help us maintain and improve the platform for everyone.
           </p>
 
-          {/* Step 1: World ID Verification */}
-          {!isWorldIdVerified && (
-            <div className="mb-8">
-              <button
-                onClick={handleWorldIdVerifyClick}
-                disabled={isProcessing || !isAuthenticated}
-                className={`w-full py-4 px-6 rounded-lg font-medium transition-colors ${
-                  isProcessing || !isAuthenticated
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-              >
-                {isProcessing ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Verifying...
-                  </div>
-                ) : (
-                  '1. Verify with World ID'
-                )}
-              </button>
-            </div>
-          )}
-
-          {/* Success message for World ID verification */}
-          {isWorldIdVerified && successMessage && status === TransactionStatus.WORLDID_VERIFIED && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-700 text-center">{successMessage}</p>
-            </div>
-          )}
-
-          {/* Step 2: Amount Selection */}
-          {isWorldIdVerified && (
+          {/* Amount Selection */}
+          {isAuthenticated && (
             <div className="mb-8">
               <label className="block text-lg font-medium text-gray-700 mb-4 text-center">
-                2. Choose Amount
+                Choose Amount
               </label>
               
               {/* Preset Amounts */}
@@ -390,6 +306,19 @@ const TipJar: React.FC = () => {
             </div>
           )}
 
+          {/* Sign In Required */}
+          {!isAuthenticated && (
+            <div className="text-center py-8">
+              <p className="text-gray-600 mb-4">Please sign in to support WorldFund</p>
+              <Link 
+                to="/landing" 
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Sign In
+              </Link>
+            </div>
+          )}
+
         </div>
 
         {/* Status Messages */}
@@ -415,15 +344,15 @@ const TipJar: React.FC = () => {
           <div className="space-y-3 text-sm text-gray-600">
             <div className="flex items-start">
               <div className="bg-blue-100 text-blue-600 rounded-full w-6 h-6 flex items-center justify-center text-xs font-medium mr-3 mt-0.5">1</div>
-              <div>Verify your identity with World ID to ensure secure, authentic support</div>
-            </div>
-            <div className="flex items-start">
-              <div className="bg-blue-100 text-blue-600 rounded-full w-6 h-6 flex items-center justify-center text-xs font-medium mr-3 mt-0.5">2</div>
               <div>Choose a preset amount or enter a custom tip (minimum 1 WLD)</div>
             </div>
             <div className="flex items-start">
-              <div className="bg-blue-100 text-blue-600 rounded-full w-6 h-6 flex items-center justify-center text-xs font-medium mr-3 mt-0.5">3</div>
+              <div className="bg-blue-100 text-blue-600 rounded-full w-6 h-6 flex items-center justify-center text-xs font-medium mr-3 mt-0.5">2</div>
               <div>Complete payment through your World App using MiniKit</div>
+            </div>
+            <div className="flex items-start">
+              <div className="bg-blue-100 text-blue-600 rounded-full w-6 h-6 flex items-center justify-center text-xs font-medium mr-3 mt-0.5">3</div>
+              <div>Your tip helps us improve WorldFund for everyone!</div>
             </div>
           </div>
         </div>
