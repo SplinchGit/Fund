@@ -95,7 +95,10 @@ class EnsService {
 
     if (!ensName) {
       // If not in cache, try to look it up
-      ensName = await this.lookupEnsAddress(address);
+      const lookedUpEns = await this.lookupEnsAddress(address);
+      if (lookedUpEns !== null) {
+        ensName = lookedUpEns;
+      }
     }
 
     if (ensName) {

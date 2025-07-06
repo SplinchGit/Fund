@@ -66,16 +66,18 @@ interface RequestMetadata {
 }
 
 // # ############################################################################ #
-// # #                            SECTION 7 - SERVICE CLASS: CORE DEFINITION                            #
+// # #                        SECTION 7 - SERVICE CLASS DEFINITION                          #
 // # ############################################################################ #
-// Class for authentication service
+/**
+ * Enhanced authentication service for World App integration
+ */
 class AuthService {
   private static instance: AuthService;
-  private API_BASE: string;
-  private API_KEY?: string;
+  private readonly API_BASE: string;
+  private readonly API_KEY?: string;
+  private readonly isWorldApp: boolean;
   private activeRequests: Map<string, RequestMetadata>;
   private retryConfig: RetryConfig;
-  private isWorldApp: boolean;
 
   // # ############################################################################ #
   // # #             SECTION 8 - SERVICE CLASS: CONSTRUCTOR (INITIALIZATION LOGIC)              #
@@ -118,16 +120,20 @@ class AuthService {
     console.log('[AuthService] Initialized successfully for', this.isWorldApp ? 'World App' : 'web browser');
   }
 
-  // # ############################################################################ #
-  // # #         SECTION 9 - SERVICE CLASS: GET INSTANCE METHOD (SINGLETON ACCESSOR)          #
-  // # ############################################################################ #
-  /** Get singleton instance */
+  /**
+   * Get singleton instance
+   */
   public static getInstance(): AuthService {
     if (!AuthService.instance) {
       AuthService.instance = new AuthService();
     }
     return AuthService.instance;
   }
+
+  // # ############################################################################ #
+  // # #                   SECTION 9 - AUTH STATUS CHECK                          #
+  // # ############################################################################ #
+  // (Removed duplicate checkAuthStatus implementation)
 
   // # ############################################################################ #
   // # #           SECTION 10 - SERVICE CLASS: CONFIGURATION METHOD (CONFIGURE RETRY)           #
@@ -785,6 +791,9 @@ class AuthService {
     success: boolean;
     token?: string;
     walletAddress?: string;
+    isWorldIdVerified?: boolean; // 🆕 NEW
+    worldIdLevel?: string; // 🆕 NEW
+    verifiedAt?: string; // 🆕 NEW
     error?: string;
   }> {
     console.log('[AuthService] Verifying wallet signature with World App compatible simple fetch...');
@@ -838,6 +847,15 @@ class AuthService {
       const data = await response.json();
       console.log('[AuthService] Signature verification data received:', data);
 
+      // 🆕 NEW: Log World ID verification status
+      if (data.isWorldIdVerified !== undefined) {
+        console.log('[AuthService] World ID verification status:', {
+          isVerified: data.isWorldIdVerified,
+          level: data.worldIdLevel,
+          verifiedAt: data.verifiedAt
+        });
+      }
+
       if (!data || !data.token || !data.walletAddress) {
         console.error('[AuthService] Missing token or walletAddress in response:', data);
         return {
@@ -850,6 +868,21 @@ class AuthService {
       const resolvedWalletAddress = await ensService.formatAddressOrEns(data.walletAddress);
       this.safeLocalStorage.setItem(SESSION_TOKEN_KEY, data.token);
       this.safeLocalStorage.setItem(WALLET_ADDRESS_KEY, resolvedWalletAddress);
+
+      // 🆕 NEW: Store World ID verification status if provided
+      if (data.isWorldIdVerified) {
+        try {
+          sessionStorage.setItem('worldId_verified', 'true');
+          const proofData = {
+            verification_level: data.worldIdLevel || 'device',
+            verifiedAt: data.verifiedAt || new Date().toISOString()
+          };
+          sessionStorage.setItem('worldId_proof', JSON.stringify(proofData));
+          console.log('[AuthService] World ID verification status stored in session');
+        } catch (e) {
+          console.warn('[AuthService] Could not store World ID status in session:', e);
+        }
+      }
 
       // Try to get World ID username if MiniKit is available
       let username: string | null = null;
@@ -877,10 +910,15 @@ class AuthService {
       }
 
       console.log('[AuthService] Signature verified successfully, session stored');
+      
+      // 🆕 UPDATED: Return enhanced response with World ID fields
       return {
         success: true,
         token: data.token,
         walletAddress: resolvedWalletAddress,
+        isWorldIdVerified: data.isWorldIdVerified !== false, // Default to true for World App users
+        worldIdLevel: data.worldIdLevel || 'device', // Default to device if not specified
+        verifiedAt: data.verifiedAt || new Date().toISOString()
       };
 
     } catch (error: any) {
@@ -1006,140 +1044,163 @@ class AuthService {
     }
   }
 
-  // # ############################################################################ #
-// # #                        SECTION 21 - PUBLIC METHOD: CHECK AUTH STATUS (UPDATED)                            #
 // # ############################################################################ #
-/**
- * Checks if the user is authenticated with improved token validation
- * UPDATED VERSION to handle custom token formats
- */
-public async checkAuthStatus(): Promise<{
-  isAuthenticated: boolean;
-  token: string | null;
-  walletAddress: string | null;
-  username: string | null;
-}> {
-  console.log('[AuthService] Checking auth status...');
+  // # #                        SECTION 21 - PUBLIC METHOD: CHECK AUTH STATUS (UPDATED)                            #
+  // # ############################################################################ #
+  /**
+   * Checks if the user is authenticated with improved token validation
+   * 🆕 UPDATED: Include World ID verification status
+   */
+  public async checkAuthStatus(): Promise<{
+    isAuthenticated: boolean;
+    token: string | null;
+    walletAddress: string | null;
+    username: string | null;
+    isWorldIdVerified?: boolean; // 🆕 NEW
+    worldIdLevel?: string; // 🆕 NEW
+  }> {
+    console.log('[AuthService] Checking auth status...');
 
-  try {
-    const token = this.safeLocalStorage.getItem(SESSION_TOKEN_KEY);
-    const walletAddress = this.safeLocalStorage.getItem(WALLET_ADDRESS_KEY);
-    const username = this.safeLocalStorage.getItem(USERNAME_KEY);
+    try {
+      const token = this.safeLocalStorage.getItem(SESSION_TOKEN_KEY);
+      const walletAddress = this.safeLocalStorage.getItem(WALLET_ADDRESS_KEY);
+      const username = this.safeLocalStorage.getItem(USERNAME_KEY);
 
-    console.log(
-      `[AuthService] Token found: ${Boolean(
-        token
-      )}, Wallet address found: ${Boolean(walletAddress)}`
-    );
+      // 🆕 NEW: Get World ID verification status from session
+      const worldIdVerified = sessionStorage.getItem('worldId_verified') === 'true';
+      let worldIdLevel = 'device';
+      
+      try {
+        const worldIdProof = sessionStorage.getItem('worldId_proof');
+        if (worldIdProof) {
+          const proofData = JSON.parse(worldIdProof);
+          worldIdLevel = proofData.verification_level || 'device';
+        }
+      } catch (e) {
+        console.warn('[AuthService] Could not parse World ID proof data');
+      }
 
-    let hasValidFormat = false;
-    if (token) {
-      // Handle custom token format (fund-jwt-*)
-      if (token.startsWith('fund-jwt-') || token.startsWith('fund-')) {
-        console.log('[AuthService] Custom fund token format detected, treating as valid');
-        hasValidFormat = true;
-      } else {
-        // Standard JWT validation
-        const parts = token.split('.');
-        hasValidFormat = parts.length === 3;
+      console.log(
+        `[AuthService] Token found: ${Boolean(
+          token
+        )}, Wallet address found: ${Boolean(walletAddress)}, World ID verified: ${worldIdVerified}`
+      );
 
-        if (!hasValidFormat) {
-          console.warn('[AuthService] Retrieved token has invalid format, not a proper JWT');
+      let hasValidFormat = false;
+      if (token) {
+        // Handle custom token format (fund-jwt-*)
+        if (token.startsWith('fund-jwt-') || token.startsWith('fund-')) {
+          console.log('[AuthService] Custom fund token format detected, treating as valid');
+          hasValidFormat = true;
         } else {
-          try {
-            if (parts.length >= 3 && parts[1]) {
-              const payloadBase64 = parts[1];
-              let payloadJson = '';
+          // Standard JWT validation
+          const parts = token.split('.');
+          hasValidFormat = parts.length === 3;
 
-              try {
-                const base64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
-                const paddingLength = (4 - (base64.length % 4)) % 4;
-                const paddedBase64 = base64 + '='.repeat(paddingLength);
-                payloadJson = atob(paddedBase64);
-              } catch (base64Error) {
-                console.error('[AuthService] Error decoding base64 payload:', base64Error);
-                hasValidFormat = false;
-                throw new Error('Invalid token format: could not decode payload');
-              }
+          if (!hasValidFormat) {
+            console.warn('[AuthService] Retrieved token has invalid format, not a proper JWT');
+          } else {
+            try {
+              if (parts.length >= 3 && parts[1]) {
+                const payloadBase64 = parts[1];
+                let payloadJson = '';
 
-              if (payloadJson) {
-                let payload: any;
                 try {
-                  payload = JSON.parse(payloadJson);
-                } catch (jsonError) {
-                  console.error('[AuthService] Error parsing token JSON payload:', jsonError);
+                  const base64 = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+                  const paddingLength = (4 - (base64.length % 4)) % 4;
+                  const paddedBase64 = base64 + '='.repeat(paddingLength);
+                  payloadJson = atob(paddedBase64);
+                } catch (base64Error) {
+                  console.error('[AuthService] Error decoding base64 payload:', base64Error);
                   hasValidFormat = false;
-                  throw new Error('Invalid token format: could not parse payload JSON');
+                  throw new Error('Invalid token format: could not decode payload');
                 }
 
-                if (payload && payload.exp) {
-                  const expTime = payload.exp * 1000; // Convert to milliseconds
-                  const now = Date.now();
-
-                  if (expTime < now) {
-                    console.warn(`[AuthService] Token expired at ${new Date(expTime).toISOString()}`);
-                    return {
-                      isAuthenticated: false,
-                      token: null,
-                      walletAddress: null,
-                    };
+                if (payloadJson) {
+                  let payload: any;
+                  try {
+                    payload = JSON.parse(payloadJson);
+                  } catch (jsonError) {
+                    console.error('[AuthService] Error parsing token JSON payload:', jsonError);
+                    hasValidFormat = false;
+                    throw new Error('Invalid token format: could not parse payload JSON');
                   }
-                }
 
-                console.log('[AuthService] Token passed basic JWT validation');
+                  if (payload && payload.exp) {
+                    const expTime = payload.exp * 1000; // Convert to milliseconds
+                    const now = Date.now();
+
+                    if (expTime < now) {
+                      console.warn(`[AuthService] Token expired at ${new Date(expTime).toISOString()}`);
+                      return {
+                        isAuthenticated: false,
+                        token: null,
+                        walletAddress: null,
+                        username: null,
+                        isWorldIdVerified: false,
+                        worldIdLevel: undefined
+                      };
+                    }
+                  }
+
+                  console.log('[AuthService] Token passed basic JWT validation');
+                } else {
+                  console.warn('[AuthService] Empty payload after decoding');
+                  hasValidFormat = false;
+                }
               } else {
-                console.warn('[AuthService] Empty payload after decoding');
+                console.warn('[AuthService] Invalid token structure - missing payload part');
                 hasValidFormat = false;
               }
-            } else {
-              console.warn('[AuthService] Invalid token structure - missing payload part');
+            } catch (parseError) {
+              console.error('[AuthService] Error validating token:', parseError);
               hasValidFormat = false;
             }
-          } catch (parseError) {
-            console.error('[AuthService] Error validating token:', parseError);
-            hasValidFormat = false;
           }
         }
       }
-    }
 
-    const isAuthenticated = Boolean(token && hasValidFormat && walletAddress);
+      const isAuthenticated = Boolean(token && hasValidFormat && walletAddress);
 
-    console.log(
-      `[AuthService] Auth status → ${
-        isAuthenticated ? 'Authenticated' : 'Not authenticated'
-      }`
-    );
-
-    if (!isAuthenticated && (token || walletAddress)) {
-      console.warn(
-        '[AuthService] Not authenticated because: ' +
-          (!token
-            ? 'Token missing'
-            : !hasValidFormat
-            ? 'Token has invalid format'
-            : !walletAddress
-            ? 'Wallet address missing'
-            : 'Unknown reason')
+      console.log(
+        `[AuthService] Auth status → ${
+          isAuthenticated ? 'Authenticated' : 'Not authenticated'
+        }${isAuthenticated && worldIdVerified ? ' with World ID' : ''}`
       );
-    }
 
-    return {
-      isAuthenticated,
-      token: token && hasValidFormat ? token : null,
-      walletAddress,
-      username,
-    };
-  } catch (error) {
-    console.error('[AuthService] Error checking auth status:', error);
-    return {
-      isAuthenticated: false,
-      token: null,
-      walletAddress: null,
-      username: null,
-    };
+      if (!isAuthenticated && (token || walletAddress)) {
+        console.warn(
+          '[AuthService] Not authenticated because: ' +
+            (!token
+              ? 'Token missing'
+              : !hasValidFormat
+              ? 'Token has invalid format'
+              : !walletAddress
+              ? 'Wallet address missing'
+              : 'Unknown reason')
+        );
+      }
+
+      return {
+        isAuthenticated,
+        token: token && hasValidFormat ? token : null,
+        walletAddress,
+        username,
+        isWorldIdVerified: isAuthenticated ? worldIdVerified : false,
+        worldIdLevel: isAuthenticated && worldIdVerified ? worldIdLevel : undefined
+      };
+    } catch (error) {
+      console.error('[AuthService] Error checking auth status:', error);
+      return {
+        isAuthenticated: false,
+        token: null,
+        walletAddress: null,
+        username: null,
+        isWorldIdVerified: false,
+        worldIdLevel: undefined
+      };
+    }
   }
-}
 
 // # ############################################################################ #
 // # #                        SECTION 22 - PUBLIC METHOD: VERIFY TOKEN (IMPROVED)                        #

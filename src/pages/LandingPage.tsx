@@ -1,15 +1,18 @@
-// src/pages/LandingPage.tsx
-// (MODIFIED to include category filter dropdown and display with enhanced error handling)
+// src/pages/LandingPage.tsx - PAGINATION FIX ONLY
+// (MODIFIED to fix carousel pagination dots with enhanced error handling)
 
 // # ############################################################################ #
-// # #                           SECTION 1 - IMPORTS                           #
+// # #                           SECTION 1 - IMPORTS                           #
 // # ############################################################################ #
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext';
 // Ensure CampaignData from CampaignService includes 'category'
 import { campaignService, Campaign as CampaignData } from '../services/CampaignService';
-import { triggerMiniKitWalletAuth } from '../MiniKitProvider';
+// FIXED: Import from the correct path
+import { triggerMiniKitWalletAuth } from '../utils/minikit';
+// ADDED: Import the type for proper typing
+import { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
 import { ensService } from '../services/EnsService';
 
 // Import Swiper React components and styles
@@ -21,7 +24,7 @@ import 'swiper/css';
 import 'swiper/css/pagination';
 
 // # ############################################################################ #
-// # #                        SECTION 2 - CONSTANTS & TYPES                        #
+// # #                        SECTION 2 - CONSTANTS & TYPES                        #
 // # ############################################################################ #
 // Define categories (or import from a shared constants file)
 const PREDEFINED_CATEGORIES = [
@@ -43,11 +46,11 @@ interface CampaignDisplay extends CampaignData {
 }
 
 // # ############################################################################ #
-// # #           SECTION 3 - COMPONENT: PAGE DEFINITION & INITIALIZATION           #
+// # #           SECTION 3 - COMPONENT: PAGE DEFINITION & INITIALIZATION           #
 // # ############################################################################ #
 const LandingPage: React.FC = () => {
     // # ############################################################################ #
-    // # #                   SECTION 4 - COMPONENT: ENVIRONMENT LOGGING                   #
+    // # #                   SECTION 4 - COMPONENT: ENVIRONMENT LOGGING                   #
     // # ############################################################################ #
     useEffect(() => {
         console.log('[LandingPage] Environment variables:', {
@@ -59,7 +62,7 @@ const LandingPage: React.FC = () => {
     }, []);
 
     // # ############################################################################ #
-    // # #                   SECTION 5 - COMPONENT: HOOKS & STATE                   #
+    // # #                   SECTION 5 - COMPONENT: HOOKS & STATE                   #
     // # ############################################################################ #
     const { isAuthenticated, walletAddress, loginWithWallet, getNonceForMiniKit, isLoading: authIsLoading, error: authError } = useAuth();
     const navigate = useNavigate();
@@ -75,7 +78,7 @@ const LandingPage: React.FC = () => {
     const [selectedFilterCategory, setSelectedFilterCategory] = useState<string>(ALL_CATEGORIES_FILTER_OPTION);
 
     // # ############################################################################ #
-    // # #                   SECTION 6 - FILTER FUNCTIONALITY                   #
+    // # #                   SECTION 6 - FILTER FUNCTIONALITY                   #
     // # ############################################################################ #
     // Search filter will apply ON TOP of the category-filtered data fetched from backend
     const filteredCampaignsBySearch = useMemo(() => {
@@ -90,7 +93,7 @@ const LandingPage: React.FC = () => {
     }, [campaigns, searchQuery]);
 
     // # ############################################################################ #
-    // # #                 SECTION 7 - EFFECT: AUTH ERROR HANDLING                 #
+    // # #                 SECTION 7 - EFFECT: AUTH ERROR HANDLING                 #
     // # ############################################################################ #
     useEffect(() => {
         if (authError) {
@@ -100,7 +103,7 @@ const LandingPage: React.FC = () => {
     }, [authError]);
 
     // # ############################################################################ #
-    // # #                 SECTION 8 - EFFECT: AUTH STATUS LOGGING                 #
+    // # #                 SECTION 8 - EFFECT: AUTH STATUS LOGGING                 #
     // # ############################################################################ #
     useEffect(() => {
         console.log('[LandingPage] Auth state from context changed:', {
@@ -111,7 +114,7 @@ const LandingPage: React.FC = () => {
     }, [isAuthenticated, walletAddress, authIsLoading]);
 
     // ############################################################################ #
-    // # #                 SECTION 9 - ENHANCED USERNAME RESOLUTION FUNCTION                 #
+    // # #                 SECTION 9 - ENHANCED USERNAME RESOLUTION FUNCTION                 #
     // ############################################################################ #
     const resolveUserIdentity = async (address: string): Promise<{ username: string; isVerified: boolean }> => {
         console.log(`[LandingPage] Resolving identity for: ${address}`);
@@ -176,7 +179,7 @@ const LandingPage: React.FC = () => {
     };
 
     // # ############################################################################ #
-    // # #                 SECTION 10 - EFFECT: FETCH CAMPAIGNS (ENHANCED)                 #
+    // # #                 SECTION 10 - EFFECT: FETCH CAMPAIGNS (ENHANCED)                 #
     // # ############################################################################ #
     useEffect(() => {
         const fetchCampaignsData = async () => {
@@ -286,7 +289,7 @@ const LandingPage: React.FC = () => {
     }, [selectedFilterCategory]);
 
     // # ############################################################################ #
-    // # #                 SECTION 11 - CALLBACK: CONNECT WALLET                 #
+    // # #                 SECTION 11 - CALLBACK: CONNECT WALLET                 #
     // # ############################################################################ #
     const handleConnectWallet = useCallback(async () => {
         if (isConnectingWallet || authIsLoading) {
@@ -314,7 +317,7 @@ const LandingPage: React.FC = () => {
                 });
 
                 console.log("[LandingPage] handleConnectWallet: Fetching nonce for MiniKit auth...");
-                let serverNonce;
+                let serverNonce: string;
                 try {
                     serverNonce = await getNonceForMiniKit();
                     console.log("[LandingPage] handleConnectWallet: Nonce received:", serverNonce);
@@ -326,7 +329,8 @@ const LandingPage: React.FC = () => {
                 if (!serverNonce) throw new Error("Server didn't return a valid nonce");
 
                 console.log("[LandingPage] handleConnectWallet: Calling triggerMiniKitWalletAuth with fetched nonce...");
-                let authPayload;
+                // FIXED: Added proper typing for authPayload
+                let authPayload: MiniAppWalletAuthSuccessPayload;
                 try {
                     authPayload = await triggerMiniKitWalletAuth(serverNonce);
                     console.log("[LandingPage] handleConnectWallet: Auth payload received:", authPayload ? "Valid payload" : "Invalid/empty payload");
@@ -361,7 +365,7 @@ const LandingPage: React.FC = () => {
     }, [isConnectingWallet, authIsLoading, getNonceForMiniKit, loginWithWallet, connectionAttempts]);
 
     // # ############################################################################ #
-    // # #               SECTION 12 - CALLBACK: ACCOUNT NAVIGATION               #
+    // # #               SECTION 12 - CALLBACK: ACCOUNT NAVIGATION               #
     // # ############################################################################ #
     const handleAccountNavigation = useCallback(async (e?: React.MouseEvent) => {
         if (e) e.preventDefault();
@@ -380,7 +384,7 @@ const LandingPage: React.FC = () => {
     }, [isAuthenticated, authIsLoading, navigate, handleConnectWallet]);
 
     // # ############################################################################ #
-    // # #           SECTION 13 - CALLBACK: DASHBOARD HEADER NAVIGATION           #
+    // # #           SECTION 13 - CALLBACK: DASHBOARD HEADER NAVIGATION           #
     // # ############################################################################ #
     const goToDashboardHeader = useCallback(() => {
         console.log('[LandingPage] goToDashboardHeader: Navigating to /dashboard.');
@@ -388,7 +392,7 @@ const LandingPage: React.FC = () => {
     }, [navigate]);
 
     // # ############################################################################ #
-    // # #                       SECTION 14 - HELPER FUNCTIONS                       #
+    // # #                       SECTION 14 - HELPER FUNCTIONS                       #
     // # ############################################################################ #
     const isActivePath = (path: string, locationPathname: string): boolean => locationPathname === path || (path === '/' && locationPathname === '/landing') || (path === '/campaigns' && (locationPathname === '/campaigns' || locationPathname.startsWith('/campaigns/')));
 
@@ -397,7 +401,7 @@ const LandingPage: React.FC = () => {
     };
 
     // # ############################################################################ #
-    // # #                     SECTION 15 - INLINE STYLES OBJECT                     #
+    // # #                     SECTION 15 - INLINE STYLES OBJECT                     #
     // # ############################################################################ #
     const styles: { [key: string]: React.CSSProperties } = {
         page: { textAlign: 'center' as const, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif', color: '#202124', backgroundColor: '#ffffff', margin: 0, padding: 0, overflowX: 'hidden' as const, width: '100vw', minHeight: '100%', display: 'flex', flexDirection: 'column' as const, boxSizing: 'border-box' as const, },
@@ -500,29 +504,50 @@ const LandingPage: React.FC = () => {
     };
 
     // # ############################################################################ #
-    // # #                     SECTION 16 - RESPONSIVE STYLES                     #
+    // # #                     SECTION 16 - RESPONSIVE STYLES                     #
     // # ############################################################################ #
     const responsiveStyles = `
     html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow-x: hidden; font-family: ${styles.page?.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif'}; box-sizing: border-box; }
     *, *::before, *::after { box-sizing: inherit; }
-    input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; height: 1em; width: 1em; margin-left: .25em; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23777'%3e%3cpath d='M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'/%3e%3c/svg>'); background-size: 1em 1em; cursor: pointer; }
-    /* Replace the existing swiper styles with these smaller dots */
+    input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; height: 1em; width: 1em; margin-left: .25em; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23777'%3e%3cpath d='M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'/%3e%3c/svg>"); background-size: 1em 1em; cursor: pointer; }
+    /* Swiper pagination dots - fixed to be small and circular */
     .swiper-pagination-bullet {
       background-color: #cccccc !important;
       opacity: 1 !important;
       width: 6px !important;
       height: 6px !important;
       margin: 0 3px !important;
+      border-radius: 50% !important;
+      display: inline-block !important;
+      transition: all 0.2s ease !important;
     }
 
     .swiper-pagination-bullet-active {
       background-color: #1a73e8 !important;
       width: 8px !important;
       height: 8px !important;
+      transform: scale(1.2) !important;
     }
 
     .swiper-pagination {
       bottom: 10px !important;
+      position: absolute !important;
+      text-align: center !important;
+      width: 100% !important;
+    }
+    
+    /* Fix for dynamic bullets if enabled */
+    .swiper-pagination-bullets-dynamic .swiper-pagination-bullet-active-main {
+      width: 8px !important;
+      height: 8px !important;
+    }
+    
+    /* Ensure bullets maintain circular shape in horizontal mode */
+    .swiper-horizontal > .swiper-pagination-bullets .swiper-pagination-bullet,
+    .swiper-pagination-horizontal.swiper-pagination-bullets .swiper-pagination-bullet {
+      margin: 0 4px !important;
+      width: 6px !important;
+      height: 6px !important;
     }
 
     .swiper-button-next, .swiper-button-prev {
@@ -537,7 +562,7 @@ const LandingPage: React.FC = () => {
     `;
 
     // # ############################################################################ #
-    // # #             SECTION 17 - INNER COMPONENT: CAMPAIGN CARD             #
+    // # #             SECTION 17 - INNER COMPONENT: CAMPAIGN CARD             #
     // # ############################################################################ #
     const CampaignCardComponent: React.FC<{ campaign: CampaignDisplay }> = ({ campaign }) => {
         return (
@@ -584,7 +609,7 @@ const LandingPage: React.FC = () => {
     };
 
     // # ############################################################################ #
-    // # #             SECTION 18 - JSX RETURN: PAGE STRUCTURE & CONTENT             #
+    // # #             SECTION 18 - JSX RETURN: PAGE STRUCTURE & CONTENT             #
     // # ############################################################################ #
 
     // Swiper debug log as in your original code
@@ -726,7 +751,14 @@ const LandingPage: React.FC = () => {
                             spaceBetween={16}
                             slidesPerView={1}
                             // navigation // REMOVED: navigation prop
-                            pagination={{ clickable: true, dynamicBullets: true }}
+                            pagination={{ 
+                                clickable: true, 
+                                dynamicBullets: true,
+                                dynamicMainBullets: 3,
+                                renderBullet: function (index, className) {
+                                    return '<span class="' + className + '" data-slide="' + index + '"></span>';
+                                }
+                            }}
                             loop={false}
                             style={styles.swiperContainer}
                             grabCursor={true}
@@ -780,6 +812,6 @@ const LandingPage: React.FC = () => {
 };
 
 // # ############################################################################ #
-// # #                       SECTION 19 - DEFAULT EXPORT                       #
+// # #                       SECTION 19 - DEFAULT EXPORT                       #
 // # ############################################################################ #
 export default LandingPage;

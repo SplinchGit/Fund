@@ -26,8 +26,8 @@ export interface PreviewResult {
 class ContentModerationService {
   private static instance: ContentModerationService;
   private config: ModerationConfig;
-  private badWords: Set<string>;
-  private whitelistWords: Set<string>;
+  private badWords!: Set<string>;
+  private whitelistWords!: Set<string>;
 
   private constructor() {
     this.config = {
@@ -164,6 +164,7 @@ class ContentModerationService {
     
     for (let i = 0; i < words.length; i++) {
       const word = words[i];
+      if (typeof word !== 'string') continue;
       const cleanWord = word.toLowerCase().replace(/[^a-z]/g, '');
       
       if (cleanWord.length === 0) continue; // Skip spaces and punctuation

@@ -78,7 +78,7 @@ class PlatformStatsService {
 
   private async makeAuthenticatedRequest(endpoint: string): Promise<any> {
     const token = await authService.getAccessToken();
-    if (!token) {
+    if (typeof token !== 'string' || !token) {
       throw new Error('Authentication required for platform stats');
     }
 
@@ -243,7 +243,7 @@ class PlatformStatsService {
       for (let i = days - 1; i >= 0; i--) {
         const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
         data.push({
-          date: date.toISOString().split('T')[0],
+          date: date.toISOString().split('T')[0] ?? '',
           campaigns: Math.floor(Math.random() * 5) + 1,
           donations: Math.floor(Math.random() * 20) + 5,
           amount: Math.floor(Math.random() * 1000) + 100

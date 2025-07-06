@@ -15,7 +15,7 @@ import React, {
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/AuthService';
 import { MiniAppWalletAuthSuccessPayload } from '@worldcoin/minikit-js';
-import { ISuccessResult } from '@worldcoin/idkit'; // 🆕 NEW: Import ISuccessResult
+import { ISuccessResult, VerificationLevel } from '@worldcoin/idkit'; // 🆕 NEW: Import ISuccessResult and VerificationLevel
 
 
 // Auth state interface with additional fields
@@ -463,6 +463,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const authStatus = await authService.checkAuthStatus();
         const username = authStatus.username;
         
+        // 🆕 NEW: Handle World ID verification status from backend
+        if (verifyResult.isWorldIdVerified) {
+          console.log('[AuthContext] World ID verification confirmed by backend');
+          setIsWorldIdVerifiedGlobally(true);
+          
+          // Create a proof result object for state management
+          const proofResult: ISuccessResult = {
+            merkle_root: '',
+            nullifier_hash: '',
+            proof: '',
+            verification_level: (verifyResult.worldIdLevel as VerificationLevel) || 'device',
+            // Add any other required fields based on ISuccessResult interface
+          };
+          setWorldIdProofResult(proofResult);
+          
+          // Store World ID verification in session (backup to what AuthService already did)
+          try {
+            sessionStorage.setItem('worldId_verified', 'true');
+            sessionStorage.setItem('worldId_proof', JSON.stringify({
+              verification_level: verifyResult.worldIdLevel || 'device',
+              verifiedAt: verifyResult.verifiedAt || new Date().toISOString()
+            }));
+            console.log('[AuthContext] World ID verification status stored in session');
+          } catch (error) {
+            console.warn('[AuthContext] Could not persist World ID state:', error);
+          }
+        }
+        
         // Update auth state atomically
         login(verifyResult.token, formattedAddress, username || undefined, true);
       } else {
@@ -587,7 +615,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (storedVerified === 'true') {
           setIsWorldIdVerifiedGlobally(true);
           if (storedProof) {
-            setWorldIdProofResult(JSON.parse(storedProof));
+            const proofData = JSON.parse(storedProof);
+            // Create ISuccessResult object
+            const restoredProof: ISuccessResult = {
+              merkle_root: '',
+              nullifier_hash: '',
+              proof: '',
+              verification_level: (proofData.verification_level as VerificationLevel) || 'device',
+            };
+            setWorldIdProofResult(restoredProof);
           }
           console.log('[AuthContext] Restored World ID verification state from session');
         }
@@ -617,7 +653,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           sessionStorage.removeItem('worldId_verified');
           sessionStorage.removeItem('worldId_proof');
 
-
           updateAuthState({
             isAuthenticated: false,
             walletAddress: null,
@@ -635,6 +670,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Token is valid, update final state
         updateAuthState({ isLoading: false });
         console.log('[AuthContext] Session token verified successfully');
+        
+        // 🆕 NEW: Also check auth status from service which includes World ID
+        const fullAuthStatus = await authService.checkAuthStatus();
+        if (fullAuthStatus.isWorldIdVerified) {
+          setIsWorldIdVerifiedGlobally(true);
+          console.log('[AuthContext] World ID verification status confirmed from auth service');
+        }
 
       } catch (verifyError) {
         console.error('[AuthContext] Error verifying token:', verifyError);
@@ -660,22 +702,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       sessionStorage.removeItem('worldId_verified');
       sessionStorage.removeItem('worldId_proof');
     }
-  }, [updateAuthState]);
-
-  // 5. NEW: HANDLE WORLD ID VERIFICATION SUCCESS
-  const handleWorldIdVerificationSuccess = useCallback((result: ISuccessResult) => {
-    console.log('[AuthContext] World ID verification successful globally');
-    setIsWorldIdVerifiedGlobally(true);
-    setWorldIdProofResult(result);
-    
-    // Optionally persist to sessionStorage for tab refreshes
-    try {
-      sessionStorage.setItem('worldId_verified', 'true');
-      sessionStorage.setItem('worldId_proof', JSON.stringify(result));
-    } catch (error) {
-      console.warn('[AuthContext] Could not persist World ID state:', error);
-    }
-  }, []);
+  }, [updateAuthState, navigate]);
 
 // # ############################################################################ #
 // # #                SECTION 16 - AUTHPROVIDER: LIFECYCLE & EFFECTS            #
